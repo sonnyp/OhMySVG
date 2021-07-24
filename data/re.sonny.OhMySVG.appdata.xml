@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<component type="desktop">
+  <id>re.sonny.OhMySVG</id>
+  <launchable type="desktop-id">re.sonny.OhMySVG.desktop</launchable>
+  <name>Oh My SVG</name>
+  <developer_name>Sonny Piers</developer_name>
+  <update_contact>sonny@fastmail.net</update_contact>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <summary>Reduce the size of SVGs</summary>
+  <description>
+    <p>Oh My SVG let you convert unoptimize SVG files into smaller versions.</p>
+    <p
+    >Under the hood, it uses [SVGO](https://github.com/svg/svgo/) to remove or approximate information that is not required for rendering.</p>
+    <p
+    >It lets you preview and tweak the parameters to obtain a satisfactory result before saving.</p>
+    <p
+    >Remember that Oh My SVG removes information and metadata that may be useful, do not overwrite your original/source SVG files.</p>
+  </description>
+  <url type="homepage">https://github.com/sonnyp/OhMySVG</url>
+  <url type="bugtracker">https://github.com/sonnyp/OhMySVG/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>
+        https://raw.githubusercontent.com/sonnyp/OhMySVG/main/data/screenshot-light.png
+      </image>
+      <caption>Oh My SVG</caption>
+    </screenshot>
+    <screenshot>
+      <image>
+        https://raw.githubusercontent.com/sonnyp/Commit/main/data/screenshot-dark.png
+      </image>
+      <caption>Oh My SVG - dark mode</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.0.0" date="2021-07-24">
+      <description>
+        <p>Initial release.</p>
+      </description>
+    </release>
+  </releases>
+  <kudos>
+    <kudo>HiDpiIcon</kudo>
+    <kudo>HighContrast</kudo>
+    <kudo>ModernToolkit</kudo>
+  </kudos>
+</component>

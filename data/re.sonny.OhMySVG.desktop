@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Oh My SVG
+Comment=Optimize SVG
+Exec=re.sonny.OhMySVG %F
+Terminal=false
+Type=Application
+Categories=Graphics;Utility;2DGraphics;VectorGraphics;Compression;GNOME;GTK;
+Icon=re.sonny.OhMySVG
+MimeType=image/svg+xml;
+StartupNotify=true
+Keywords=SVG;clean;optimize;
