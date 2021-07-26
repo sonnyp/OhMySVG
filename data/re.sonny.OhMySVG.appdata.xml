@@ -46,4 +46,13 @@
     <kudo>HighContrast</kudo>
     <kudo>ModernToolkit</kudo>
   </kudos>
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <!-- <control>touch</control> -->
+  </recommends>
+  <requires>
+    <display_length compare="ge">medium</display_length>
+  </requires>
+
 </component>

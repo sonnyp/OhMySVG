@@ -27,6 +27,7 @@ test:
 	flatpak run org.freedesktop.appstream-glib validate data/re.sonny.OhMySVG.appdata.xml
 	desktop-file-validate --no-hints data/re.sonny.OhMySVG.desktop
 	gtk4-builder-tool validate src/*.ui
+	flatpak-builder --show-manifest re.sonny.OhMySVG.yaml
 
 clean:
 	rm -rf build install .eslintcache

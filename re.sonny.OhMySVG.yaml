@@ -5,6 +5,7 @@ sdk: org.gnome.Sdk
 command: re.sonny.OhMySVG
 finish-args:
   - "--share=ipc"
+  - "--device=dri"
   - "--socket=fallback-x11"
   - "--socket=wayland"
   # We use FLATPAK_ID

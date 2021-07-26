@@ -6,7 +6,7 @@ Reduce the size of SVGs
 
 ![screenshot](data/screenshot.png)
 
-<!-- <a href='https://flathub.org/apps/details/re.sonny.OhMySVG'><img width='180' height='60' alt='Download on Flathub' src='https://flathub.org/assets/badges/flathub-badge-en.svg'/></a> -->
+<a href='https://flathub.org/apps/details/re.sonny.OhMySVG'><img width='180' height='60' alt='Download on Flathub' src='https://flathub.org/assets/badges/flathub-badge-en.svg'/></a>
 
 ## About
 
@@ -23,13 +23,14 @@ Remember that Oh My SVG removes information and metadata that may be useful, do 
 [Setup flatpak](https://flatpak.org/setup/) then
 
 ```sh
-git clone git@github.com:sonnyp/OhMySVG.git
-cd OhMySVG
-flatpak-builder --user --force-clean --install-deps-from=flathub --install flatpak re.sonny.OhMySVG.yaml
+flatpak install re.sonny.OhMySVG
+flatpak run re.sonny.OhMySVG
 ```
 
 ## Roadmap
 
+- better icon
+- zoom in and out
 - out of process svgo
   - toggling switches not smooth
   - block UI threads
