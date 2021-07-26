@@ -1,5 +1,6 @@
 import { read, send } from "./ipc.js";
 import { getpid } from "./util.js";
+import { optimize } from "./svgo.js";
 
 log(`worker pid ${getpid()}`);
 
@@ -12,24 +13,10 @@ const stdin = new Gio.DataInputStream({
   base_stream: new Gio.UnixInputStream({ fd: 0 }),
 });
 const source = stdin.base_stream.create_source(null);
-// source.set_callback(() => {
-//   const length = stdin.read_int32(null);
-//   const bytes = stdin.read_bytes(length, null);
-//   const str = byteArray.toString(bytes.toArray());
-//   log(["string", str]);
-//   const message = JSON.parse(str);
-//   log(["json", JSON.stringify(message)]);
-
-//   send(stdout, { hello: "world" });
-
-//   return GLib.SOURCE_CONTINUE;
-// });
 source.set_callback(() => {
   const message = read(stdin);
-  log(["worker received", JSON.stringify(message)]);
-
-  send(stdout, { hello: "world" });
-
+  const result = optimize(...message);
+  send(stdout, result);
   return GLib.SOURCE_CONTINUE;
 });
 source.attach(null);

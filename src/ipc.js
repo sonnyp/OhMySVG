@@ -1,18 +1,21 @@
+// Use WebExtensions Native Messaging protocol
+// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging#app_side
+
 const byteArray = imports.byteArray;
 
 export function send(stream, value) {
   const str = JSON.stringify(value);
   const bytes = byteArray.fromString(str);
-  stream.write(bytes.length.toString().padStart(4, "0"), null);
+  stream.put_int32(bytes.length, null);
   stream.write(bytes, null);
 }
 
 export function read(stdout) {
   const length = stdout.read_int32(null);
+  log(length);
   const bytes = stdout.read_bytes(length, null);
+  log(bytes.get_size());
   const str = byteArray.toString(bytes.toArray());
-  //   log(["string", str]);
-  const message = JSON.parse(str);
-  //   log(["json", JSON.stringify(message)]);
-  return message;
+  log(str);
+  return JSON.parse(str);
 }

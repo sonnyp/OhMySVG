@@ -5,7 +5,12 @@ import Gio from "gi://Gio";
 import { relativePath, debug } from "./util.js";
 import { defaultPlugins } from "./svgo.js";
 import Plugins from "./Plugins.js";
-import { drawCheckerboard, drawHandle, process } from "./ohmysvg.js";
+import {
+  drawCheckerboard,
+  drawHandle,
+  process,
+  processOOP,
+} from "./ohmysvg.js";
 import DialogSave from "./DialogSave.js";
 import DialogOpen from "./DialogOpen.js";
 
@@ -57,7 +62,7 @@ export default function Window({ application }) {
     cr.$dispose();
   }
   drawing_area.set_draw_func(draw);
-  function proceed() {
+  async function proceed() {
     const config = {
       multipass: true,
       floatPrecision: scale.get_value(),
@@ -66,19 +71,27 @@ export default function Window({ application }) {
 
     debug("proceed", JSON.stringify(config));
 
-    ({ handle, data_optimized } = process({
+    // ({ handle, data_optimized } = process({
+    //   string_original,
+    //   config,
+    // }));
+
+    processOOP({
       string_original,
       config,
-    }));
+      cb(foo) {
+        handle = foo.handle;
+        data_optimized = foo.data_optimized;
+        updateLabel({
+          label: label_size,
+          size_original,
+          data_optimized,
+        });
 
-    updateLabel({
-      label: label_size,
-      size_original,
-      data_optimized,
+        // Draw
+        drawing_area.queue_draw();
+      },
     });
-
-    // Draw
-    drawing_area.queue_draw();
   }
 
   const scale = builder.get_object("scale");
