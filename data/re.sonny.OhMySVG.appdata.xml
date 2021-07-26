@@ -9,7 +9,7 @@
   <project_license>GPL-3.0-or-later</project_license>
   <summary>Reduce the size of SVGs</summary>
   <description>
-    <p>Oh My SVG let you convert unoptimize SVG files into smaller versions.</p>
+    <p>Oh My SVG let you export unoptimized SVG files into smaller versions.</p>
     <p
     >Under the hood, it uses [SVGO](https://github.com/svg/svgo/) to remove or approximate information that is not required for rendering.</p>
     <p

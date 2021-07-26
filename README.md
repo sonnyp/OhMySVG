@@ -10,7 +10,7 @@ Reduce the size of SVGs
 
 ## About
 
-Oh My SVG let you convert unoptimize SVG files into smaller versions.
+Oh My SVG let you export unoptimized SVG files into smaller versions.
 
 Under the hood, it uses [SVGO](https://github.com/svg/svgo/) to remove or approximate information that is not required for rendering.
 
