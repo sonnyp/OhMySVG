@@ -15,6 +15,15 @@ function getAugmentedNamespace(n) {
 	return a;
 }
 
+var _rollup_plugin_ignore_empty_module_placeholder = {};
+
+var _rollup_plugin_ignore_empty_module_placeholder$1 = /*#__PURE__*/Object.freeze({
+	__proto__: null,
+	'default': _rollup_plugin_ignore_empty_module_placeholder
+});
+
+var require$$1$3 = /*@__PURE__*/getAugmentedNamespace(_rollup_plugin_ignore_empty_module_placeholder$1);
+
 var svgo = {};
 
 var config$1 = {};
@@ -5132,7 +5141,7 @@ var apos = "'";
 var gt = ">";
 var lt = "<";
 var quot = "\"";
-var require$$0$3 = {
+var require$$0$2 = {
 	amp: amp,
 	apos: apos,
 	gt: gt,
@@ -5142,7 +5151,7 @@ var require$$0$3 = {
 
 var decode_codepoint = {};
 
-var require$$0$2 = {
+var require$$0$1 = {
 	"0": 65533,
 	"128": 8364,
 	"130": 8218,
@@ -5177,7 +5186,7 @@ var __importDefault$4 = (commonjsGlobal && commonjsGlobal.__importDefault) || fu
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(decode_codepoint, "__esModule", { value: true });
-var decode_json_1 = __importDefault$4(require$$0$2);
+var decode_json_1 = __importDefault$4(require$$0$1);
 // Adapted from https://github.com/mathiasbynens/he/blob/master/src/he.js#L94-L119
 var fromCodePoint = 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -5210,7 +5219,7 @@ Object.defineProperty(decode, "__esModule", { value: true });
 decode.decodeHTML = decode.decodeHTMLStrict = decode.decodeXML = void 0;
 var entities_json_1$1 = __importDefault$3(require$$1$2);
 var legacy_json_1 = __importDefault$3(require$$1$1);
-var xml_json_1$1 = __importDefault$3(require$$0$3);
+var xml_json_1$1 = __importDefault$3(require$$0$2);
 var decode_codepoint_1 = __importDefault$3(decode_codepoint);
 var strictEntityRe = /&(?:[a-zA-Z0-9]+|#[xX][\da-fA-F]+|#\d+);/g;
 decode.decodeXML = getStrictDecoder(xml_json_1$1.default);
@@ -5263,7 +5272,7 @@ var __importDefault$2 = (commonjsGlobal && commonjsGlobal.__importDefault) || fu
 };
 Object.defineProperty(encode, "__esModule", { value: true });
 encode.escapeUTF8 = encode.escape = encode.encodeNonAsciiHTML = encode.encodeHTML = encode.encodeXML = void 0;
-var xml_json_1 = __importDefault$2(require$$0$3);
+var xml_json_1 = __importDefault$2(require$$0$2);
 var inverseXML = getInverseObj(xml_json_1.default);
 var xmlReplacer = getInverseReplacer(inverseXML);
 /**
@@ -20540,7 +20549,7 @@ create$4.create = function(config) {
     return createSyntax(mix({}, config));
 };
 
-var require$$0$1 = {
+var require$$0 = {
 	"@charset": {
 	syntax: "@charset \"<charset>\";",
 	groups: [
@@ -31818,7 +31827,7 @@ var require$$3 = {
 	syntaxes: syntaxes
 };
 
-const mdnAtrules = require$$0$1;
+const mdnAtrules = require$$0;
 const mdnProperties = require$$1;
 const mdnSyntaxes = require$$2$1;
 const patch = require$$3;
@@ -47802,144 +47811,7 @@ var svg2js$1 = function (data) {
   }
 };
 
-/*
-The MIT License (MIT)
-
-Copyright (c) 2016 CoderPuppy
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
-var _endianness;
-function endianness() {
-  if (typeof _endianness === 'undefined') {
-    var a = new ArrayBuffer(2);
-    var b = new Uint8Array(a);
-    var c = new Uint16Array(a);
-    b[0] = 1;
-    b[1] = 2;
-    if (c[0] === 258) {
-      _endianness = 'BE';
-    } else if (c[0] === 513){
-      _endianness = 'LE';
-    } else {
-      throw new Error('unable to figure out endianess');
-    }
-  }
-  return _endianness;
-}
-
-function hostname() {
-  if (typeof global.location !== 'undefined') {
-    return global.location.hostname
-  } else return '';
-}
-
-function loadavg() {
-  return [];
-}
-
-function uptime() {
-  return 0;
-}
-
-function freemem() {
-  return Number.MAX_VALUE;
-}
-
-function totalmem() {
-  return Number.MAX_VALUE;
-}
-
-function cpus() {
-  return [];
-}
-
-function type() {
-  return 'Browser';
-}
-
-function release () {
-  if (typeof global.navigator !== 'undefined') {
-    return global.navigator.appVersion;
-  }
-  return '';
-}
-
-function networkInterfaces(){}
-function getNetworkInterfaces(){}
-
-function arch() {
-  return 'javascript';
-}
-
-function platform() {
-  return 'browser';
-}
-
-function tmpDir() {
-  return '/tmp';
-}
-var tmpdir = tmpDir;
-
-var EOL$1 = '\n';
-var os = {
-  EOL: EOL$1,
-  tmpdir: tmpdir,
-  tmpDir: tmpDir,
-  networkInterfaces:networkInterfaces,
-  getNetworkInterfaces: getNetworkInterfaces,
-  release: release,
-  type: type,
-  cpus: cpus,
-  totalmem: totalmem,
-  freemem: freemem,
-  uptime: uptime,
-  loadavg: loadavg,
-  hostname: hostname,
-  endianness: endianness,
-};
-
-var os$1 = /*#__PURE__*/Object.freeze({
-	__proto__: null,
-	endianness: endianness,
-	hostname: hostname,
-	loadavg: loadavg,
-	uptime: uptime,
-	freemem: freemem,
-	totalmem: totalmem,
-	cpus: cpus,
-	type: type,
-	release: release,
-	networkInterfaces: networkInterfaces,
-	getNetworkInterfaces: getNetworkInterfaces,
-	arch: arch,
-	platform: platform,
-	tmpDir: tmpDir,
-	tmpdir: tmpdir,
-	EOL: EOL$1,
-	'default': os
-});
-
-var require$$0 = /*@__PURE__*/getAugmentedNamespace(os$1);
-
-var EOL = require$$0.EOL,
+var EOL = require$$1$3.EOL,
   textElems = _collections.textElems;
 
 var defaults = {
