@@ -103,3 +103,7 @@ Oh My SVG is powered by [SVGO](https://github.com/svg/svgo) and inspired by [SVG
 ## License
 
 GPLv3 or later. Please see [COPYING](COPYING) file.
+
+## Bookmarks
+
+https://css-tricks.com/understanding-and-manually-improving-svg-optimization/
