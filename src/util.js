@@ -1,4 +1,5 @@
 import GLib from "gi://GLib";
+import Gio from "gi://Gio";
 import system from "system";
 
 export function logEnum(obj, value) {
@@ -37,5 +38,11 @@ export function getSystemInformation({ argv, version }) {
     // `PATH: ${GLib.getenv("PATH")}`,
     `FLATPAK_ID: ${GLib.getenv("FLATPAK_ID")}`,
     `XDG_SESSION_TYPE: ${GLib.getenv("XDG_SESSION_TYPE")}`,
+    `PID: ${getpid()}`,
   ];
+}
+
+// https://stackoverflow.com/questions/44815538/how-to-get-process-pid-in-gjs
+export function getpid() {
+  return new Gio.Credentials().get_unix_pid();
 }

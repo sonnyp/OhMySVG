@@ -107,3 +107,4 @@ GPLv3 or later. Please see [COPYING](COPYING) file.
 ## Bookmarks
 
 https://css-tricks.com/understanding-and-manually-improving-svg-optimization/
+https://github.com/RazrFalcon/svgcleaner
