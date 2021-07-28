@@ -10,11 +10,10 @@
   <summary>Reduce the size of SVGs</summary>
   <description>
     <p>Oh My SVG let you export unoptimized SVG files into smaller versions.</p>
-    <p>Under the hood, it uses <a
-        href="https://github.com/svg/svgo/"
-      >SVGO</a> to remove or approximate information that is not required for rendering.</p>
     <p
     >It lets you preview and tweak the parameters to obtain a satisfactory result before saving.</p>
+    <p
+    >It removes or approximate information that is not required for rendering.</p>
     <p
     >Remember that Oh My SVG removes information and metadata that may be useful, do not overwrite your original/source SVG files.</p>
   </description>
