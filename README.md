@@ -40,7 +40,6 @@ flatpak run re.sonny.OhMySVG
 - UI
   - Filename as headedr bar subtitle
   - Already optimized 🎉
-  - use libadwaita
   - basic/advanced plugins
 - support drag'n drop file https://gitlab.gnome.org/GNOME/gtk/-/issues/3094
 - support pasting file
@@ -50,6 +49,19 @@ flatpak run re.sonny.OhMySVG
 - compared gzipped
 
 ## Development
+
+You'll need to install libadwaita first
+
+```sh
+sh
+git clone https://gitlab.gnome.org/GNOME/libadwaita.git
+cd libadwaita
+meson . _build -Dgtk_doc=true --prefix=/usr/
+nina -C _build
+ninja -C _build install
+```
+
+Then for developmment
 
 ```sh
 cd OhMySVG
