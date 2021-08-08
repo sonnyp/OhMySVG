@@ -1,0 +1,93 @@
+# Czech translations for PACKAGE package.
+# Copyright (C) 2021 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# Vojtěch Perník <translations@pervoj.cz>, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: OhMySVG\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-08-08 13:20+0200\n"
+"PO-Revision-Date: 2021-08-08 13:26+0200\n"
+"Last-Translator: Vojtěch Perník <translations@pervoj.cz>\n"
+"Language-Team: Czech <gnome-cs-list@gnome.org>\n"
+"Language: cs\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2\n"
+"X-Generator: Gtranslator 40.0\n"
+
+#: data/re.sonny.OhMySVG.desktop:3 data/re.sonny.OhMySVG.appdata.xml:5
+#: data/re.sonny.OhMySVG.appdata.xml:28 src/window.ui:9
+msgid "Oh My SVG"
+msgstr "Oh My SVG"
+
+#: data/re.sonny.OhMySVG.desktop:4
+msgid "Optimize SVG"
+msgstr "Optimalizujte SVG"
+
+#: data/re.sonny.OhMySVG.desktop:12
+msgid "SVG;clean;optimize;"
+msgstr "SVG;vyčistit;optimalizovat;"
+
+#: data/re.sonny.OhMySVG.appdata.xml:6
+msgid "Sonny Piers"
+msgstr "Sonny Piers"
+
+#: data/re.sonny.OhMySVG.appdata.xml:10
+msgid "Reduce the size of SVGs"
+msgstr "Snižte velikost SVG"
+
+#: data/re.sonny.OhMySVG.appdata.xml:12
+msgid "Oh My SVG let you export unoptimized SVG files into smaller versions."
+msgstr ""
+"Oh My SVG umožňuje exportovat neoptimalizované soubory SVG do menších verzí."
+
+#: data/re.sonny.OhMySVG.appdata.xml:15
+msgid "SVGO"
+msgstr "SVGO"
+
+#: data/re.sonny.OhMySVG.appdata.xml:17
+msgid ""
+"It lets you preview and tweak the parameters to obtain a satisfactory result "
+"before saving."
+msgstr ""
+"Před uložením vám umožní zobrazit náhled a upravit parametry tak, abyste "
+"dosáhli uspokojivého výsledku."
+
+#: data/re.sonny.OhMySVG.appdata.xml:19
+msgid ""
+"Remember that Oh My SVG removes information and metadata that may be useful, "
+"do not overwrite your original/source SVG files."
+msgstr ""
+"Nezapomeňte, že Oh My SVG odstraňuje informace a metadata, která mohou být "
+"užitečná, a nepřepisuje původní/zdrojové soubory SVG."
+
+#: data/re.sonny.OhMySVG.appdata.xml:34
+msgid "Oh My SVG - dark mode"
+msgstr "Oh My SVG - tmavý režim"
+
+#: data/re.sonny.OhMySVG.appdata.xml:41
+msgid "Initial release."
+msgstr "První vydání."
+
+#: src/window.ui:245
+msgid "_Open File…"
+msgstr "_Otevřít soubor..."
+
+#: src/window.ui:249
+msgid "_Save As…"
+msgstr "_Uložit jako..."
+
+#: src/window.ui:259
+msgid "_New Window"
+msgstr "_Nové okno"
+
+#: src/window.ui:263
+msgid "_About Oh My SVG"
+msgstr "O _aplikaci Oh My SVG"
+
+#: src/window.ui:271
+msgid "_Quit"
+msgstr "_Ukončit"
