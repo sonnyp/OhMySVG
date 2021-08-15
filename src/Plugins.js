@@ -4,9 +4,11 @@ import { plugins as svgo_plugins } from "./svgo.js";
 import { debug } from "./util.js";
 import plugin_names from "./plugin_names.js";
 
-// These plugins don't do anything by default
-// and require additional configuration
 const exclude = [
+  // https://github.com/svg/svgo/releases/tag/v2.4.0
+  "preset-default",
+  // These plugins don't do anything by default
+  // and require additional configuration
   "addAttributesToSVGElement",
   "addClassesToSVGElement",
   "prefixIds",
@@ -14,6 +16,8 @@ const exclude = [
   "removeAttrs",
   "removeElementsByAttr",
 ];
+
+log(Object.keys(svgo_plugins));
 
 const plugins = Object.entries(svgo_plugins)
   .filter(([key]) => !exclude.includes(key))

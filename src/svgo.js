@@ -30,7 +30,7 @@ var config$1 = {};
 
 var plugins$1 = {};
 
-var addAttributesToSVGElement = {};
+var plugins = {};
 
 var xast = {};
 
@@ -8436,7 +8436,7 @@ const findOne = (test, elems) => {
   return null;
 };
 
-const svgoCssSelectAdapter$2 = {
+const svgoCssSelectAdapter$1 = {
   isTag,
   existsOne,
   getAttributeValue,
@@ -8451,30 +8451,30 @@ const svgoCssSelectAdapter$2 = {
   findOne,
 };
 
-var cssSelectAdapter = svgoCssSelectAdapter$2;
+var cssSelectAdapter = svgoCssSelectAdapter$1;
 
-const { selectAll: selectAll$2, selectOne: selectOne$1, is: is$2 } = lib$9;
+const { selectAll: selectAll$1, selectOne: selectOne$1, is: is$1 } = lib$9;
 const xastAdaptor = cssSelectAdapter;
 
-const cssSelectOptions$1 = {
+const cssSelectOptions = {
   xmlMode: true,
   adapter: xastAdaptor,
 };
 
 const querySelectorAll$1 = (node, selector) => {
-  return selectAll$2(selector, node, cssSelectOptions$1);
+  return selectAll$1(selector, node, cssSelectOptions);
 };
 xast.querySelectorAll = querySelectorAll$1;
 
 const querySelector$1 = (node, selector) => {
-  return selectOne$1(selector, node, cssSelectOptions$1);
+  return selectOne$1(selector, node, cssSelectOptions);
 };
 xast.querySelector = querySelector$1;
 
-const matches$1 = (node, selector) => {
-  return is$2(node, selector, cssSelectOptions$1);
+const matches$2 = (node, selector) => {
+  return is$1(node, selector, cssSelectOptions);
 };
-xast.matches = matches$1;
+xast.matches = matches$2;
 
 const closestByName$5 = (node, name) => {
   let currentNode = node;
@@ -8505,305 +8505,257 @@ const traverse$5 = (node, fn) => {
 };
 xast.traverse = traverse$5;
 
-const visit$1 = (node, visitor) => {
+const visit$2 = (node, visitor, parentNode = null) => {
   const callbacks = visitor[node.type];
   if (callbacks && callbacks.enter) {
-    callbacks.enter(node);
+    callbacks.enter(node, parentNode);
   }
   // visit root children
   if (node.type === 'root') {
     // copy children array to not loose cursor when children is spliced
     for (const child of node.children) {
-      visit$1(child, visitor);
+      visit$2(child, visitor, node);
     }
   }
   // visit element children if still attached to parent
   if (node.type === 'element') {
-    if (node.parentNode.children.includes(node)) {
+    if (parentNode.children.includes(node)) {
       for (const child of node.children) {
-        visit$1(child, visitor);
+        visit$2(child, visitor, node);
       }
     }
   }
   if (callbacks && callbacks.exit) {
-    callbacks.exit(node);
+    callbacks.exit(node, parentNode);
   }
 };
-xast.visit = visit$1;
+xast.visit = visit$2;
 
-const detachNodeFromParent$3 = (node) => {
-  const parentNode = node.parentNode;
+const detachNodeFromParent$e = (node, parentNode) => {
   // avoid splice to not break for loops
   parentNode.children = parentNode.children.filter((child) => child !== node);
 };
-xast.detachNodeFromParent = detachNodeFromParent$3;
+xast.detachNodeFromParent = detachNodeFromParent$e;
 
-const { closestByName: closestByName$4 } = xast;
-
-addAttributesToSVGElement.type = 'perItem';
-
-addAttributesToSVGElement.active = false;
-
-addAttributesToSVGElement.description = 'adds attributes to an outer <svg> element';
-
-var ENOCLS$1 = `Error in plugin "addAttributesToSVGElement": absent parameters.
-It should have a list of "attributes" or one "attribute".
-Config example:
-
-plugins: [
-  {
-    name: 'addAttributesToSVGElement',
-    params: {
-      attribute: "mySvg"
-    }
-  }
-]
-
-plugins: [
-  {
-    name: 'addAttributesToSVGElement',
-    params: {
-      attributes: ["mySvg", "size-big"]
-    }
-  }
-]
-
-plugins: [
-  {
-    name: 'addAttributesToSVGElement',
-    params: {
-      attributes: [
-        {
-          focusable: false
-        },
-        {
-          'data-image': icon
-        }
-      ]
-    }
-  }
-]
-`;
+const { visit: visit$1 } = xast;
 
 /**
- * Add attributes to an outer <svg> element. Example config:
+ * Plugins engine.
  *
- * @author April Arcus
+ * @module plugins
+ *
+ * @param {Object} ast input ast
+ * @param {Object} info extra information
+ * @param {Array} plugins plugins object from config
+ * @return {Object} output ast
  */
-addAttributesToSVGElement.fn = (node, params) => {
-  if (
-    node.type === 'element' &&
-    node.name === 'svg' &&
-    closestByName$4(node.parentNode, 'svg') == null
-  ) {
-    if (!params || !(Array.isArray(params.attributes) || params.attribute)) {
-      console.error(ENOCLS$1);
-      return;
+const invokePlugins$1 = (ast, info, plugins, overrides, globalOverrides) => {
+  for (const plugin of plugins) {
+    const override = overrides == null ? null : overrides[plugin.name];
+    if (override === false) {
+      continue;
     }
+    const params = { ...plugin.params, ...globalOverrides, ...override };
 
-    const attributes = params.attributes || [params.attribute];
-
-    for (const attribute of attributes) {
-      if (typeof attribute === 'string') {
-        if (node.attributes[attribute] == null) {
-          node.attributes[attribute] = undefined;
-        }
+    if (plugin.type === 'perItem') {
+      ast = perItem(ast, info, plugin, params);
+    }
+    if (plugin.type === 'perItemReverse') {
+      ast = perItem(ast, info, plugin, params, true);
+    }
+    if (plugin.type === 'full') {
+      if (plugin.active) {
+        ast = plugin.fn(ast, params, info);
       }
-      if (typeof attribute === 'object') {
-        for (const key of Object.keys(attribute)) {
-          if (node.attributes[key] == null) {
-            node.attributes[key] = attribute[key];
-          }
-        }
+    }
+    if (plugin.type === 'visitor') {
+      if (plugin.active) {
+        const visitor = plugin.fn(ast, params, info);
+        visit$1(ast, visitor);
       }
     }
   }
+  return ast;
 };
-
-var addClassesToSVGElement = {};
-
-addClassesToSVGElement.type = 'full';
-
-addClassesToSVGElement.active = false;
-
-addClassesToSVGElement.description = 'adds classnames to an outer <svg> element';
-
-var ENOCLS = `Error in plugin "addClassesToSVGElement": absent parameters.
-It should have a list of classes in "classNames" or one "className".
-Config example:
-
-plugins:
-- addClassesToSVGElement:
-    className: "mySvg"
-
-plugins:
-- addClassesToSVGElement:
-    classNames: ["mySvg", "size-big"]
-`;
+plugins.invokePlugins = invokePlugins$1;
 
 /**
- * Add classnames to an outer <svg> element. Example config:
+ * Direct or reverse per-item loop.
  *
- * plugins:
- * - addClassesToSVGElement:
- *     className: 'mySvg'
- *
- * plugins:
- * - addClassesToSVGElement:
- *     classNames: ['mySvg', 'size-big']
- *
- * @author April Arcus
+ * @param {Object} data input data
+ * @param {Object} info extra information
+ * @param {Array} plugins plugins list to process
+ * @param {boolean} [reverse] reverse pass?
+ * @return {Object} output data
  */
-addClassesToSVGElement.fn = function (data, params) {
-  if (
-    !params ||
-    !(
-      (Array.isArray(params.classNames) && params.classNames.some(String)) ||
-      params.className
-    )
-  ) {
-    console.error(ENOCLS);
-    return data;
+function perItem(data, info, plugin, params, reverse) {
+  function monkeys(items) {
+    items.children = items.children.filter(function (item) {
+      // reverse pass
+      if (reverse && item.children) {
+        monkeys(item);
+      }
+      // main filter
+      let kept = true;
+      if (plugin.active) {
+        kept = plugin.fn(item, params, info) !== false;
+      }
+      // direct pass
+      if (!reverse && item.children) {
+        monkeys(item);
+      }
+      return kept;
+    });
+    return items;
   }
+  return monkeys(data);
+}
 
-  var classNames = params.classNames || [params.className],
-    svg = data.children[0];
-
-  if (svg.isElem('svg')) {
-    svg.class.add.apply(svg.class, classNames);
-  }
-
-  return data;
+const createPreset$1 = ({ name, plugins }) => {
+  return {
+    name,
+    type: 'full',
+    fn: (ast, params, info) => {
+      const { floatPrecision, overrides } = params;
+      const globalOverrides = {};
+      if (floatPrecision != null) {
+        globalOverrides.floatPrecision = floatPrecision;
+      }
+      return invokePlugins$1(ast, info, plugins, overrides, globalOverrides);
+    },
+  };
 };
+plugins.createPreset = createPreset$1;
 
-var cleanupAttrs = {};
+var removeDoctype$1 = {};
 
-cleanupAttrs.type = 'perItem';
+const { detachNodeFromParent: detachNodeFromParent$d } = xast;
 
-cleanupAttrs.active = true;
-
-cleanupAttrs.description =
-  'cleanups attributes from newlines, trailing and repeating spaces';
-
-cleanupAttrs.params = {
-  newlines: true,
-  trim: true,
-  spaces: true,
-};
-
-var regNewlinesNeedSpace = /(\S)\r?\n(\S)/g,
-  regNewlines = /\r?\n/g,
-  regSpaces = /\s{2,}/g;
+removeDoctype$1.name = 'removeDoctype';
+removeDoctype$1.type = 'visitor';
+removeDoctype$1.active = true;
+removeDoctype$1.description = 'removes doctype declaration';
 
 /**
- * Cleanup attributes values from newlines, trailing and repeating spaces.
+ * Remove DOCTYPE declaration.
  *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-cleanupAttrs.fn = function (item, params) {
-  if (item.type === 'element') {
-    for (const name of Object.keys(item.attributes)) {
-      if (params.newlines) {
-        // new line which requires a space instead of themselve
-        item.attributes[name] = item.attributes[name].replace(
-          regNewlinesNeedSpace,
-          (match, p1, p2) => p1 + ' ' + p2
-        );
-
-        // simple new line
-        item.attributes[name] = item.attributes[name].replace(regNewlines, '');
-      }
-
-      if (params.trim) {
-        item.attributes[name] = item.attributes[name].trim();
-      }
-
-      if (params.spaces) {
-        item.attributes[name] = item.attributes[name].replace(regSpaces, ' ');
-      }
-    }
-  }
-};
-
-var cleanupEnableBackground = {};
-
-const { traverse: traverse$4 } = xast;
-
-cleanupEnableBackground.type = 'full';
-
-cleanupEnableBackground.active = true;
-
-cleanupEnableBackground.description =
-  'remove or cleanup enable-background attribute when possible';
-
-/**
- * Remove or cleanup enable-background attr which coincides with a width/height box.
- *
- * @see https://www.w3.org/TR/SVG11/filters.html#EnableBackgroundProperty
+ * "Unfortunately the SVG DTDs are a source of so many
+ * issues that the SVG WG has decided not to write one
+ * for the upcoming SVG 1.2 standard. In fact SVG WG
+ * members are even telling people not to use a DOCTYPE
+ * declaration in SVG 1.0 and 1.1 documents"
+ * https://jwatt.org/svg/authoring/#doctype-declaration
  *
  * @example
- * <svg width="100" height="50" enable-background="new 0 0 100 50">
- *             ⬇
- * <svg width="100" height="50">
+ * <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ * q"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
  *
- * @param {Object} root current iteration item
- * @return {Boolean} if false, item will be filtered out
+ * @example
+ * <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+ * "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd" [
+ *     <!-- an internal subset can be embedded here -->
+ * ]>
  *
  * @author Kir Belevich
  */
-cleanupEnableBackground.fn = function (root) {
-  const regEnableBackground = /^new\s0\s0\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)$/;
-  let hasFilter = false;
-  const elems = ['svg', 'mask', 'pattern'];
-
-  traverse$4(root, (node) => {
-    if (node.type === 'element') {
-      if (
-        elems.includes(node.name) &&
-        node.attributes['enable-background'] != null &&
-        node.attributes.width != null &&
-        node.attributes.height != null
-      ) {
-        const match = node.attributes['enable-background'].match(
-          regEnableBackground
-        );
-
-        if (match) {
-          if (
-            node.attributes.width === match[1] &&
-            node.attributes.height === match[3]
-          ) {
-            if (node.name === 'svg') {
-              delete node.attributes['enable-background'];
-            } else {
-              node.attributes['enable-background'] = 'new';
-            }
-          }
-        }
-      }
-      if (node.name === 'filter') {
-        hasFilter = true;
-      }
-    }
-  });
-
-  if (hasFilter === false) {
-    traverse$4(root, (node) => {
-      if (node.type === 'element') {
-        //we don't need 'enable-background' if we have no filters
-        delete node.attributes['enable-background'];
-      }
-    });
-  }
-
-  return root;
+removeDoctype$1.fn = () => {
+  return {
+    doctype: {
+      enter: (node, parentNode) => {
+        detachNodeFromParent$d(node, parentNode);
+      },
+    },
+  };
 };
 
-var cleanupIDs = {};
+var removeXMLProcInst$1 = {};
+
+const { detachNodeFromParent: detachNodeFromParent$c } = xast;
+
+removeXMLProcInst$1.name = 'removeXMLProcInst';
+removeXMLProcInst$1.type = 'visitor';
+removeXMLProcInst$1.active = true;
+removeXMLProcInst$1.description = 'removes XML processing instructions';
+
+/**
+ * Remove XML Processing Instruction.
+ *
+ * @example
+ * <?xml version="1.0" encoding="utf-8"?>
+ *
+ * @author Kir Belevich
+ */
+removeXMLProcInst$1.fn = () => {
+  return {
+    instruction: {
+      enter: (node, parentNode) => {
+        if (node.name === 'xml') {
+          detachNodeFromParent$c(node, parentNode);
+        }
+      },
+    },
+  };
+};
+
+var removeComments$1 = {};
+
+const { detachNodeFromParent: detachNodeFromParent$b } = xast;
+
+removeComments$1.name = 'removeComments';
+removeComments$1.type = 'visitor';
+removeComments$1.active = true;
+removeComments$1.description = 'removes comments';
+
+/**
+ * Remove comments.
+ *
+ * @example
+ * <!-- Generator: Adobe Illustrator 15.0.0, SVG Export
+ * Plug-In . SVG Version: 6.00 Build 0)  -->
+ *
+ * @author Kir Belevich
+ */
+removeComments$1.fn = () => {
+  return {
+    comment: {
+      enter: (node, parentNode) => {
+        if (node.value.charAt(0) !== '!') {
+          detachNodeFromParent$b(node, parentNode);
+        }
+      },
+    },
+  };
+};
+
+var removeMetadata$1 = {};
+
+const { detachNodeFromParent: detachNodeFromParent$a } = xast;
+
+removeMetadata$1.name = 'removeMetadata';
+removeMetadata$1.type = 'visitor';
+removeMetadata$1.active = true;
+removeMetadata$1.description = 'removes <metadata>';
+
+/**
+ * Remove <metadata>.
+ *
+ * https://www.w3.org/TR/SVG11/metadata.html
+ *
+ * @author Kir Belevich
+ */
+removeMetadata$1.fn = () => {
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (node.name === 'metadata') {
+          detachNodeFromParent$a(node, parentNode);
+        }
+      },
+    },
+  };
+};
+
+var removeEditorsNSData$1 = {};
 
 var tools = {};
 
@@ -8856,16 +8808,6 @@ tools.decodeSVGDatauri = function (str) {
     str = data;
   }
   return str;
-};
-
-/**
- * @param {any[]} a
- * @param {any[]} b
- */
-tools.intersectArrays = function (a, b) {
-  return a.filter(function (n) {
-    return b.indexOf(n) > -1;
-  });
 };
 
 /**
@@ -11113,899 +11055,194 @@ exports.colorsProps = [
 ];
 }(_collections));
 
-const { traverse: traverse$3, traverseBreak } = xast;
 const { parseName: parseName$5 } = tools;
+const { editorNamespaces } = _collections;
 
-cleanupIDs.type = 'full';
+removeEditorsNSData$1.name = 'removeEditorsNSData';
 
-cleanupIDs.active = true;
+removeEditorsNSData$1.type = 'perItem';
 
-cleanupIDs.description = 'removes unused IDs and minifies used';
+removeEditorsNSData$1.active = true;
 
-cleanupIDs.params = {
-  remove: true,
-  minify: true,
-  prefix: '',
-  preserve: [],
-  preservePrefixes: [],
-  force: false,
-};
+removeEditorsNSData$1.description = 'removes editors namespaces, elements and attributes';
 
-var referencesProps$3 = new Set(_collections.referencesProps),
-  regReferencesUrl = /\burl\(("|')?#(.+?)\1\)/,
-  regReferencesHref = /^#(.+?)$/,
-  regReferencesBegin = /(\w+)\./,
-  styleOrScript$1 = ['style', 'script'],
-  generateIDchars = [
-    'a',
-    'b',
-    'c',
-    'd',
-    'e',
-    'f',
-    'g',
-    'h',
-    'i',
-    'j',
-    'k',
-    'l',
-    'm',
-    'n',
-    'o',
-    'p',
-    'q',
-    'r',
-    's',
-    't',
-    'u',
-    'v',
-    'w',
-    'x',
-    'y',
-    'z',
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-    'G',
-    'H',
-    'I',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'U',
-    'V',
-    'W',
-    'X',
-    'Y',
-    'Z',
-  ],
-  maxIDindex = generateIDchars.length - 1;
+const prefixes = [];
 
-/**
- * Remove unused and minify used IDs
- * (only if there are no any <style> or <script>).
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- *
- * @author Kir Belevich
- */
-cleanupIDs.fn = function (root, params) {
-  var currentID,
-    currentIDstring,
-    IDs = new Map(),
-    referencesIDs = new Map(),
-    hasStyleOrScript = false,
-    preserveIDs = new Set(
-      Array.isArray(params.preserve)
-        ? params.preserve
-        : params.preserve
-        ? [params.preserve]
-        : []
-    ),
-    preserveIDPrefixes = new Set(
-      Array.isArray(params.preservePrefixes)
-        ? params.preservePrefixes
-        : params.preservePrefixes
-        ? [params.preservePrefixes]
-        : []
-    ),
-    idValuePrefix = '#',
-    idValuePostfix = '.';
-
-  traverse$3(root, (node) => {
-    if (hasStyleOrScript === true) {
-      return traverseBreak;
-    }
-
-    // quit if <style> or <script> present ('force' param prevents quitting)
-    if (!params.force) {
-      if (node.isElem(styleOrScript$1) && node.children.length !== 0) {
-        hasStyleOrScript = true;
-        return;
-      }
-
-      // Don't remove IDs if the whole SVG consists only of defs.
-      if (node.type === 'element' && node.name === 'svg') {
-        let hasDefsOnly = true;
-        for (const child of node.children) {
-          if (child.type !== 'element' || child.name !== 'defs') {
-            hasDefsOnly = false;
-            break;
-          }
-        }
-        if (hasDefsOnly) {
-          return traverseBreak;
-        }
-      }
-    }
-
-    // …and don't remove any ID if yes
-    if (node.type === 'element') {
-      for (const [name, value] of Object.entries(node.attributes)) {
-        let key;
-        let match;
-
-        // save IDs
-        if (name === 'id') {
-          key = value;
-          if (IDs.has(key)) {
-            delete node.attributes.id; // remove repeated id
-          } else {
-            IDs.set(key, node);
-          }
-        } else {
-          // save references
-          const { local } = parseName$5(name);
-          if (
-            referencesProps$3.has(name) &&
-            (match = value.match(regReferencesUrl))
-          ) {
-            key = match[2]; // url() reference
-          } else if (
-            (local === 'href' && (match = value.match(regReferencesHref))) ||
-            (name === 'begin' && (match = value.match(regReferencesBegin)))
-          ) {
-            key = match[1]; // href reference
-          }
-          if (key) {
-            const refs = referencesIDs.get(key) || [];
-            refs.push({ element: node, name, value });
-            referencesIDs.set(key, refs);
-          }
-        }
-      }
-    }
-  });
-
-  if (hasStyleOrScript) {
-    return root;
-  }
-
-  const idPreserved = (id) =>
-    preserveIDs.has(id) || idMatchesPrefix(preserveIDPrefixes, id);
-
-  for (const [key, refs] of referencesIDs) {
-    if (IDs.has(key)) {
-      // replace referenced IDs with the minified ones
-      if (params.minify && !idPreserved(key)) {
-        do {
-          currentIDstring = getIDstring(
-            (currentID = generateID(currentID)),
-            params
-          );
-        } while (idPreserved(currentIDstring));
-
-        IDs.get(key).attributes.id = currentIDstring;
-
-        for (const { element, name, value } of refs) {
-          element.attributes[name] = value.includes(idValuePrefix)
-            ? value.replace(
-                idValuePrefix + key,
-                idValuePrefix + currentIDstring
-              )
-            : value.replace(
-                key + idValuePostfix,
-                currentIDstring + idValuePostfix
-              );
-        }
-      }
-      // don't remove referenced IDs
-      IDs.delete(key);
-    }
-  }
-  // remove non-referenced IDs attributes from elements
-  if (params.remove) {
-    for (var keyElem of IDs) {
-      if (!idPreserved(keyElem[0])) {
-        delete keyElem[1].attributes.id;
-      }
-    }
-  }
-  return root;
+removeEditorsNSData$1.params = {
+  additionalNamespaces: [],
 };
 
 /**
- * Check if an ID starts with any one of a list of strings.
- *
- * @param {Array} of prefix strings
- * @param {String} current ID
- * @return {Boolean} if currentID starts with one of the strings in prefixArray
- */
-function idMatchesPrefix(prefixArray, currentID) {
-  if (!currentID) return false;
-
-  for (var prefix of prefixArray) if (currentID.startsWith(prefix)) return true;
-  return false;
-}
-
-/**
- * Generate unique minimal ID.
- *
- * @param {Array} [currentID] current ID
- * @return {Array} generated ID array
- */
-function generateID(currentID) {
-  if (!currentID) return [0];
-
-  currentID[currentID.length - 1]++;
-
-  for (var i = currentID.length - 1; i > 0; i--) {
-    if (currentID[i] > maxIDindex) {
-      currentID[i] = 0;
-
-      if (currentID[i - 1] !== undefined) {
-        currentID[i - 1]++;
-      }
-    }
-  }
-  if (currentID[0] > maxIDindex) {
-    currentID[0] = 0;
-    currentID.unshift(0);
-  }
-  return currentID;
-}
-
-/**
- * Get string from generated ID array.
- *
- * @param {Array} arr input ID array
- * @return {String} output ID string
- */
-function getIDstring(arr, params) {
-  var str = params.prefix;
-  return str + arr.map((i) => generateIDchars[i]).join('');
-}
-
-var cleanupListOfValues = {};
-
-const { removeLeadingZero: removeLeadingZero$2 } = tools;
-
-cleanupListOfValues.type = 'perItem';
-
-cleanupListOfValues.active = false;
-
-cleanupListOfValues.description = 'rounds list of values to the fixed precision';
-
-cleanupListOfValues.params = {
-  floatPrecision: 3,
-  leadingZero: true,
-  defaultPx: true,
-  convertToPx: true,
-};
-
-const regNumericValues$3 = /^([-+]?\d*\.?\d+([eE][-+]?\d+)?)(px|pt|pc|mm|cm|m|in|ft|em|ex|%)?$/;
-const regSeparator = /\s+,?\s*|,\s*/;
-const absoluteLengths$1 = {
-  // relative to px
-  cm: 96 / 2.54,
-  mm: 96 / 25.4,
-  in: 96,
-  pt: 4 / 3,
-  pc: 16,
-};
-
-/**
- * Round list of values to the fixed precision.
+ * Remove editors namespaces, elements and attributes.
  *
  * @example
- * <svg viewBox="0 0 200.28423 200.28423" enable-background="new 0 0 200.28423 200.28423">
- *         ⬇
- * <svg viewBox="0 0 200.284 200.284" enable-background="new 0 0 200.284 200.284">
- *
- *
- * <polygon points="208.250977 77.1308594 223.069336 ... "/>
- *         ⬇
- * <polygon points="208.251 77.131 223.069 ... "/>
- *
+ * <svg xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd">
+ * <sodipodi:namedview/>
+ * <path sodipodi:nodetypes="cccc"/>
  *
  * @param {Object} item current iteration item
  * @param {Object} params plugin params
  * @return {Boolean} if false, item will be filtered out
  *
- * @author kiyopikko
+ * @author Kir Belevich
  */
-cleanupListOfValues.fn = function (item, params) {
-  if (item.type !== 'element') {
+removeEditorsNSData$1.fn = function (item, params) {
+  let namespaces = editorNamespaces;
+  if (Array.isArray(params.additionalNamespaces)) {
+    namespaces = [...editorNamespaces, ...params.additionalNamespaces];
+  }
+
+  if (item.type === 'element') {
+    if (item.isElem('svg')) {
+      for (const [name, value] of Object.entries(item.attributes)) {
+        const { prefix, local } = parseName$5(name);
+        if (prefix === 'xmlns' && namespaces.includes(value)) {
+          prefixes.push(local);
+
+          // <svg xmlns:sodipodi="">
+          delete item.attributes[name];
+        }
+      }
+    }
+
+    // <* sodipodi:*="">
+    for (const name of Object.keys(item.attributes)) {
+      const { prefix } = parseName$5(name);
+      if (prefixes.includes(prefix)) {
+        delete item.attributes[name];
+      }
+    }
+
+    // <sodipodi:*>
+    const { prefix } = parseName$5(item.name);
+    if (prefixes.includes(prefix)) {
+      return false;
+    }
+  }
+};
+
+var cleanupAttrs$1 = {};
+
+cleanupAttrs$1.name = 'cleanupAttrs';
+cleanupAttrs$1.type = 'visitor';
+cleanupAttrs$1.active = true;
+cleanupAttrs$1.description =
+  'cleanups attributes from newlines, trailing and repeating spaces';
+
+const regNewlinesNeedSpace = /(\S)\r?\n(\S)/g;
+const regNewlines = /\r?\n/g;
+const regSpaces = /\s{2,}/g;
+
+/**
+ * Cleanup attributes values from newlines, trailing and repeating spaces.
+ *
+ * @author Kir Belevich
+ */
+cleanupAttrs$1.fn = (root, params) => {
+  const { newlines = true, trim = true, spaces = true } = params;
+  return {
+    element: {
+      enter: (node) => {
+        for (const name of Object.keys(node.attributes)) {
+          if (newlines) {
+            // new line which requires a space instead of themselve
+            node.attributes[name] = node.attributes[name].replace(
+              regNewlinesNeedSpace,
+              (match, p1, p2) => p1 + ' ' + p2
+            );
+            // simple new line
+            node.attributes[name] = node.attributes[name].replace(
+              regNewlines,
+              ''
+            );
+          }
+          if (trim) {
+            node.attributes[name] = node.attributes[name].trim();
+          }
+          if (spaces) {
+            node.attributes[name] = node.attributes[name].replace(
+              regSpaces,
+              ' '
+            );
+          }
+        }
+      },
+    },
+  };
+};
+
+var mergeStyles$1 = {};
+
+var CSSClassList$1 = function (node) {
+  this.parentNode = node;
+  this.classNames = new Set();
+  const value = node.attributes.class;
+  if (value != null) {
+    this.addClassValueHandler();
+    this.setClassValue(value);
+  }
+};
+
+// attr.class.value
+
+CSSClassList$1.prototype.addClassValueHandler = function () {
+  Object.defineProperty(this.parentNode.attributes, 'class', {
+    get: this.getClassValue.bind(this),
+    set: this.setClassValue.bind(this),
+    enumerable: true,
+    configurable: true,
+  });
+};
+
+CSSClassList$1.prototype.getClassValue = function () {
+  var arrClassNames = Array.from(this.classNames);
+  return arrClassNames.join(' ');
+};
+
+CSSClassList$1.prototype.setClassValue = function (newValue) {
+  if (typeof newValue === 'undefined') {
+    this.classNames.clear();
     return;
   }
-
-  if (item.attributes.points != null) {
-    item.attributes.points = roundValues(item.attributes.points);
-  }
-
-  if (item.attributes['enable-background'] != null) {
-    item.attributes['enable-background'] = roundValues(
-      item.attributes['enable-background']
-    );
-  }
-
-  if (item.attributes.viewBox != null) {
-    item.attributes.viewBox = roundValues(item.attributes.viewBox);
-  }
-
-  if (item.attributes['stroke-dasharray'] != null) {
-    item.attributes['stroke-dasharray'] = roundValues(
-      item.attributes['stroke-dasharray']
-    );
-  }
-
-  if (item.attributes.dx != null) {
-    item.attributes.dx = roundValues(item.attributes.dx);
-  }
-
-  if (item.attributes.dy != null) {
-    item.attributes.dy = roundValues(item.attributes.dy);
-  }
-
-  if (item.attributes.x != null) {
-    item.attributes.x = roundValues(item.attributes.x);
-  }
-
-  if (item.attributes.y != null) {
-    item.attributes.y = roundValues(item.attributes.y);
-  }
-
-  function roundValues(lists) {
-    var num,
-      units,
-      match,
-      matchNew,
-      listsArr = lists.split(regSeparator),
-      roundedList = [];
-
-    for (const elem of listsArr) {
-      match = elem.match(regNumericValues$3);
-      matchNew = elem.match(/new/);
-
-      // if attribute value matches regNumericValues
-      if (match) {
-        // round it to the fixed precision
-        (num = +(+match[1]).toFixed(params.floatPrecision)),
-          (units = match[3] || '');
-
-        // convert absolute values to pixels
-        if (params.convertToPx && units && units in absoluteLengths$1) {
-          var pxNum = +(absoluteLengths$1[units] * match[1]).toFixed(
-            params.floatPrecision
-          );
-
-          if (String(pxNum).length < match[0].length)
-            (num = pxNum), (units = 'px');
-        }
-
-        // and remove leading zero
-        if (params.leadingZero) {
-          num = removeLeadingZero$2(num);
-        }
-
-        // remove default 'px' units
-        if (params.defaultPx && units === 'px') {
-          units = '';
-        }
-
-        roundedList.push(num + units);
-      }
-      // if attribute value is "new"(only enable-background).
-      else if (matchNew) {
-        roundedList.push('new');
-      } else if (elem) {
-        roundedList.push(elem);
-      }
-    }
-
-    return roundedList.join(' ');
-  }
+  var arrClassNames = newValue.split(' ');
+  this.classNames = new Set(arrClassNames);
 };
 
-var cleanupNumericValues = {};
-
-cleanupNumericValues.type = 'perItem';
-
-cleanupNumericValues.active = true;
-
-cleanupNumericValues.description =
-  'rounds numeric values to the fixed precision, removes default ‘px’ units';
-
-cleanupNumericValues.params = {
-  floatPrecision: 3,
-  leadingZero: true,
-  defaultPx: true,
-  convertToPx: true,
+CSSClassList$1.prototype.add = function (/* variadic */) {
+  this.addClassValueHandler();
+  Object.values(arguments).forEach(this._addSingle.bind(this));
 };
 
-var regNumericValues$2 = /^([-+]?\d*\.?\d+([eE][-+]?\d+)?)(px|pt|pc|mm|cm|m|in|ft|em|ex|%)?$/,
-  removeLeadingZero$1 = tools.removeLeadingZero,
-  absoluteLengths = {
-    // relative to px
-    cm: 96 / 2.54,
-    mm: 96 / 25.4,
-    in: 96,
-    pt: 4 / 3,
-    pc: 16,
-  };
-
-/**
- * Round numeric values to the fixed precision,
- * remove default 'px' units.
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-cleanupNumericValues.fn = function (item, params) {
-  if (item.type === 'element') {
-    var floatPrecision = params.floatPrecision;
-
-    if (item.attributes.viewBox != null) {
-      var nums = item.attributes.viewBox.split(/\s,?\s*|,\s*/g);
-      item.attributes.viewBox = nums
-        .map(function (value) {
-          var num = +value;
-          return isNaN(num) ? value : +num.toFixed(floatPrecision);
-        })
-        .join(' ');
-    }
-
-    for (const [name, value] of Object.entries(item.attributes)) {
-      // The `version` attribute is a text string and cannot be rounded
-      if (name === 'version') {
-        continue;
-      }
-
-      var match = value.match(regNumericValues$2);
-
-      // if attribute value matches regNumericValues
-      if (match) {
-        // round it to the fixed precision
-        var num = +(+match[1]).toFixed(floatPrecision),
-          units = match[3] || '';
-
-        // convert absolute values to pixels
-        if (params.convertToPx && units && units in absoluteLengths) {
-          var pxNum = +(absoluteLengths[units] * match[1]).toFixed(
-            floatPrecision
-          );
-
-          if (String(pxNum).length < match[0].length) {
-            num = pxNum;
-            units = 'px';
-          }
-        }
-
-        // and remove leading zero
-        if (params.leadingZero) {
-          num = removeLeadingZero$1(num);
-        }
-
-        // remove default 'px' units
-        if (params.defaultPx && units === 'px') {
-          units = '';
-        }
-
-        item.attributes[name] = num + units;
-      }
-    }
-  }
+CSSClassList$1.prototype._addSingle = function (className) {
+  this.classNames.add(className);
 };
 
-var collapseGroups = {};
-
-const { inheritableAttrs: inheritableAttrs$3, elemsGroups: elemsGroups$3 } = _collections;
-
-collapseGroups.type = 'perItemReverse';
-
-collapseGroups.active = true;
-
-collapseGroups.description = 'collapses useless groups';
-
-function hasAnimatedAttr(item, name) {
-  if (item.type === 'element') {
-    return (
-      (elemsGroups$3.animation.includes(item.name) &&
-        item.attributes.attributeName === name) ||
-      (item.children.length !== 0 &&
-        item.children.some((child) => hasAnimatedAttr(child, name)))
-    );
-  }
-  return false;
-}
-
-/*
- * Collapse useless groups.
- *
- * @example
- * <g>
- *     <g attr1="val1">
- *         <path d="..."/>
- *     </g>
- * </g>
- *         ⬇
- * <g>
- *     <g>
- *         <path attr1="val1" d="..."/>
- *     </g>
- * </g>
- *         ⬇
- * <path attr1="val1" d="..."/>
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-collapseGroups.fn = function (item) {
-  // non-empty elements
-  if (
-    item.type === 'element' &&
-    item.name !== 'switch' &&
-    item.children.length !== 0
-  ) {
-    item.children.forEach(function (g, i) {
-      // non-empty groups
-      if (g.type === 'element' && g.name === 'g' && g.children.length !== 0) {
-        // move group attibutes to the single child element
-        if (Object.keys(g.attributes).length !== 0 && g.children.length === 1) {
-          var inner = g.children[0];
-
-          if (
-            inner.type === 'element' &&
-            inner.attributes.id == null &&
-            g.attributes.filter == null &&
-            (g.attributes.class == null || inner.attributes.class == null) &&
-            ((g.attributes['clip-path'] == null && g.attributes.mask == null) ||
-              (inner.type === 'element' &&
-                inner.name === 'g' &&
-                g.attributes.transform == null &&
-                inner.attributes.transform == null))
-          ) {
-            for (const [name, value] of Object.entries(g.attributes)) {
-              if (g.children.some((item) => hasAnimatedAttr(item, name)))
-                return;
-
-              if (inner.attributes[name] == null) {
-                inner.attributes[name] = value;
-              } else if (name == 'transform') {
-                inner.attributes[name] = value + ' ' + inner.attributes[name];
-              } else if (inner.attributes[name] === 'inherit') {
-                inner.attributes[name] = value;
-              } else if (
-                inheritableAttrs$3.includes(name) === false &&
-                inner.attributes[name] !== value
-              ) {
-                return;
-              }
-
-              delete g.attributes[name];
-            }
-          }
-        }
-
-        // collapse groups without attributes
-        if (
-          Object.keys(g.attributes).length === 0 &&
-          !g.children.some((item) => item.isElem(elemsGroups$3.animation))
-        ) {
-          item.spliceContent(i, 1, g.children);
-        }
-      }
-    });
-  }
+CSSClassList$1.prototype.remove = function (/* variadic */) {
+  this.addClassValueHandler();
+  Object.values(arguments).forEach(this._removeSingle.bind(this));
 };
 
-var convertColors = {};
-
-convertColors.type = 'perItem';
-
-convertColors.active = true;
-
-convertColors.description = 'converts colors: rgb() to #rrggbb and #rrggbb to #rgb';
-
-convertColors.params = {
-  currentColor: false,
-  names2hex: true,
-  rgb2hex: true,
-  shorthex: true,
-  shortname: true,
+CSSClassList$1.prototype._removeSingle = function (className) {
+  this.classNames.delete(className);
 };
 
-var collections$2 = _collections,
-  rNumber = '([+-]?(?:\\d*\\.\\d+|\\d+\\.?)%?)',
-  rComma = '\\s*,\\s*',
-  regRGB = new RegExp(
-    '^rgb\\(\\s*' + rNumber + rComma + rNumber + rComma + rNumber + '\\s*\\)$'
-  ),
-  regHEX = /^#(([a-fA-F0-9])\2){3}$/,
-  none = /\bnone\b/i;
-
-/**
- * Convert different colors formats in element attributes to hex.
- *
- * @see https://www.w3.org/TR/SVG11/types.html#DataTypeColor
- * @see https://www.w3.org/TR/SVG11/single-page.html#types-ColorKeywords
- *
- * @example
- * Convert color name keyword to long hex:
- * fuchsia ➡ #ff00ff
- *
- * Convert rgb() to long hex:
- * rgb(255, 0, 255) ➡ #ff00ff
- * rgb(50%, 100, 100%) ➡ #7f64ff
- *
- * Convert long hex to short hex:
- * #aabbcc ➡ #abc
- *
- * Convert hex to short name
- * #000080 ➡ navy
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-convertColors.fn = function (item, params) {
-  if (item.type === 'element') {
-    for (const [name, value] of Object.entries(item.attributes)) {
-      if (collections$2.colorsProps.includes(name)) {
-        let val = value;
-        let match;
-
-        // Convert colors to currentColor
-        if (params.currentColor) {
-          if (typeof params.currentColor === 'string') {
-            match = val === params.currentColor;
-          } else if (params.currentColor.exec) {
-            match = params.currentColor.exec(val);
-          } else {
-            match = !val.match(none);
-          }
-          if (match) {
-            val = 'currentColor';
-          }
-        }
-
-        // Convert color name keyword to long hex
-        if (params.names2hex && val.toLowerCase() in collections$2.colorsNames) {
-          val = collections$2.colorsNames[val.toLowerCase()];
-        }
-
-        // Convert rgb() to long hex
-        if (params.rgb2hex && (match = val.match(regRGB))) {
-          match = match.slice(1, 4).map(function (m) {
-            if (m.indexOf('%') > -1) m = Math.round(parseFloat(m) * 2.55);
-
-            return Math.max(0, Math.min(m, 255));
-          });
-
-          val = rgb2hex(match);
-        }
-
-        // Convert long hex to short hex
-        if (params.shorthex && (match = val.match(regHEX))) {
-          val = '#' + match[0][1] + match[0][3] + match[0][5];
-        }
-
-        // Convert hex to short name
-        if (params.shortname) {
-          var lowerVal = val.toLowerCase();
-          if (lowerVal in collections$2.colorsShortNames) {
-            val = collections$2.colorsShortNames[lowerVal];
-          }
-        }
-
-        item.attributes[name] = val;
-      }
-    }
-  }
+CSSClassList$1.prototype.item = function (index) {
+  var arrClassNames = Array.from(this.classNames);
+  return arrClassNames[index];
 };
 
-/**
- * Convert [r, g, b] to #rrggbb.
- *
- * @see https://gist.github.com/983535
- *
- * @example
- * rgb2hex([255, 255, 255]) // '#ffffff'
- *
- * @param {Array} rgb [r, g, b]
- * @return {String} #rrggbb
- *
- * @author Jed Schmidt
- */
-function rgb2hex(rgb) {
-  return (
-    '#' +
-    ('00000' + ((rgb[0] << 16) | (rgb[1] << 8) | rgb[2]).toString(16))
-      .slice(-6)
-      .toUpperCase()
-  );
-}
-
-var convertEllipseToCircle = {};
-
-convertEllipseToCircle.type = 'perItem';
-
-convertEllipseToCircle.active = true;
-
-convertEllipseToCircle.description = 'converts non-eccentric <ellipse>s to <circle>s';
-
-/**
- * Converts non-eccentric <ellipse>s to <circle>s.
- *
- * @see https://www.w3.org/TR/SVG11/shapes.html
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Taylor Hunt
- */
-convertEllipseToCircle.fn = function (item) {
-  if (item.isElem('ellipse')) {
-    const rx = item.attributes.rx || 0;
-    const ry = item.attributes.ry || 0;
-
-    if (
-      rx === ry ||
-      rx === 'auto' ||
-      ry === 'auto' // SVG2
-    ) {
-      var radius = rx !== 'auto' ? rx : ry;
-      item.renameElem('circle');
-      delete item.attributes.rx;
-      delete item.attributes.ry;
-      item.attributes.r = radius;
-    }
+CSSClassList$1.prototype.toggle = function (className, force) {
+  if (this.contains(className) || force === false) {
+    this.classNames.delete(className);
   }
+  this.classNames.add(className);
 };
 
-var convertPathData = {};
+CSSClassList$1.prototype.contains = function (className) {
+  return this.classNames.has(className);
+};
 
-var style = {};
-
-var stable$2 = {exports: {}};
-
-(function (module, exports) {
-//! stable.js 0.1.8, https://github.com/Two-Screen/stable
-//! © 2018 Angry Bytes and contributors. MIT licensed.
-
-(function (global, factory) {
-  module.exports = factory() ;
-}(commonjsGlobal, (function () {
-  // A stable array sort, because `Array#sort()` is not guaranteed stable.
-  // This is an implementation of merge sort, without recursion.
-
-  var stable = function (arr, comp) {
-    return exec(arr.slice(), comp)
-  };
-
-  stable.inplace = function (arr, comp) {
-    var result = exec(arr, comp);
-
-    // This simply copies back if the result isn't in the original array,
-    // which happens on an odd number of passes.
-    if (result !== arr) {
-      pass(result, null, arr.length, arr);
-    }
-
-    return arr
-  };
-
-  // Execute the sort using the input array and a second buffer as work space.
-  // Returns one of those two, containing the final result.
-  function exec(arr, comp) {
-    if (typeof(comp) !== 'function') {
-      comp = function (a, b) {
-        return String(a).localeCompare(b)
-      };
-    }
-
-    // Short-circuit when there's nothing to sort.
-    var len = arr.length;
-    if (len <= 1) {
-      return arr
-    }
-
-    // Rather than dividing input, simply iterate chunks of 1, 2, 4, 8, etc.
-    // Chunks are the size of the left or right hand in merge sort.
-    // Stop when the left-hand covers all of the array.
-    var buffer = new Array(len);
-    for (var chk = 1; chk < len; chk *= 2) {
-      pass(arr, comp, chk, buffer);
-
-      var tmp = arr;
-      arr = buffer;
-      buffer = tmp;
-    }
-
-    return arr
-  }
-
-  // Run a single pass with the given chunk size.
-  var pass = function (arr, comp, chk, result) {
-    var len = arr.length;
-    var i = 0;
-    // Step size / double chunk size.
-    var dbl = chk * 2;
-    // Bounds of the left and right chunks.
-    var l, r, e;
-    // Iterators over the left and right chunk.
-    var li, ri;
-
-    // Iterate over pairs of chunks.
-    for (l = 0; l < len; l += dbl) {
-      r = l + chk;
-      e = r + chk;
-      if (r > len) r = len;
-      if (e > len) e = len;
-
-      // Iterate both chunks in parallel.
-      li = l;
-      ri = r;
-      while (true) {
-        // Compare the chunks.
-        if (li < r && ri < e) {
-          // This works for a regular `sort()` compatible comparator,
-          // but also for a simple comparator like: `a > b`
-          if (comp(arr[li], arr[ri]) <= 0) {
-            result[i++] = arr[li++];
-          }
-          else {
-            result[i++] = arr[ri++];
-          }
-        }
-        // Nothing to compare, just flush what's left.
-        else if (li < r) {
-          result[i++] = arr[li++];
-        }
-        else if (ri < e) {
-          result[i++] = arr[ri++];
-        }
-        // Both iterators are at the chunk ends.
-        else {
-          break
-        }
-      }
-    }
-  };
-
-  return stable;
-
-})));
-}(stable$2));
+var cssClassList = CSSClassList$1;
 
 var syntax = {exports: {}};
 
@@ -34892,7 +34129,7 @@ var selectorList = {
     }
 };
 
-var matches = selectorList;
+var matches$1 = selectorList;
 
 var not = selectorList;
 
@@ -34936,7 +34173,7 @@ var pseudo = {
     'dir': dir,
     'has': has,
     'lang': lang,
-    'matches': matches,
+    'matches': matches$1,
     'not': not,
     'nth-child': nthChild,
     'nth-last-child': nthLastChild,
@@ -34975,44 +34212,50 @@ var walker = {
     node: node
 };
 
-var name$1 = "css-tree";
-var version$1 = "1.1.3";
-var description$1 = "A tool set for CSS: fast detailed parser (CSS → AST), walker (AST traversal), generator (AST → CSS) and lexer (validation and matching) based on specs and browser implementations";
-var author$1 = "Roman Dvornov <rdvornov@gmail.com> (https://github.com/lahmatiy)";
-var license$1 = "MIT";
-var repository$1 = "csstree/csstree";
-var keywords$1 = [
-	"css",
-	"ast",
-	"tokenizer",
-	"parser",
-	"walker",
-	"lexer",
-	"generator",
-	"utils",
-	"syntax",
-	"validation"
+var _args$1 = [
+	[
+		"css-tree@1.1.3",
+		"/home/sonny/Projects/OhMySVG"
+	]
 ];
-var main$1 = "lib/index.js";
-var unpkg = "dist/csstree.min.js";
-var jsdelivr = "dist/csstree.min.js";
-var scripts$1 = {
-	build: "rollup --config",
-	lint: "eslint data lib scripts test && node scripts/review-syntax-patch --lint && node scripts/update-docs --lint",
-	"lint-and-test": "npm run lint && npm test",
-	"update:docs": "node scripts/update-docs",
-	"review:syntax-patch": "node scripts/review-syntax-patch",
-	test: "mocha --reporter progress",
-	coverage: "nyc npm test",
-	travis: "nyc npm run lint-and-test && npm run coveralls",
-	coveralls: "nyc report --reporter=text-lcov | coveralls",
-	prepublishOnly: "npm run build",
-	hydrogen: "node --trace-hydrogen --trace-phase=Z --trace-deopt --code-comments --hydrogen-track-positions --redirect-code-traces --redirect-code-traces-to=code.asm --trace_hydrogen_file=code.cfg --print-opt-code bin/parse --stat -o /dev/null"
+var _development$1 = true;
+var _from$1 = "css-tree@1.1.3";
+var _id$1 = "css-tree@1.1.3";
+var _inBundle$1 = false;
+var _integrity$1 = "sha512-tRpdppF7TRazZrjJ6v3stzv93qxRcSsFmW6cX0Zm2NVKpxE1WV1HblnghVv9TreireHkqI/VDEsfolRF1p6y7Q==";
+var _location$1 = "/css-tree";
+var _phantomChildren$1 = {
+};
+var _requested$1 = {
+	type: "version",
+	registry: true,
+	raw: "css-tree@1.1.3",
+	name: "css-tree",
+	escapedName: "css-tree",
+	rawSpec: "1.1.3",
+	saveSpec: null,
+	fetchSpec: "1.1.3"
+};
+var _requiredBy$1 = [
+	"/csso",
+	"/svgo"
+];
+var _resolved$1 = "https://registry.npmjs.org/css-tree/-/css-tree-1.1.3.tgz";
+var _spec$1 = "1.1.3";
+var _where$1 = "/home/sonny/Projects/OhMySVG";
+var author$1 = {
+	name: "Roman Dvornov",
+	email: "rdvornov@gmail.com",
+	url: "https://github.com/lahmatiy"
+};
+var bugs$1 = {
+	url: "https://github.com/csstree/csstree/issues"
 };
 var dependencies$1 = {
 	"mdn-data": "2.0.14",
 	"source-map": "^0.6.1"
 };
+var description$1 = "A tool set for CSS: fast detailed parser (CSS → AST), walker (AST traversal), generator (AST → CSS) and lexer (validation and matching) based on specs and browser implementations";
 var devDependencies$1 = {
 	"@rollup/plugin-commonjs": "^11.0.2",
 	"@rollup/plugin-json": "^4.0.2",
@@ -35033,22 +34276,73 @@ var files$1 = [
 	"dist",
 	"lib"
 ];
+var homepage$1 = "https://github.com/csstree/csstree#readme";
+var jsdelivr = "dist/csstree.min.js";
+var keywords$1 = [
+	"css",
+	"ast",
+	"tokenizer",
+	"parser",
+	"walker",
+	"lexer",
+	"generator",
+	"utils",
+	"syntax",
+	"validation"
+];
+var license$1 = "MIT";
+var main$1 = "lib/index.js";
+var name$1 = "css-tree";
+var repository$1 = {
+	type: "git",
+	url: "git+https://github.com/csstree/csstree.git"
+};
+var scripts$1 = {
+	build: "rollup --config",
+	coverage: "nyc npm test",
+	coveralls: "nyc report --reporter=text-lcov | coveralls",
+	hydrogen: "node --trace-hydrogen --trace-phase=Z --trace-deopt --code-comments --hydrogen-track-positions --redirect-code-traces --redirect-code-traces-to=code.asm --trace_hydrogen_file=code.cfg --print-opt-code bin/parse --stat -o /dev/null",
+	lint: "eslint data lib scripts test && node scripts/review-syntax-patch --lint && node scripts/update-docs --lint",
+	"lint-and-test": "npm run lint && npm test",
+	prepublishOnly: "npm run build",
+	"review:syntax-patch": "node scripts/review-syntax-patch",
+	test: "mocha --reporter progress",
+	travis: "nyc npm run lint-and-test && npm run coveralls",
+	"update:docs": "node scripts/update-docs"
+};
+var unpkg = "dist/csstree.min.js";
+var version$1 = "1.1.3";
 var require$$4 = {
-	name: name$1,
-	version: version$1,
-	description: description$1,
+	_args: _args$1,
+	_development: _development$1,
+	_from: _from$1,
+	_id: _id$1,
+	_inBundle: _inBundle$1,
+	_integrity: _integrity$1,
+	_location: _location$1,
+	_phantomChildren: _phantomChildren$1,
+	_requested: _requested$1,
+	_requiredBy: _requiredBy$1,
+	_resolved: _resolved$1,
+	_spec: _spec$1,
+	_where: _where$1,
 	author: author$1,
-	license: license$1,
-	repository: repository$1,
-	keywords: keywords$1,
-	main: main$1,
-	unpkg: unpkg,
-	jsdelivr: jsdelivr,
-	scripts: scripts$1,
+	bugs: bugs$1,
 	dependencies: dependencies$1,
+	description: description$1,
 	devDependencies: devDependencies$1,
 	engines: engines$1,
-	files: files$1
+	files: files$1,
+	homepage: homepage$1,
+	jsdelivr: jsdelivr,
+	keywords: keywords$1,
+	license: license$1,
+	main: main$1,
+	name: name$1,
+	repository: repository$1,
+	scripts: scripts$1,
+	unpkg: unpkg,
+	version: version$1
 };
 
 function merge() {
@@ -35074,6 +34368,119 @@ syntax.exports = create$4.create(
 syntax.exports.version = require$$4.version;
 
 var lib$1 = syntax.exports;
+
+var cssTools$1 = {};
+
+var stable$2 = {exports: {}};
+
+(function (module, exports) {
+//! stable.js 0.1.8, https://github.com/Two-Screen/stable
+//! © 2018 Angry Bytes and contributors. MIT licensed.
+
+(function (global, factory) {
+  module.exports = factory() ;
+}(commonjsGlobal, (function () {
+  // A stable array sort, because `Array#sort()` is not guaranteed stable.
+  // This is an implementation of merge sort, without recursion.
+
+  var stable = function (arr, comp) {
+    return exec(arr.slice(), comp)
+  };
+
+  stable.inplace = function (arr, comp) {
+    var result = exec(arr, comp);
+
+    // This simply copies back if the result isn't in the original array,
+    // which happens on an odd number of passes.
+    if (result !== arr) {
+      pass(result, null, arr.length, arr);
+    }
+
+    return arr
+  };
+
+  // Execute the sort using the input array and a second buffer as work space.
+  // Returns one of those two, containing the final result.
+  function exec(arr, comp) {
+    if (typeof(comp) !== 'function') {
+      comp = function (a, b) {
+        return String(a).localeCompare(b)
+      };
+    }
+
+    // Short-circuit when there's nothing to sort.
+    var len = arr.length;
+    if (len <= 1) {
+      return arr
+    }
+
+    // Rather than dividing input, simply iterate chunks of 1, 2, 4, 8, etc.
+    // Chunks are the size of the left or right hand in merge sort.
+    // Stop when the left-hand covers all of the array.
+    var buffer = new Array(len);
+    for (var chk = 1; chk < len; chk *= 2) {
+      pass(arr, comp, chk, buffer);
+
+      var tmp = arr;
+      arr = buffer;
+      buffer = tmp;
+    }
+
+    return arr
+  }
+
+  // Run a single pass with the given chunk size.
+  var pass = function (arr, comp, chk, result) {
+    var len = arr.length;
+    var i = 0;
+    // Step size / double chunk size.
+    var dbl = chk * 2;
+    // Bounds of the left and right chunks.
+    var l, r, e;
+    // Iterators over the left and right chunk.
+    var li, ri;
+
+    // Iterate over pairs of chunks.
+    for (l = 0; l < len; l += dbl) {
+      r = l + chk;
+      e = r + chk;
+      if (r > len) r = len;
+      if (e > len) e = len;
+
+      // Iterate both chunks in parallel.
+      li = l;
+      ri = r;
+      while (true) {
+        // Compare the chunks.
+        if (li < r && ri < e) {
+          // This works for a regular `sort()` compatible comparator,
+          // but also for a simple comparator like: `a > b`
+          if (comp(arr[li], arr[ri]) <= 0) {
+            result[i++] = arr[li++];
+          }
+          else {
+            result[i++] = arr[ri++];
+          }
+        }
+        // Nothing to compare, just flush what's left.
+        else if (li < r) {
+          result[i++] = arr[li++];
+        }
+        else if (ri < e) {
+          result[i++] = arr[ri++];
+        }
+        // Both iterators are at the chunk ends.
+        else {
+          break
+        }
+      }
+    }
+  };
+
+  return stable;
+
+})));
+}(stable$2));
 
 var specificity$3 = function specificity(simpleSelector) {
     var A = 0;
@@ -35131,8 +34538,6 @@ var specificity$3 = function specificity(simpleSelector) {
 
     return [A, B, C];
 };
-
-var cssTools$1 = {};
 
 var csstree$5 = lib$1,
   List$6 = csstree$5.List,
@@ -35372,3752 +34777,7 @@ cssTools$1.csstreeToStyleDeclaration = csstreeToStyleDeclaration;
 cssTools$1.getCssStr = getCssStr;
 cssTools$1.setCssStr = setCssStr;
 
-const stable = stable$2.exports;
-const csstree$4 = lib$1;
-const specificity$1 = specificity$3;
-const { selectAll: selectAll$1, is: is$1 } = lib$9;
-const svgoCssSelectAdapter$1 = cssSelectAdapter;
-const { compareSpecificity } = cssTools$1;
-const {
-  attrsGroups: attrsGroups$3,
-  inheritableAttrs: inheritableAttrs$2,
-  presentationNonInheritableGroupAttrs: presentationNonInheritableGroupAttrs$1,
-} = _collections;
-
-const cssSelectOptions = {
-  xmlMode: true,
-  adapter: svgoCssSelectAdapter$1,
-};
-
-const parseRule = (ruleNode, dynamic) => {
-  let selectors;
-  let selectorsSpecificity;
-  const declarations = [];
-  csstree$4.walk(ruleNode, (cssNode) => {
-    if (cssNode.type === 'SelectorList') {
-      // compute specificity from original node to consider pseudo classes
-      selectorsSpecificity = specificity$1(cssNode);
-      const newSelectorsNode = csstree$4.clone(cssNode);
-      csstree$4.walk(newSelectorsNode, (pseudoClassNode, item, list) => {
-        if (pseudoClassNode.type === 'PseudoClassSelector') {
-          dynamic = true;
-          list.remove(item);
-        }
-      });
-      selectors = csstree$4.generate(newSelectorsNode);
-      return csstree$4.walk.skip;
-    }
-    if (cssNode.type === 'Declaration') {
-      declarations.push({
-        name: cssNode.property,
-        value: csstree$4.generate(cssNode.value),
-        important: cssNode.important,
-      });
-      return csstree$4.walk.skip;
-    }
-  });
-  return {
-    dynamic,
-    selectors,
-    specificity: selectorsSpecificity,
-    declarations,
-  };
-};
-
-const parseStylesheet = (css, dynamic) => {
-  const rules = [];
-  const ast = csstree$4.parse(css);
-  csstree$4.walk(ast, (cssNode) => {
-    if (cssNode.type === 'Rule') {
-      rules.push(parseRule(cssNode, dynamic || false));
-      return csstree$4.walk.skip;
-    }
-    if (cssNode.type === 'Atrule') {
-      if (cssNode.name === 'keyframes') {
-        return csstree$4.walk.skip;
-      }
-      csstree$4.walk(cssNode, (ruleNode) => {
-        if (ruleNode.type === 'Rule') {
-          rules.push(parseRule(ruleNode, dynamic || true));
-          return csstree$4.walk.skip;
-        }
-      });
-      return csstree$4.walk.skip;
-    }
-  });
-  return rules;
-};
-
-const computeOwnStyle = (node, stylesheet) => {
-  const computedStyle = {};
-  const importantStyles = new Map();
-
-  // collect attributes
-  for (const [name, value] of Object.entries(node.attributes)) {
-    if (attrsGroups$3.presentation.includes(name)) {
-      computedStyle[name] = { type: 'static', inherited: false, value };
-      importantStyles.set(name, false);
-    }
-  }
-
-  // collect matching rules
-  for (const { selectors, declarations, dynamic } of stylesheet) {
-    if (is$1(node, selectors, cssSelectOptions)) {
-      for (const { name, value, important } of declarations) {
-        const computed = computedStyle[name];
-        if (computed && computed.type === 'dynamic') {
-          continue;
-        }
-        if (dynamic) {
-          computedStyle[name] = { type: 'dynamic', inherited: false };
-          continue;
-        }
-        if (
-          computed == null ||
-          important === true ||
-          importantStyles.get(name) === false
-        ) {
-          computedStyle[name] = { type: 'static', inherited: false, value };
-          importantStyles.set(name, important);
-        }
-      }
-    }
-  }
-
-  // collect inline styles
-  for (const [name, { value, priority }] of node.style.properties) {
-    const computed = computedStyle[name];
-    const important = priority === 'important';
-    if (computed && computed.type === 'dynamic') {
-      continue;
-    }
-    if (
-      computed == null ||
-      important === true ||
-      importantStyles.get(name) === false
-    ) {
-      computedStyle[name] = { type: 'static', inherited: false, value };
-      importantStyles.set(name, important);
-    }
-  }
-
-  return computedStyle;
-};
-
-const computeStyle$3 = (node) => {
-  // find root
-  let root = node;
-  while (root.parentNode) {
-    root = root.parentNode;
-  }
-  // find all styles
-  const styleNodes = selectAll$1('style', root, cssSelectOptions);
-  // parse all styles
-  const stylesheet = [];
-  for (const styleNode of styleNodes) {
-    const dynamic =
-      styleNode.attributes.media != null &&
-      styleNode.attributes.media !== 'all';
-    if (
-      styleNode.attributes.type == null ||
-      styleNode.attributes.type === '' ||
-      styleNode.attributes.type === 'text/css'
-    ) {
-      const children = styleNode.children;
-      for (const child of children) {
-        if (child.type === 'text' || child.type === 'cdata') {
-          stylesheet.push(...parseStylesheet(child.value, dynamic));
-        }
-      }
-    }
-  }
-  // sort by selectors specificity
-  stable.inplace(stylesheet, (a, b) =>
-    compareSpecificity(a.specificity, b.specificity)
-  );
-
-  // collect inherited styles
-  const computedStyles = computeOwnStyle(node, stylesheet);
-  let parent = node;
-  while (parent.parentNode && parent.parentNode.type !== 'root') {
-    const inheritedStyles = computeOwnStyle(parent.parentNode, stylesheet);
-    for (const [name, computed] of Object.entries(inheritedStyles)) {
-      if (
-        computedStyles[name] == null &&
-        // ignore not inheritable styles
-        inheritableAttrs$2.includes(name) === true &&
-        presentationNonInheritableGroupAttrs$1.includes(name) === false
-      ) {
-        computedStyles[name] = { ...computed, inherited: true };
-      }
-    }
-    parent = parent.parentNode;
-  }
-
-  return computedStyles;
-};
-style.computeStyle = computeStyle$3;
-
-var _path$1 = {};
-
-var path = {};
-
-// Based on https://www.w3.org/TR/SVG11/paths.html#PathDataBNF
-
-const argsCountPerCommand = {
-  M: 2,
-  m: 2,
-  Z: 0,
-  z: 0,
-  L: 2,
-  l: 2,
-  H: 1,
-  h: 1,
-  V: 1,
-  v: 1,
-  C: 6,
-  c: 6,
-  S: 4,
-  s: 4,
-  Q: 4,
-  q: 4,
-  T: 2,
-  t: 2,
-  A: 7,
-  a: 7,
-};
-
-/**
- * @param {string} c
- */
-const isCommand = (c) => {
-  return c in argsCountPerCommand;
-};
-
-/**
- * @param {string} c
- */
-const isWsp = (c) => {
-  const codePoint = c.codePointAt(0);
-  return (
-    codePoint === 0x20 ||
-    codePoint === 0x9 ||
-    codePoint === 0xd ||
-    codePoint === 0xa
-  );
-};
-
-/**
- * @param {string} c
- */
-const isDigit = (c) => {
-  const codePoint = c.codePointAt(0);
-  if (codePoint == null) {
-    return false;
-  }
-  return 48 <= codePoint && codePoint <= 57;
-};
-
-/**
- * @typedef {'none' | 'sign' | 'whole' | 'decimal_point' | 'decimal' | 'e' | 'exponent_sign' | 'exponent'} ReadNumberState
- */
-
-/**
- * @param {string} string
- * @param {number} cursor
- * @return {[number, number | null]}
- */
-const readNumber = (string, cursor) => {
-  let i = cursor;
-  let value = '';
-  let state = /** @type {ReadNumberState} */ ('none');
-  for (; i < string.length; i += 1) {
-    const c = string[i];
-    if (c === '+' || c === '-') {
-      if (state === 'none') {
-        state = 'sign';
-        value += c;
-        continue;
-      }
-      if (state === 'e') {
-        state = 'exponent_sign';
-        value += c;
-        continue;
-      }
-    }
-    if (isDigit(c)) {
-      if (state === 'none' || state === 'sign' || state === 'whole') {
-        state = 'whole';
-        value += c;
-        continue;
-      }
-      if (state === 'decimal_point' || state === 'decimal') {
-        state = 'decimal';
-        value += c;
-        continue;
-      }
-      if (state === 'e' || state === 'exponent_sign' || state === 'exponent') {
-        state = 'exponent';
-        value += c;
-        continue;
-      }
-    }
-    if (c === '.') {
-      if (state === 'none' || state === 'sign' || state === 'whole') {
-        state = 'decimal_point';
-        value += c;
-        continue;
-      }
-    }
-    if (c === 'E' || c == 'e') {
-      if (
-        state === 'whole' ||
-        state === 'decimal_point' ||
-        state === 'decimal'
-      ) {
-        state = 'e';
-        value += c;
-        continue;
-      }
-    }
-    break;
-  }
-  const number = Number.parseFloat(value);
-  if (Number.isNaN(number)) {
-    return [cursor, null];
-  } else {
-    // step back to delegate iteration to parent loop
-    return [i - 1, number];
-  }
-};
-
-/**
- * @param {string} string
- */
-const parsePathData$2 = (string) => {
-  const pathData = [];
-  let command = null;
-  let args = /** @type {number[]} */ ([]);
-  let argsCount = 0;
-  let canHaveComma = false;
-  let hadComma = false;
-  for (let i = 0; i < string.length; i += 1) {
-    const c = string.charAt(i);
-    if (isWsp(c)) {
-      continue;
-    }
-    // allow comma only between arguments
-    if (canHaveComma && c === ',') {
-      if (hadComma) {
-        break;
-      }
-      hadComma = true;
-      continue;
-    }
-    if (isCommand(c)) {
-      if (hadComma) {
-        return pathData;
-      }
-      if (command == null) {
-        // moveto should be leading command
-        if (c !== 'M' && c !== 'm') {
-          return pathData;
-        }
-      } else {
-        // stop if previous command arguments are not flushed
-        if (args.length !== 0) {
-          return pathData;
-        }
-      }
-      command = c;
-      args = [];
-      argsCount = argsCountPerCommand[command];
-      canHaveComma = false;
-      // flush command without arguments
-      if (argsCount === 0) {
-        pathData.push({ command, args });
-      }
-      continue;
-    }
-    // avoid parsing arguments if no command detected
-    if (command == null) {
-      return pathData;
-    }
-    // read next argument
-    let newCursor = i;
-    let number = null;
-    if (command === 'A' || command === 'a') {
-      const position = args.length;
-      if (position === 0 || position === 1) {
-        // allow only positive number without sign as first two arguments
-        if (c !== '+' && c !== '-') {
-          [newCursor, number] = readNumber(string, i);
-        }
-      }
-      if (position === 2 || position === 5 || position === 6) {
-        [newCursor, number] = readNumber(string, i);
-      }
-      if (position === 3 || position === 4) {
-        // read flags
-        if (c === '0') {
-          number = 0;
-        }
-        if (c === '1') {
-          number = 1;
-        }
-      }
-    } else {
-      [newCursor, number] = readNumber(string, i);
-    }
-    if (number == null) {
-      return pathData;
-    }
-    args.push(number);
-    canHaveComma = true;
-    hadComma = false;
-    i = newCursor;
-    // flush arguments when necessary count is reached
-    if (args.length === argsCount) {
-      pathData.push({ command, args });
-      // subsequent moveto coordinates are threated as implicit lineto commands
-      if (command === 'M') {
-        command = 'L';
-      }
-      if (command === 'm') {
-        command = 'l';
-      }
-      args = [];
-    }
-  }
-  return pathData;
-};
-path.parsePathData = parsePathData$2;
-
-/**
- * @typedef {{
- *   number: number;
- *   precision?: number;
- * }} StringifyNumberOptions
- */
-/**
- * @param {StringifyNumberOptions} param
- */
-const stringifyNumber = ({ number, precision }) => {
-  if (precision != null) {
-    const ratio = 10 ** precision;
-    number = Math.round(number * ratio) / ratio;
-  }
-  // remove zero whole from decimal number
-  return number.toString().replace(/^0\./, '.').replace(/^-0\./, '-.');
-};
-
-/**
- * @typedef {{
- *   command: string;
- *   args: number[];
- *   precision?: number;
- *   disableSpaceAfterFlags?: boolean;
- * }} StringifyArgsOptions
- */
-/**
- *
- * Elliptical arc large-arc and sweep flags are rendered with spaces
- * because many non-browser environments are not able to parse such paths
- *
- * @param {StringifyArgsOptions} param
- */
-const stringifyArgs = ({
-  command,
-  args,
-  precision,
-  disableSpaceAfterFlags,
-}) => {
-  let result = '';
-  let prev = '';
-  for (let i = 0; i < args.length; i += 1) {
-    const number = args[i];
-    const numberString = stringifyNumber({ number, precision });
-    if (
-      disableSpaceAfterFlags &&
-      (command === 'A' || command === 'a') &&
-      (i === 4 || i === 5)
-    ) {
-      result += numberString;
-    } else if (i === 0 || numberString.startsWith('-')) {
-      // avoid space before first and negative numbers
-      result += numberString;
-    } else if (prev.includes('.') && numberString.startsWith('.')) {
-      // remove space before decimal with zero whole
-      // only when previous number is also decimal
-      result += numberString;
-    } else {
-      result += ` ${numberString}`;
-    }
-    prev = numberString;
-  }
-  return result;
-};
-
-/**
- *
- * @typedef {{
- *   command: string;
- *   args: number[];
- * }} Command
- */
-/**
- * @typedef {{
- *   pathData: Command[];
- *   precision?: number;
- *   disableSpaceAfterFlags?: boolean;
- * }} StringifyPathDataOptions
- */
-/**
- * @param {StringifyPathDataOptions} param
- */
-const stringifyPathData$2 = ({ pathData, precision, disableSpaceAfterFlags }) => {
-  // combine sequence of the same commands
-  let combined = [];
-  for (let i = 0; i < pathData.length; i += 1) {
-    const { command, args } = pathData[i];
-    if (i === 0) {
-      combined.push({ command, args });
-    } else {
-      const last = combined[combined.length - 1];
-      // match leading moveto with following lineto
-      if (i === 1) {
-        if (command === 'L') {
-          last.command = 'M';
-        }
-        if (command === 'l') {
-          last.command = 'm';
-        }
-      }
-      if (
-        (last.command === command &&
-          last.command !== 'M' &&
-          last.command !== 'm') ||
-        // combine matching moveto and lineto sequences
-        (last.command === 'M' && command === 'L') ||
-        (last.command === 'm' && command === 'l')
-      ) {
-        last.args = [...last.args, ...args];
-      } else {
-        combined.push({ command, args });
-      }
-    }
-  }
-  let result = '';
-  for (const { command, args } of combined) {
-    result +=
-      command +
-      stringifyArgs({ command, args, precision, disableSpaceAfterFlags });
-  }
-  return result;
-};
-path.stringifyPathData = stringifyPathData$2;
-
-const { parsePathData: parsePathData$1, stringifyPathData: stringifyPathData$1 } = path;
-
-var prevCtrlPoint;
-
-/**
- * Convert path string to JS representation.
- *
- * @param {String} pathString input string
- * @param {Object} params plugin params
- * @return {Array} output array
- */
-_path$1.path2js = function (path) {
-  if (path.pathJS) return path.pathJS;
-  const pathData = []; // JS representation of the path data
-  const newPathData = parsePathData$1(path.attributes.d);
-  for (const { command, args } of newPathData) {
-    if (command === 'Z' || command === 'z') {
-      pathData.push({ instruction: 'z' });
-    } else {
-      pathData.push({ instruction: command, data: args });
-    }
-  }
-  // First moveto is actually absolute. Subsequent coordinates were separated above.
-  if (pathData.length && pathData[0].instruction == 'm') {
-    pathData[0].instruction = 'M';
-  }
-  path.pathJS = pathData;
-  return pathData;
-};
-
-/**
- * Convert relative Path data to absolute.
- *
- * @param {Array} data input data
- * @return {Array} output data
- */
-var relative2absolute = (_path$1.relative2absolute = function (data) {
-  var currentPoint = [0, 0],
-    subpathPoint = [0, 0],
-    i;
-
-  return data.map(function (item) {
-    var instruction = item.instruction,
-      itemData = item.data && item.data.slice();
-
-    if (instruction == 'M') {
-      set(currentPoint, itemData);
-      set(subpathPoint, itemData);
-    } else if ('mlcsqt'.indexOf(instruction) > -1) {
-      for (i = 0; i < itemData.length; i++) {
-        itemData[i] += currentPoint[i % 2];
-      }
-      set(currentPoint, itemData);
-
-      if (instruction == 'm') {
-        set(subpathPoint, itemData);
-      }
-    } else if (instruction == 'a') {
-      itemData[5] += currentPoint[0];
-      itemData[6] += currentPoint[1];
-      set(currentPoint, itemData);
-    } else if (instruction == 'h') {
-      itemData[0] += currentPoint[0];
-      currentPoint[0] = itemData[0];
-    } else if (instruction == 'v') {
-      itemData[0] += currentPoint[1];
-      currentPoint[1] = itemData[0];
-    } else if ('MZLCSQTA'.indexOf(instruction) > -1) {
-      set(currentPoint, itemData);
-    } else if (instruction == 'H') {
-      currentPoint[0] = itemData[0];
-    } else if (instruction == 'V') {
-      currentPoint[1] = itemData[0];
-    } else if (instruction == 'z') {
-      set(currentPoint, subpathPoint);
-    }
-
-    return instruction == 'z'
-      ? { instruction: 'z' }
-      : {
-          instruction: instruction.toUpperCase(),
-          data: itemData,
-        };
-  });
-});
-
-/**
- * Compute Cubic Bézie bounding box.
- *
- * @see https://pomax.github.io/bezierinfo/
- *
- * @param {Float} xa
- * @param {Float} ya
- * @param {Float} xb
- * @param {Float} yb
- * @param {Float} xc
- * @param {Float} yc
- * @param {Float} xd
- * @param {Float} yd
- *
- * @return {Object}
- */
-_path$1.computeCubicBoundingBox = function (xa, ya, xb, yb, xc, yc, xd, yd) {
-  var minx = Number.POSITIVE_INFINITY,
-    miny = Number.POSITIVE_INFINITY,
-    maxx = Number.NEGATIVE_INFINITY,
-    maxy = Number.NEGATIVE_INFINITY,
-    ts,
-    t,
-    x,
-    y,
-    i;
-
-  // X
-  if (xa < minx) {
-    minx = xa;
-  }
-  if (xa > maxx) {
-    maxx = xa;
-  }
-  if (xd < minx) {
-    minx = xd;
-  }
-  if (xd > maxx) {
-    maxx = xd;
-  }
-
-  ts = computeCubicFirstDerivativeRoots(xa, xb, xc, xd);
-
-  for (i = 0; i < ts.length; i++) {
-    t = ts[i];
-
-    if (t >= 0 && t <= 1) {
-      x = computeCubicBaseValue(t, xa, xb, xc, xd);
-      // y = computeCubicBaseValue(t, ya, yb, yc, yd);
-
-      if (x < minx) {
-        minx = x;
-      }
-      if (x > maxx) {
-        maxx = x;
-      }
-    }
-  }
-
-  // Y
-  if (ya < miny) {
-    miny = ya;
-  }
-  if (ya > maxy) {
-    maxy = ya;
-  }
-  if (yd < miny) {
-    miny = yd;
-  }
-  if (yd > maxy) {
-    maxy = yd;
-  }
-
-  ts = computeCubicFirstDerivativeRoots(ya, yb, yc, yd);
-
-  for (i = 0; i < ts.length; i++) {
-    t = ts[i];
-
-    if (t >= 0 && t <= 1) {
-      // x = computeCubicBaseValue(t, xa, xb, xc, xd);
-      y = computeCubicBaseValue(t, ya, yb, yc, yd);
-
-      if (y < miny) {
-        miny = y;
-      }
-      if (y > maxy) {
-        maxy = y;
-      }
-    }
-  }
-
-  return {
-    minx: minx,
-    miny: miny,
-    maxx: maxx,
-    maxy: maxy,
-  };
-};
-
-// compute the value for the cubic bezier function at time=t
-function computeCubicBaseValue(t, a, b, c, d) {
-  var mt = 1 - t;
-
-  return (
-    mt * mt * mt * a + 3 * mt * mt * t * b + 3 * mt * t * t * c + t * t * t * d
-  );
-}
-
-// compute the value for the first derivative of the cubic bezier function at time=t
-function computeCubicFirstDerivativeRoots(a, b, c, d) {
-  var result = [-1, -1],
-    tl = -a + 2 * b - c,
-    tr = -Math.sqrt(-a * (c - d) + b * b - b * (c + d) + c * c),
-    dn = -a + 3 * b - 3 * c + d;
-
-  if (dn !== 0) {
-    result[0] = (tl + tr) / dn;
-    result[1] = (tl - tr) / dn;
-  }
-
-  return result;
-}
-
-/**
- * Compute Quadratic Bézier bounding box.
- *
- * @see https://pomax.github.io/bezierinfo/
- *
- * @param {Float} xa
- * @param {Float} ya
- * @param {Float} xb
- * @param {Float} yb
- * @param {Float} xc
- * @param {Float} yc
- *
- * @return {Object}
- */
-_path$1.computeQuadraticBoundingBox = function (xa, ya, xb, yb, xc, yc) {
-  var minx = Number.POSITIVE_INFINITY,
-    miny = Number.POSITIVE_INFINITY,
-    maxx = Number.NEGATIVE_INFINITY,
-    maxy = Number.NEGATIVE_INFINITY,
-    t,
-    x,
-    y;
-
-  // X
-  if (xa < minx) {
-    minx = xa;
-  }
-  if (xa > maxx) {
-    maxx = xa;
-  }
-  if (xc < minx) {
-    minx = xc;
-  }
-  if (xc > maxx) {
-    maxx = xc;
-  }
-
-  t = computeQuadraticFirstDerivativeRoot(xa, xb, xc);
-
-  if (t >= 0 && t <= 1) {
-    x = computeQuadraticBaseValue(t, xa, xb, xc);
-    // y = computeQuadraticBaseValue(t, ya, yb, yc);
-
-    if (x < minx) {
-      minx = x;
-    }
-    if (x > maxx) {
-      maxx = x;
-    }
-  }
-
-  // Y
-  if (ya < miny) {
-    miny = ya;
-  }
-  if (ya > maxy) {
-    maxy = ya;
-  }
-  if (yc < miny) {
-    miny = yc;
-  }
-  if (yc > maxy) {
-    maxy = yc;
-  }
-
-  t = computeQuadraticFirstDerivativeRoot(ya, yb, yc);
-
-  if (t >= 0 && t <= 1) {
-    // x = computeQuadraticBaseValue(t, xa, xb, xc);
-    y = computeQuadraticBaseValue(t, ya, yb, yc);
-
-    if (y < miny) {
-      miny = y;
-    }
-    if (y > maxy) {
-      maxy = y;
-    }
-  }
-
-  return {
-    minx: minx,
-    miny: miny,
-    maxx: maxx,
-    maxy: maxy,
-  };
-};
-
-// compute the value for the quadratic bezier function at time=t
-function computeQuadraticBaseValue(t, a, b, c) {
-  var mt = 1 - t;
-
-  return mt * mt * a + 2 * mt * t * b + t * t * c;
-}
-
-// compute the value for the first derivative of the quadratic bezier function at time=t
-function computeQuadraticFirstDerivativeRoot(a, b, c) {
-  var t = -1,
-    denominator = a - 2 * b + c;
-
-  if (denominator !== 0) {
-    t = (a - b) / denominator;
-  }
-
-  return t;
-}
-
-/**
- * Convert path array to string.
- *
- * @param {Array} path input path data
- * @param {Object} params plugin params
- * @return {String} output path string
- */
-_path$1.js2path = function (path, data, params) {
-  path.pathJS = data;
-
-  const pathData = [];
-  for (const item of data) {
-    // remove moveto commands which are followed by moveto commands
-    if (
-      pathData.length !== 0 &&
-      (item.instruction === 'M' || item.instruction === 'm')
-    ) {
-      const last = pathData[pathData.length - 1];
-      if (last.command === 'M' || last.command === 'm') {
-        pathData.pop();
-      }
-    }
-    pathData.push({
-      command: item.instruction,
-      args: item.data || [],
-    });
-  }
-
-  path.attributes.d = stringifyPathData$1({
-    pathData,
-    precision: params.floatPrecision,
-    disableSpaceAfterFlags: params.noSpaceAfterFlags,
-  });
-};
-
-function set(dest, source) {
-  dest[0] = source[source.length - 2];
-  dest[1] = source[source.length - 1];
-  return dest;
-}
-
-/**
- * Checks if two paths have an intersection by checking convex hulls
- * collision using Gilbert-Johnson-Keerthi distance algorithm
- * https://web.archive.org/web/20180822200027/http://entropyinteractive.com/2011/04/gjk-algorithm/
- *
- * @param {Array} path1 JS path representation
- * @param {Array} path2 JS path representation
- * @return {Boolean}
- */
-_path$1.intersects = function (path1, path2) {
-  // Collect points of every subpath.
-  var points1 = relative2absolute(path1).reduce(gatherPoints, []),
-    points2 = relative2absolute(path2).reduce(gatherPoints, []);
-
-  // Axis-aligned bounding box check.
-  if (
-    points1.maxX <= points2.minX ||
-    points2.maxX <= points1.minX ||
-    points1.maxY <= points2.minY ||
-    points2.maxY <= points1.minY ||
-    points1.every(function (set1) {
-      return points2.every(function (set2) {
-        return (
-          set1[set1.maxX][0] <= set2[set2.minX][0] ||
-          set2[set2.maxX][0] <= set1[set1.minX][0] ||
-          set1[set1.maxY][1] <= set2[set2.minY][1] ||
-          set2[set2.maxY][1] <= set1[set1.minY][1]
-        );
-      });
-    })
-  )
-    return false;
-
-  // Get a convex hull from points of each subpath. Has the most complexity O(n·log n).
-  var hullNest1 = points1.map(convexHull),
-    hullNest2 = points2.map(convexHull);
-
-  // Check intersection of every subpath of the first path with every subpath of the second.
-  return hullNest1.some(function (hull1) {
-    if (hull1.length < 3) return false;
-
-    return hullNest2.some(function (hull2) {
-      if (hull2.length < 3) return false;
-
-      var simplex = [getSupport(hull1, hull2, [1, 0])], // create the initial simplex
-        direction = minus(simplex[0]); // set the direction to point towards the origin
-
-      var iterations = 1e4; // infinite loop protection, 10 000 iterations is more than enough
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        // eslint-disable-next-line no-constant-condition
-        if (iterations-- == 0) {
-          console.error(
-            'Error: infinite loop while processing mergePaths plugin.'
-          );
-          return true; // true is the safe value that means “do nothing with paths”
-        }
-        // add a new point
-        simplex.push(getSupport(hull1, hull2, direction));
-        // see if the new point was on the correct side of the origin
-        if (dot(direction, simplex[simplex.length - 1]) <= 0) return false;
-        // process the simplex
-        if (processSimplex(simplex, direction)) return true;
-      }
-    });
-  });
-
-  function getSupport(a, b, direction) {
-    return sub(supportPoint(a, direction), supportPoint(b, minus(direction)));
-  }
-
-  // Computes farthest polygon point in particular direction.
-  // Thanks to knowledge of min/max x and y coordinates we can choose a quadrant to search in.
-  // Since we're working on convex hull, the dot product is increasing until we find the farthest point.
-  function supportPoint(polygon, direction) {
-    var index =
-        direction[1] >= 0
-          ? direction[0] < 0
-            ? polygon.maxY
-            : polygon.maxX
-          : direction[0] < 0
-          ? polygon.minX
-          : polygon.minY,
-      max = -Infinity,
-      value;
-    while ((value = dot(polygon[index], direction)) > max) {
-      max = value;
-      index = ++index % polygon.length;
-    }
-    return polygon[(index || polygon.length) - 1];
-  }
-};
-
-function processSimplex(simplex, direction) {
-  // we only need to handle to 1-simplex and 2-simplex
-  if (simplex.length == 2) {
-    // 1-simplex
-    let a = simplex[1],
-      b = simplex[0],
-      AO = minus(simplex[1]),
-      AB = sub(b, a);
-    // AO is in the same direction as AB
-    if (dot(AO, AB) > 0) {
-      // get the vector perpendicular to AB facing O
-      set(direction, orth(AB, a));
-    } else {
-      set(direction, AO);
-      // only A remains in the simplex
-      simplex.shift();
-    }
-  } else {
-    // 2-simplex
-    let a = simplex[2], // [a, b, c] = simplex
-      b = simplex[1],
-      c = simplex[0],
-      AB = sub(b, a),
-      AC = sub(c, a),
-      AO = minus(a),
-      ACB = orth(AB, AC), // the vector perpendicular to AB facing away from C
-      ABC = orth(AC, AB); // the vector perpendicular to AC facing away from B
-
-    if (dot(ACB, AO) > 0) {
-      if (dot(AB, AO) > 0) {
-        // region 4
-        set(direction, ACB);
-        simplex.shift(); // simplex = [b, a]
-      } else {
-        // region 5
-        set(direction, AO);
-        simplex.splice(0, 2); // simplex = [a]
-      }
-    } else if (dot(ABC, AO) > 0) {
-      if (dot(AC, AO) > 0) {
-        // region 6
-        set(direction, ABC);
-        simplex.splice(1, 1); // simplex = [c, a]
-      } else {
-        // region 5 (again)
-        set(direction, AO);
-        simplex.splice(0, 2); // simplex = [a]
-      }
-    } // region 7
-    else return true;
-  }
-  return false;
-}
-
-function minus(v) {
-  return [-v[0], -v[1]];
-}
-
-function sub(v1, v2) {
-  return [v1[0] - v2[0], v1[1] - v2[1]];
-}
-
-function dot(v1, v2) {
-  return v1[0] * v2[0] + v1[1] * v2[1];
-}
-
-function orth(v, from) {
-  var o = [-v[1], v[0]];
-  return dot(o, minus(from)) < 0 ? minus(o) : o;
-}
-
-function gatherPoints(points, item, index, path) {
-  var subPath = points.length && points[points.length - 1],
-    prev = index && path[index - 1],
-    basePoint = subPath.length && subPath[subPath.length - 1],
-    data = item.data,
-    ctrlPoint = basePoint;
-
-  switch (item.instruction) {
-    case 'M':
-      points.push((subPath = []));
-      break;
-    case 'H':
-      addPoint(subPath, [data[0], basePoint[1]]);
-      break;
-    case 'V':
-      addPoint(subPath, [basePoint[0], data[0]]);
-      break;
-    case 'Q':
-      addPoint(subPath, data.slice(0, 2));
-      prevCtrlPoint = [data[2] - data[0], data[3] - data[1]]; // Save control point for shorthand
-      break;
-    case 'T':
-      if (prev.instruction == 'Q' || prev.instruction == 'T') {
-        ctrlPoint = [
-          basePoint[0] + prevCtrlPoint[0],
-          basePoint[1] + prevCtrlPoint[1],
-        ];
-        addPoint(subPath, ctrlPoint);
-        prevCtrlPoint = [data[0] - ctrlPoint[0], data[1] - ctrlPoint[1]];
-      }
-      break;
-    case 'C':
-      // Approximate quibic Bezier curve with middle points between control points
-      addPoint(subPath, [
-        0.5 * (basePoint[0] + data[0]),
-        0.5 * (basePoint[1] + data[1]),
-      ]);
-      addPoint(subPath, [0.5 * (data[0] + data[2]), 0.5 * (data[1] + data[3])]);
-      addPoint(subPath, [0.5 * (data[2] + data[4]), 0.5 * (data[3] + data[5])]);
-      prevCtrlPoint = [data[4] - data[2], data[5] - data[3]]; // Save control point for shorthand
-      break;
-    case 'S':
-      if (prev.instruction == 'C' || prev.instruction == 'S') {
-        addPoint(subPath, [
-          basePoint[0] + 0.5 * prevCtrlPoint[0],
-          basePoint[1] + 0.5 * prevCtrlPoint[1],
-        ]);
-        ctrlPoint = [
-          basePoint[0] + prevCtrlPoint[0],
-          basePoint[1] + prevCtrlPoint[1],
-        ];
-      }
-      addPoint(subPath, [
-        0.5 * (ctrlPoint[0] + data[0]),
-        0.5 * (ctrlPoint[1] + data[1]),
-      ]);
-      addPoint(subPath, [0.5 * (data[0] + data[2]), 0.5 * (data[1] + data[3])]);
-      prevCtrlPoint = [data[2] - data[0], data[3] - data[1]];
-      break;
-    case 'A':
-      // Convert the arc to bezier curves and use the same approximation
-      var curves = a2c.apply(0, basePoint.concat(data));
-      for (var cData; (cData = curves.splice(0, 6).map(toAbsolute)).length; ) {
-        addPoint(subPath, [
-          0.5 * (basePoint[0] + cData[0]),
-          0.5 * (basePoint[1] + cData[1]),
-        ]);
-        addPoint(subPath, [
-          0.5 * (cData[0] + cData[2]),
-          0.5 * (cData[1] + cData[3]),
-        ]);
-        addPoint(subPath, [
-          0.5 * (cData[2] + cData[4]),
-          0.5 * (cData[3] + cData[5]),
-        ]);
-        if (curves.length) addPoint(subPath, (basePoint = cData.slice(-2)));
-      }
-      break;
-  }
-  // Save final command coordinates
-  if (data && data.length >= 2) addPoint(subPath, data.slice(-2));
-  return points;
-
-  function toAbsolute(n, i) {
-    return n + basePoint[i % 2];
-  }
-
-  // Writes data about the extreme points on each axle
-  function addPoint(path, point) {
-    if (!path.length || point[1] > path[path.maxY][1]) {
-      path.maxY = path.length;
-      points.maxY = points.length ? Math.max(point[1], points.maxY) : point[1];
-    }
-    if (!path.length || point[0] > path[path.maxX][0]) {
-      path.maxX = path.length;
-      points.maxX = points.length ? Math.max(point[0], points.maxX) : point[0];
-    }
-    if (!path.length || point[1] < path[path.minY][1]) {
-      path.minY = path.length;
-      points.minY = points.length ? Math.min(point[1], points.minY) : point[1];
-    }
-    if (!path.length || point[0] < path[path.minX][0]) {
-      path.minX = path.length;
-      points.minX = points.length ? Math.min(point[0], points.minX) : point[0];
-    }
-    path.push(point);
-  }
-}
-
-/**
- * Forms a convex hull from set of points of every subpath using monotone chain convex hull algorithm.
- * https://en.wikibooks.org/wiki/Algorithm_Implementation/Geometry/Convex_hull/Monotone_chain
- *
- * @param points An array of [X, Y] coordinates
- */
-function convexHull(points) {
-  points.sort(function (a, b) {
-    return a[0] == b[0] ? a[1] - b[1] : a[0] - b[0];
-  });
-
-  var lower = [],
-    minY = 0,
-    bottom = 0;
-  for (let i = 0; i < points.length; i++) {
-    while (
-      lower.length >= 2 &&
-      cross(lower[lower.length - 2], lower[lower.length - 1], points[i]) <= 0
-    ) {
-      lower.pop();
-    }
-    if (points[i][1] < points[minY][1]) {
-      minY = i;
-      bottom = lower.length;
-    }
-    lower.push(points[i]);
-  }
-
-  var upper = [],
-    maxY = points.length - 1,
-    top = 0;
-  for (let i = points.length; i--; ) {
-    while (
-      upper.length >= 2 &&
-      cross(upper[upper.length - 2], upper[upper.length - 1], points[i]) <= 0
-    ) {
-      upper.pop();
-    }
-    if (points[i][1] > points[maxY][1]) {
-      maxY = i;
-      top = upper.length;
-    }
-    upper.push(points[i]);
-  }
-
-  // last points are equal to starting points of the other part
-  upper.pop();
-  lower.pop();
-
-  var hull = lower.concat(upper);
-
-  hull.minX = 0; // by sorting
-  hull.maxX = lower.length;
-  hull.minY = bottom;
-  hull.maxY = (lower.length + top) % hull.length;
-
-  return hull;
-}
-
-function cross(o, a, b) {
-  return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-}
-
-/* Based on code from Snap.svg (Apache 2 license). http://snapsvg.io/
- * Thanks to Dmitry Baranovskiy for his great work!
- */
-
-function a2c(
-  x1,
-  y1,
-  rx,
-  ry,
-  angle,
-  large_arc_flag,
-  sweep_flag,
-  x2,
-  y2,
-  recursive
-) {
-  // for more information of where this Math came from visit:
-  // https://www.w3.org/TR/SVG11/implnote.html#ArcImplementationNotes
-  var _120 = (Math.PI * 120) / 180,
-    rad = (Math.PI / 180) * (+angle || 0),
-    res = [],
-    rotateX = function (x, y, rad) {
-      return x * Math.cos(rad) - y * Math.sin(rad);
-    },
-    rotateY = function (x, y, rad) {
-      return x * Math.sin(rad) + y * Math.cos(rad);
-    };
-  if (!recursive) {
-    x1 = rotateX(x1, y1, -rad);
-    y1 = rotateY(x1, y1, -rad);
-    x2 = rotateX(x2, y2, -rad);
-    y2 = rotateY(x2, y2, -rad);
-    var x = (x1 - x2) / 2,
-      y = (y1 - y2) / 2;
-    var h = (x * x) / (rx * rx) + (y * y) / (ry * ry);
-    if (h > 1) {
-      h = Math.sqrt(h);
-      rx = h * rx;
-      ry = h * ry;
-    }
-    var rx2 = rx * rx,
-      ry2 = ry * ry,
-      k =
-        (large_arc_flag == sweep_flag ? -1 : 1) *
-        Math.sqrt(
-          Math.abs(
-            (rx2 * ry2 - rx2 * y * y - ry2 * x * x) /
-              (rx2 * y * y + ry2 * x * x)
-          )
-        ),
-      cx = (k * rx * y) / ry + (x1 + x2) / 2,
-      cy = (k * -ry * x) / rx + (y1 + y2) / 2,
-      f1 = Math.asin(((y1 - cy) / ry).toFixed(9)),
-      f2 = Math.asin(((y2 - cy) / ry).toFixed(9));
-
-    f1 = x1 < cx ? Math.PI - f1 : f1;
-    f2 = x2 < cx ? Math.PI - f2 : f2;
-    f1 < 0 && (f1 = Math.PI * 2 + f1);
-    f2 < 0 && (f2 = Math.PI * 2 + f2);
-    if (sweep_flag && f1 > f2) {
-      f1 = f1 - Math.PI * 2;
-    }
-    if (!sweep_flag && f2 > f1) {
-      f2 = f2 - Math.PI * 2;
-    }
-  } else {
-    f1 = recursive[0];
-    f2 = recursive[1];
-    cx = recursive[2];
-    cy = recursive[3];
-  }
-  var df = f2 - f1;
-  if (Math.abs(df) > _120) {
-    var f2old = f2,
-      x2old = x2,
-      y2old = y2;
-    f2 = f1 + _120 * (sweep_flag && f2 > f1 ? 1 : -1);
-    x2 = cx + rx * Math.cos(f2);
-    y2 = cy + ry * Math.sin(f2);
-    res = a2c(x2, y2, rx, ry, angle, 0, sweep_flag, x2old, y2old, [
-      f2,
-      f2old,
-      cx,
-      cy,
-    ]);
-  }
-  df = f2 - f1;
-  var c1 = Math.cos(f1),
-    s1 = Math.sin(f1),
-    c2 = Math.cos(f2),
-    s2 = Math.sin(f2),
-    t = Math.tan(df / 4),
-    hx = (4 / 3) * rx * t,
-    hy = (4 / 3) * ry * t,
-    m = [
-      -hx * s1,
-      hy * c1,
-      x2 + hx * s2 - x1,
-      y2 - hy * c2 - y1,
-      x2 - x1,
-      y2 - y1,
-    ];
-  if (recursive) {
-    return m.concat(res);
-  } else {
-    res = m.concat(res);
-    var newres = [];
-    for (var i = 0, n = res.length; i < n; i++) {
-      newres[i] =
-        i % 2
-          ? rotateY(res[i - 1], res[i], rad)
-          : rotateX(res[i], res[i + 1], rad);
-    }
-    return newres;
-  }
-}
-
-var _applyTransforms = {};
-
-var _transforms = {};
-
-var regTransformTypes = /matrix|translate|scale|rotate|skewX|skewY/,
-  regTransformSplit = /\s*(matrix|translate|scale|rotate|skewX|skewY)\s*\(\s*(.+?)\s*\)[\s,]*/,
-  regNumericValues$1 = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
-
-/**
- * Convert transform string to JS representation.
- *
- * @param {String} transformString input string
- * @param {Object} params plugin params
- * @return {Array} output array
- */
-_transforms.transform2js = function (transformString) {
-  // JS representation of the transform data
-  var transforms = [],
-    // current transform context
-    current;
-
-  // split value into ['', 'translate', '10 50', '', 'scale', '2', '', 'rotate', '-45', '']
-  transformString.split(regTransformSplit).forEach(function (item) {
-    var num;
-
-    if (item) {
-      // if item is a translate function
-      if (regTransformTypes.test(item)) {
-        // then collect it and change current context
-        transforms.push((current = { name: item }));
-        // else if item is data
-      } else {
-        // then split it into [10, 50] and collect as context.data
-        // eslint-disable-next-line no-cond-assign
-        while ((num = regNumericValues$1.exec(item))) {
-          num = Number(num);
-          if (current.data) current.data.push(num);
-          else current.data = [num];
-        }
-      }
-    }
-  });
-
-  // return empty array if broken transform (no data)
-  return current && current.data ? transforms : [];
-};
-
-/**
- * Multiply transforms into one.
- *
- * @param {Array} input transforms array
- * @return {Array} output matrix array
- */
-_transforms.transformsMultiply = function (transforms) {
-  // convert transforms objects to the matrices
-  transforms = transforms.map(function (transform) {
-    if (transform.name === 'matrix') {
-      return transform.data;
-    }
-    return transformToMatrix(transform);
-  });
-
-  // multiply all matrices into one
-  transforms = {
-    name: 'matrix',
-    data:
-      transforms.length > 0 ? transforms.reduce(multiplyTransformMatrices) : [],
-  };
-
-  return transforms;
-};
-
-/**
- * Do math like a schoolgirl.
- *
- * @type {Object}
- */
-var mth = (_transforms.mth = {
-  rad: function (deg) {
-    return (deg * Math.PI) / 180;
-  },
-
-  deg: function (rad) {
-    return (rad * 180) / Math.PI;
-  },
-
-  cos: function (deg) {
-    return Math.cos(this.rad(deg));
-  },
-
-  acos: function (val, floatPrecision) {
-    return +this.deg(Math.acos(val)).toFixed(floatPrecision);
-  },
-
-  sin: function (deg) {
-    return Math.sin(this.rad(deg));
-  },
-
-  asin: function (val, floatPrecision) {
-    return +this.deg(Math.asin(val)).toFixed(floatPrecision);
-  },
-
-  tan: function (deg) {
-    return Math.tan(this.rad(deg));
-  },
-
-  atan: function (val, floatPrecision) {
-    return +this.deg(Math.atan(val)).toFixed(floatPrecision);
-  },
-});
-
-/**
- * Decompose matrix into simple transforms. See
- * https://frederic-wang.fr/decomposition-of-2d-transform-matrices.html
- *
- * @param {Object} data matrix transform object
- * @return {Object|Array} transforms array or original transform object
- */
-_transforms.matrixToTransform = function (transform, params) {
-  var floatPrecision = params.floatPrecision,
-    data = transform.data,
-    transforms = [],
-    sx = +Math.hypot(data[0], data[1]).toFixed(params.transformPrecision),
-    sy = +((data[0] * data[3] - data[1] * data[2]) / sx).toFixed(
-      params.transformPrecision
-    ),
-    colsSum = data[0] * data[2] + data[1] * data[3],
-    rowsSum = data[0] * data[1] + data[2] * data[3],
-    scaleBefore = rowsSum != 0 || sx == sy;
-
-  // [..., ..., ..., ..., tx, ty] → translate(tx, ty)
-  if (data[4] || data[5]) {
-    transforms.push({
-      name: 'translate',
-      data: data.slice(4, data[5] ? 6 : 5),
-    });
-  }
-
-  // [sx, 0, tan(a)·sy, sy, 0, 0] → skewX(a)·scale(sx, sy)
-  if (!data[1] && data[2]) {
-    transforms.push({
-      name: 'skewX',
-      data: [mth.atan(data[2] / sy, floatPrecision)],
-    });
-
-    // [sx, sx·tan(a), 0, sy, 0, 0] → skewY(a)·scale(sx, sy)
-  } else if (data[1] && !data[2]) {
-    transforms.push({
-      name: 'skewY',
-      data: [mth.atan(data[1] / data[0], floatPrecision)],
-    });
-    sx = data[0];
-    sy = data[3];
-
-    // [sx·cos(a), sx·sin(a), sy·-sin(a), sy·cos(a), x, y] → rotate(a[, cx, cy])·(scale or skewX) or
-    // [sx·cos(a), sy·sin(a), sx·-sin(a), sy·cos(a), x, y] → scale(sx, sy)·rotate(a[, cx, cy]) (if !scaleBefore)
-  } else if (!colsSum || (sx == 1 && sy == 1) || !scaleBefore) {
-    if (!scaleBefore) {
-      sx = (data[0] < 0 ? -1 : 1) * Math.hypot(data[0], data[2]);
-      sy = (data[3] < 0 ? -1 : 1) * Math.hypot(data[1], data[3]);
-      transforms.push({ name: 'scale', data: [sx, sy] });
-    }
-    var angle = Math.min(Math.max(-1, data[0] / sx), 1),
-      rotate = [
-        mth.acos(angle, floatPrecision) *
-          ((scaleBefore ? 1 : sy) * data[1] < 0 ? -1 : 1),
-      ];
-
-    if (rotate[0]) transforms.push({ name: 'rotate', data: rotate });
-
-    if (rowsSum && colsSum)
-      transforms.push({
-        name: 'skewX',
-        data: [mth.atan(colsSum / (sx * sx), floatPrecision)],
-      });
-
-    // rotate(a, cx, cy) can consume translate() within optional arguments cx, cy (rotation point)
-    if (rotate[0] && (data[4] || data[5])) {
-      transforms.shift();
-      var cos = data[0] / sx,
-        sin = data[1] / (scaleBefore ? sx : sy),
-        x = data[4] * (scaleBefore || sy),
-        y = data[5] * (scaleBefore || sx),
-        denom =
-          (Math.pow(1 - cos, 2) + Math.pow(sin, 2)) * (scaleBefore || sx * sy);
-      rotate.push(((1 - cos) * x - sin * y) / denom);
-      rotate.push(((1 - cos) * y + sin * x) / denom);
-    }
-
-    // Too many transformations, return original matrix if it isn't just a scale/translate
-  } else if (data[1] || data[2]) {
-    return transform;
-  }
-
-  if ((scaleBefore && (sx != 1 || sy != 1)) || !transforms.length)
-    transforms.push({
-      name: 'scale',
-      data: sx == sy ? [sx] : [sx, sy],
-    });
-
-  return transforms;
-};
-
-/**
- * Convert transform to the matrix data.
- *
- * @param {Object} transform transform object
- * @return {Array} matrix data
- */
-function transformToMatrix(transform) {
-  if (transform.name === 'matrix') return transform.data;
-
-  var matrix;
-
-  switch (transform.name) {
-    case 'translate':
-      // [1, 0, 0, 1, tx, ty]
-      matrix = [1, 0, 0, 1, transform.data[0], transform.data[1] || 0];
-      break;
-    case 'scale':
-      // [sx, 0, 0, sy, 0, 0]
-      matrix = [
-        transform.data[0],
-        0,
-        0,
-        transform.data[1] || transform.data[0],
-        0,
-        0,
-      ];
-      break;
-    case 'rotate':
-      // [cos(a), sin(a), -sin(a), cos(a), x, y]
-      var cos = mth.cos(transform.data[0]),
-        sin = mth.sin(transform.data[0]),
-        cx = transform.data[1] || 0,
-        cy = transform.data[2] || 0;
-
-      matrix = [
-        cos,
-        sin,
-        -sin,
-        cos,
-        (1 - cos) * cx + sin * cy,
-        (1 - cos) * cy - sin * cx,
-      ];
-      break;
-    case 'skewX':
-      // [1, 0, tan(a), 1, 0, 0]
-      matrix = [1, 0, mth.tan(transform.data[0]), 1, 0, 0];
-      break;
-    case 'skewY':
-      // [1, tan(a), 0, 1, 0, 0]
-      matrix = [1, mth.tan(transform.data[0]), 0, 1, 0, 0];
-      break;
-  }
-
-  return matrix;
-}
-
-/**
- * Applies transformation to an arc. To do so, we represent ellipse as a matrix, multiply it
- * by the transformation matrix and use a singular value decomposition to represent in a form
- * rotate(θ)·scale(a b)·rotate(φ). This gives us new ellipse params a, b and θ.
- * SVD is being done with the formulae provided by Wolffram|Alpha (svd {{m0, m2}, {m1, m3}})
- *
- * @param {Array} cursor [x, y]
- * @param {Array} arc [a, b, rotation in deg]
- * @param {Array} transform transformation matrix
- * @return {Array} arc transformed input arc
- */
-_transforms.transformArc = function (cursor, arc, transform) {
-  const x = arc[5] - cursor[0];
-  const y = arc[6] - cursor[1];
-  var a = arc[0],
-    b = arc[1],
-    rot = (arc[2] * Math.PI) / 180,
-    cos = Math.cos(rot),
-    sin = Math.sin(rot),
-    h =
-      Math.pow(x * cos + y * sin, 2) / (4 * a * a) +
-      Math.pow(y * cos - x * sin, 2) / (4 * b * b);
-  if (h > 1) {
-    h = Math.sqrt(h);
-    a *= h;
-    b *= h;
-  }
-  var ellipse = [a * cos, a * sin, -b * sin, b * cos, 0, 0],
-    m = multiplyTransformMatrices(transform, ellipse),
-    // Decompose the new ellipse matrix
-    lastCol = m[2] * m[2] + m[3] * m[3],
-    squareSum = m[0] * m[0] + m[1] * m[1] + lastCol,
-    root =
-      Math.hypot(m[0] - m[3], m[1] + m[2]) *
-      Math.hypot(m[0] + m[3], m[1] - m[2]);
-
-  if (!root) {
-    // circle
-    arc[0] = arc[1] = Math.sqrt(squareSum / 2);
-    arc[2] = 0;
-  } else {
-    var majorAxisSqr = (squareSum + root) / 2,
-      minorAxisSqr = (squareSum - root) / 2,
-      major = Math.abs(majorAxisSqr - lastCol) > 1e-6,
-      sub = (major ? majorAxisSqr : minorAxisSqr) - lastCol,
-      rowsSum = m[0] * m[2] + m[1] * m[3],
-      term1 = m[0] * sub + m[2] * rowsSum,
-      term2 = m[1] * sub + m[3] * rowsSum;
-    arc[0] = Math.sqrt(majorAxisSqr);
-    arc[1] = Math.sqrt(minorAxisSqr);
-    arc[2] =
-      (((major ? term2 < 0 : term1 > 0) ? -1 : 1) *
-        Math.acos((major ? term1 : term2) / Math.hypot(term1, term2)) *
-        180) /
-      Math.PI;
-  }
-
-  if (transform[0] < 0 !== transform[3] < 0) {
-    // Flip the sweep flag if coordinates are being flipped horizontally XOR vertically
-    arc[4] = 1 - arc[4];
-  }
-
-  return arc;
-};
-
-/**
- * Multiply transformation matrices.
- *
- * @param {Array} a matrix A data
- * @param {Array} b matrix B data
- * @return {Array} result
- */
-function multiplyTransformMatrices(a, b) {
-  return [
-    a[0] * b[0] + a[2] * b[1],
-    a[1] * b[0] + a[3] * b[1],
-    a[0] * b[2] + a[2] * b[3],
-    a[1] * b[2] + a[3] * b[3],
-    a[0] * b[4] + a[2] * b[5] + a[4],
-    a[1] * b[4] + a[3] * b[5] + a[5],
-  ];
-}
-
-// TODO implement as separate plugin
-
-const {
-  transformsMultiply: transformsMultiply$1,
-  transform2js: transform2js$1,
-  transformArc,
-} = _transforms;
-const { removeLeadingZero } = tools;
-const { referencesProps: referencesProps$2, attrsGroupsDefaults: attrsGroupsDefaults$1 } = _collections;
-
-const regNumericValues = /[-+]?(\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
-const defaultStrokeWidth = attrsGroupsDefaults$1.presentation['stroke-width'];
-
-/**
- * Apply transformation(s) to the Path data.
- *
- * @param {Object} elem current element
- * @param {Array} path input path data
- * @param {Object} params whether to apply transforms to stroked lines and transform precision (used for stroke width)
- * @return {Array} output path data
- */
-const applyTransforms$1 = (elem, pathData, params) => {
-  // if there are no 'stroke' attr and references to other objects such as
-  // gradiends or clip-path which are also subjects to transform.
-  if (
-    elem.attributes.transform == null ||
-    elem.attributes.transform === '' ||
-    // styles are not considered when applying transform
-    // can be fixed properly with new style engine
-    elem.attributes.style != null ||
-    Object.entries(elem.attributes).some(
-      ([name, value]) =>
-        referencesProps$2.includes(name) && value.includes('url(')
-    )
-  ) {
-    return;
-  }
-
-  const matrix = transformsMultiply$1(transform2js$1(elem.attributes.transform));
-  const stroke = elem.computedAttr('stroke');
-  const id = elem.computedAttr('id');
-  const transformPrecision = params.transformPrecision;
-
-  if (stroke && stroke != 'none') {
-    if (
-      !params.applyTransformsStroked ||
-      ((matrix.data[0] != matrix.data[3] ||
-        matrix.data[1] != -matrix.data[2]) &&
-        (matrix.data[0] != -matrix.data[3] || matrix.data[1] != matrix.data[2]))
-    )
-      return;
-
-    // "stroke-width" should be inside the part with ID, otherwise it can be overrided in <use>
-    if (id) {
-      let idElem = elem;
-      let hasStrokeWidth = false;
-
-      do {
-        if (idElem.attributes['stroke-width']) {
-          hasStrokeWidth = true;
-        }
-      } while (
-        idElem.attributes.id !== id &&
-        !hasStrokeWidth &&
-        (idElem = idElem.parentNode)
-      );
-
-      if (!hasStrokeWidth) return;
-    }
-
-    const scale = +Math.sqrt(
-      matrix.data[0] * matrix.data[0] + matrix.data[1] * matrix.data[1]
-    ).toFixed(transformPrecision);
-
-    if (scale !== 1) {
-      const strokeWidth =
-        elem.computedAttr('stroke-width') || defaultStrokeWidth;
-
-      if (
-        elem.attributes['vector-effect'] == null ||
-        elem.attributes['vector-effect'] !== 'non-scaling-stroke'
-      ) {
-        if (elem.attributes['stroke-width'] != null) {
-          elem.attributes['stroke-width'] = elem.attributes['stroke-width']
-            .trim()
-            .replace(regNumericValues, (num) => removeLeadingZero(num * scale));
-        } else {
-          elem.attributes[
-            'stroke-width'
-          ] = strokeWidth.replace(regNumericValues, (num) =>
-            removeLeadingZero(num * scale)
-          );
-        }
-
-        if (elem.attributes['stroke-dashoffset'] != null) {
-          elem.attributes['stroke-dashoffset'] = elem.attributes[
-            'stroke-dashoffset'
-          ]
-            .trim()
-            .replace(regNumericValues, (num) => removeLeadingZero(num * scale));
-        }
-
-        if (elem.attributes['stroke-dasharray'] != null) {
-          elem.attributes['stroke-dasharray'] = elem.attributes[
-            'stroke-dasharray'
-          ]
-            .trim()
-            .replace(regNumericValues, (num) => removeLeadingZero(num * scale));
-        }
-      }
-    }
-  } else if (id) {
-    // Stroke and stroke-width can be redefined with <use>
-    return;
-  }
-
-  applyMatrixToPathData(pathData, matrix.data);
-
-  // remove transform attr
-  delete elem.attributes.transform;
-
-  return;
-};
-_applyTransforms.applyTransforms = applyTransforms$1;
-
-const transformAbsolutePoint = (matrix, x, y) => {
-  const newX = matrix[0] * x + matrix[2] * y + matrix[4];
-  const newY = matrix[1] * x + matrix[3] * y + matrix[5];
-  return [newX, newY];
-};
-
-const transformRelativePoint = (matrix, x, y) => {
-  const newX = matrix[0] * x + matrix[2] * y;
-  const newY = matrix[1] * x + matrix[3] * y;
-  return [newX, newY];
-};
-
-const applyMatrixToPathData = (pathData, matrix) => {
-  let cursor = [0, 0];
-
-  for (const pathItem of pathData) {
-    let { instruction: command, data: args } = pathItem;
-    // moveto (x y)
-    if (command === 'M') {
-      cursor[0] = args[0];
-      cursor[1] = args[1];
-      const [x, y] = transformAbsolutePoint(matrix, args[0], args[1]);
-      args[0] = x;
-      args[1] = y;
-    }
-    if (command === 'm') {
-      cursor[0] += args[0];
-      cursor[1] += args[1];
-      const [x, y] = transformRelativePoint(matrix, args[0], args[1]);
-      args[0] = x;
-      args[1] = y;
-    }
-
-    // horizontal lineto (x)
-    // convert to lineto to handle two-dimentional transforms
-    if (command === 'H') {
-      command = 'L';
-      args = [args[0], cursor[1]];
-    }
-    if (command === 'h') {
-      command = 'l';
-      args = [args[0], 0];
-    }
-
-    // vertical lineto (y)
-    // convert to lineto to handle two-dimentional transforms
-    if (command === 'V') {
-      command = 'L';
-      args = [cursor[0], args[0]];
-    }
-    if (command === 'v') {
-      command = 'l';
-      args = [0, args[0]];
-    }
-
-    // lineto (x y)
-    if (command === 'L') {
-      cursor[0] = args[0];
-      cursor[1] = args[1];
-      const [x, y] = transformAbsolutePoint(matrix, args[0], args[1]);
-      args[0] = x;
-      args[1] = y;
-    }
-    if (command === 'l') {
-      cursor[0] += args[0];
-      cursor[1] += args[1];
-      const [x, y] = transformRelativePoint(matrix, args[0], args[1]);
-      args[0] = x;
-      args[1] = y;
-    }
-
-    // curveto (x1 y1 x2 y2 x y)
-    if (command === 'C') {
-      cursor[0] = args[4];
-      cursor[1] = args[5];
-      const [x1, y1] = transformAbsolutePoint(matrix, args[0], args[1]);
-      const [x2, y2] = transformAbsolutePoint(matrix, args[2], args[3]);
-      const [x, y] = transformAbsolutePoint(matrix, args[4], args[5]);
-      args[0] = x1;
-      args[1] = y1;
-      args[2] = x2;
-      args[3] = y2;
-      args[4] = x;
-      args[5] = y;
-    }
-    if (command === 'c') {
-      cursor[0] += args[4];
-      cursor[1] += args[5];
-      const [x1, y1] = transformRelativePoint(matrix, args[0], args[1]);
-      const [x2, y2] = transformRelativePoint(matrix, args[2], args[3]);
-      const [x, y] = transformRelativePoint(matrix, args[4], args[5]);
-      args[0] = x1;
-      args[1] = y1;
-      args[2] = x2;
-      args[3] = y2;
-      args[4] = x;
-      args[5] = y;
-    }
-
-    // smooth curveto (x2 y2 x y)
-    if (command === 'S') {
-      cursor[0] = args[2];
-      cursor[1] = args[3];
-      const [x2, y2] = transformAbsolutePoint(matrix, args[0], args[1]);
-      const [x, y] = transformAbsolutePoint(matrix, args[2], args[3]);
-      args[0] = x2;
-      args[1] = y2;
-      args[2] = x;
-      args[3] = y;
-    }
-    if (command === 's') {
-      cursor[0] += args[2];
-      cursor[1] += args[3];
-      const [x2, y2] = transformRelativePoint(matrix, args[0], args[1]);
-      const [x, y] = transformRelativePoint(matrix, args[2], args[3]);
-      args[0] = x2;
-      args[1] = y2;
-      args[2] = x;
-      args[3] = y;
-    }
-
-    // quadratic Bézier curveto (x1 y1 x y)
-    if (command === 'Q') {
-      cursor[0] = args[2];
-      cursor[1] = args[3];
-      const [x1, y1] = transformAbsolutePoint(matrix, args[0], args[1]);
-      const [x, y] = transformAbsolutePoint(matrix, args[2], args[3]);
-      args[0] = x1;
-      args[1] = y1;
-      args[2] = x;
-      args[3] = y;
-    }
-    if (command === 'q') {
-      cursor[0] += args[2];
-      cursor[1] += args[3];
-      const [x1, y1] = transformRelativePoint(matrix, args[0], args[1]);
-      const [x, y] = transformRelativePoint(matrix, args[2], args[3]);
-      args[0] = x1;
-      args[1] = y1;
-      args[2] = x;
-      args[3] = y;
-    }
-
-    // smooth quadratic Bézier curveto (x y)
-    if (command === 'T') {
-      cursor[0] = args[0];
-      cursor[1] = args[1];
-      const [x, y] = transformAbsolutePoint(matrix, args[0], args[1]);
-      args[0] = x;
-      args[1] = y;
-    }
-    if (command === 't') {
-      cursor[0] += args[0];
-      cursor[1] += args[1];
-      const [x, y] = transformRelativePoint(matrix, args[0], args[1]);
-      args[0] = x;
-      args[1] = y;
-    }
-
-    // elliptical arc (rx ry x-axis-rotation large-arc-flag sweep-flag x y)
-    if (command === 'A') {
-      transformArc(cursor, args, matrix);
-      cursor[0] = args[5];
-      cursor[1] = args[6];
-      // reduce number of digits in rotation angle
-      if (Math.abs(args[2]) > 80) {
-        const a = args[0];
-        const rotation = args[2];
-        args[0] = args[1];
-        args[1] = a;
-        args[2] = rotation + (rotation > 0 ? -90 : 90);
-      }
-      const [x, y] = transformAbsolutePoint(matrix, args[5], args[6]);
-      args[5] = x;
-      args[6] = y;
-    }
-    if (command === 'a') {
-      transformArc([0, 0], args, matrix);
-      cursor[0] += args[5];
-      cursor[1] += args[6];
-      // reduce number of digits in rotation angle
-      if (Math.abs(args[2]) > 80) {
-        const a = args[0];
-        const rotation = args[2];
-        args[0] = args[1];
-        args[1] = a;
-        args[2] = rotation + (rotation > 0 ? -90 : 90);
-      }
-      const [x, y] = transformRelativePoint(matrix, args[5], args[6]);
-      args[5] = x;
-      args[6] = y;
-    }
-
-    pathItem.instruction = command;
-    pathItem.data = args;
-  }
-};
-
-const { computeStyle: computeStyle$2 } = style;
-const { pathElems: pathElems$2 } = _collections;
-const { path2js: path2js$2, js2path: js2path$1 } = _path$1;
-const { applyTransforms } = _applyTransforms;
-const { cleanupOutData: cleanupOutData$1 } = tools;
-
-convertPathData.type = 'visitor';
-convertPathData.active = true;
-convertPathData.description =
-  'optimizes path data: writes in shorter form, applies transformations';
-
-convertPathData.params = {
-  applyTransforms: true,
-  applyTransformsStroked: true,
-  makeArcs: {
-    threshold: 2.5, // coefficient of rounding error
-    tolerance: 0.5, // percentage of radius
-  },
-  straightCurves: true,
-  lineShorthands: true,
-  curveSmoothShorthands: true,
-  floatPrecision: 3,
-  transformPrecision: 5,
-  removeUseless: true,
-  collapseRepeated: true,
-  utilizeAbsolute: true,
-  leadingZero: true,
-  negativeExtraSpace: true,
-  noSpaceAfterFlags: false, // a20 60 45 0 1 30 20 → a20 60 45 0130 20
-  forceAbsolutePath: false,
-};
-
-let roundData;
-let precision;
-let error;
-let arcThreshold;
-let arcTolerance;
-
-/**
- * Convert absolute Path to relative,
- * collapse repeated instructions,
- * detect and convert Lineto shorthands,
- * remove useless instructions like "l0,0",
- * trim useless delimiters and leading zeros,
- * decrease accuracy of floating-point numbers.
- *
- * @see https://www.w3.org/TR/SVG11/paths.html#PathData
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-convertPathData.fn = (root, params) => {
-  return {
-    element: {
-      enter: (node) => {
-        if (pathElems$2.includes(node.name) && node.attributes.d != null) {
-          const computedStyle = computeStyle$2(node);
-          precision = params.floatPrecision;
-          error =
-            precision !== false
-              ? +Math.pow(0.1, precision).toFixed(precision)
-              : 1e-2;
-          roundData = precision > 0 && precision < 20 ? strongRound : round$1;
-          if (params.makeArcs) {
-            arcThreshold = params.makeArcs.threshold;
-            arcTolerance = params.makeArcs.tolerance;
-          }
-          const hasMarkerMid = computedStyle['marker-mid'] != null;
-
-          const maybeHasStroke =
-            computedStyle.stroke &&
-            (computedStyle.stroke.type === 'dynamic' ||
-              computedStyle.stroke.value !== 'none');
-          const maybeHasLinecap =
-            computedStyle['stroke-linecap'] &&
-            (computedStyle['stroke-linecap'].type === 'dynamic' ||
-              computedStyle['stroke-linecap'].value !== 'butt');
-          const maybeHasStrokeAndLinecap = maybeHasStroke && maybeHasLinecap;
-
-          var data = path2js$2(node);
-
-          // TODO: get rid of functions returns
-          if (data.length) {
-            if (params.applyTransforms) {
-              applyTransforms(node, data, params);
-            }
-
-            convertToRelative(data);
-
-            data = filters(data, params, {
-              maybeHasStrokeAndLinecap,
-              hasMarkerMid,
-            });
-
-            if (params.utilizeAbsolute) {
-              data = convertToMixed(data, params);
-            }
-
-            js2path$1(node, data, params);
-          }
-        }
-      },
-    },
-  };
-};
-
-/**
- * Convert absolute path data coordinates to relative.
- *
- * @param {Array} path input path data
- * @param {Object} params plugin params
- * @return {Array} output path data
- */
-const convertToRelative = (pathData) => {
-  let start = [0, 0];
-  let cursor = [0, 0];
-  let prevCoords = [0, 0];
-
-  for (let i = 0; i < pathData.length; i += 1) {
-    const pathItem = pathData[i];
-    let { instruction: command, data: args } = pathItem;
-
-    // moveto (x y)
-    if (command === 'm') {
-      // update start and cursor
-      cursor[0] += args[0];
-      cursor[1] += args[1];
-      start[0] = cursor[0];
-      start[1] = cursor[1];
-    }
-    if (command === 'M') {
-      // M → m
-      // skip first moveto
-      if (i !== 0) {
-        command = 'm';
-      }
-      args[0] -= cursor[0];
-      args[1] -= cursor[1];
-      // update start and cursor
-      cursor[0] += args[0];
-      cursor[1] += args[1];
-      start[0] = cursor[0];
-      start[1] = cursor[1];
-    }
-
-    // lineto (x y)
-    if (command === 'l') {
-      cursor[0] += args[0];
-      cursor[1] += args[1];
-    }
-    if (command === 'L') {
-      // L → l
-      command = 'l';
-      args[0] -= cursor[0];
-      args[1] -= cursor[1];
-      cursor[0] += args[0];
-      cursor[1] += args[1];
-    }
-
-    // horizontal lineto (x)
-    if (command === 'h') {
-      cursor[0] += args[0];
-    }
-    if (command === 'H') {
-      // H → h
-      command = 'h';
-      args[0] -= cursor[0];
-      cursor[0] += args[0];
-    }
-
-    // vertical lineto (y)
-    if (command === 'v') {
-      cursor[1] += args[0];
-    }
-    if (command === 'V') {
-      // V → v
-      command = 'v';
-      args[0] -= cursor[1];
-      cursor[1] += args[0];
-    }
-
-    // curveto (x1 y1 x2 y2 x y)
-    if (command === 'c') {
-      cursor[0] += args[4];
-      cursor[1] += args[5];
-    }
-    if (command === 'C') {
-      // C → c
-      command = 'c';
-      args[0] -= cursor[0];
-      args[1] -= cursor[1];
-      args[2] -= cursor[0];
-      args[3] -= cursor[1];
-      args[4] -= cursor[0];
-      args[5] -= cursor[1];
-      cursor[0] += args[4];
-      cursor[1] += args[5];
-    }
-
-    // smooth curveto (x2 y2 x y)
-    if (command === 's') {
-      cursor[0] += args[2];
-      cursor[1] += args[3];
-    }
-    if (command === 'S') {
-      // S → s
-      command = 's';
-      args[0] -= cursor[0];
-      args[1] -= cursor[1];
-      args[2] -= cursor[0];
-      args[3] -= cursor[1];
-      cursor[0] += args[2];
-      cursor[1] += args[3];
-    }
-
-    // quadratic Bézier curveto (x1 y1 x y)
-    if (command === 'q') {
-      cursor[0] += args[2];
-      cursor[1] += args[3];
-    }
-    if (command === 'Q') {
-      // Q → q
-      command = 'q';
-      args[0] -= cursor[0];
-      args[1] -= cursor[1];
-      args[2] -= cursor[0];
-      args[3] -= cursor[1];
-      cursor[0] += args[2];
-      cursor[1] += args[3];
-    }
-
-    // smooth quadratic Bézier curveto (x y)
-    if (command === 't') {
-      cursor[0] += args[0];
-      cursor[1] += args[1];
-    }
-    if (command === 'T') {
-      // T → t
-      command = 't';
-      args[0] -= cursor[0];
-      args[1] -= cursor[1];
-      cursor[0] += args[0];
-      cursor[1] += args[1];
-    }
-
-    // elliptical arc (rx ry x-axis-rotation large-arc-flag sweep-flag x y)
-    if (command === 'a') {
-      cursor[0] += args[5];
-      cursor[1] += args[6];
-    }
-    if (command === 'A') {
-      // A → a
-      command = 'a';
-      args[5] -= cursor[0];
-      args[6] -= cursor[1];
-      cursor[0] += args[5];
-      cursor[1] += args[6];
-    }
-
-    // closepath
-    if (command === 'Z' || command === 'z') {
-      // reset cursor
-      cursor[0] = start[0];
-      cursor[1] = start[1];
-    }
-
-    pathItem.instruction = command;
-    pathItem.data = args;
-    // store absolute coordinates for later use
-    // base should preserve reference from other element
-    pathItem.base = prevCoords;
-    pathItem.coords = [cursor[0], cursor[1]];
-    prevCoords = pathItem.coords;
-  }
-
-  return pathData;
-};
-
-/**
- * Main filters loop.
- *
- * @param {Array} path input path data
- * @param {Object} params plugin params
- * @return {Array} output path data
- */
-function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
-  var stringify = data2Path.bind(null, params),
-    relSubpoint = [0, 0],
-    pathBase = [0, 0],
-    prev = {};
-
-  path = path.filter(function (item, index, path) {
-    var instruction = item.instruction,
-      data = item.data,
-      next = path[index + 1];
-
-    if (data) {
-      var sdata = data,
-        circle;
-
-      if (instruction === 's') {
-        sdata = [0, 0].concat(data);
-
-        if ('cs'.indexOf(prev.instruction) > -1) {
-          var pdata = prev.data,
-            n = pdata.length;
-
-          // (-x, -y) of the prev tangent point relative to the current point
-          sdata[0] = pdata[n - 2] - pdata[n - 4];
-          sdata[1] = pdata[n - 1] - pdata[n - 3];
-        }
-      }
-
-      // convert curves to arcs if possible
-      if (
-        params.makeArcs &&
-        (instruction == 'c' || instruction == 's') &&
-        isConvex(sdata) &&
-        (circle = findCircle(sdata))
-      ) {
-        var r = roundData([circle.radius])[0],
-          angle = findArcAngle(sdata, circle),
-          sweep = sdata[5] * sdata[0] - sdata[4] * sdata[1] > 0 ? 1 : 0,
-          arc = {
-            instruction: 'a',
-            data: [r, r, 0, 0, sweep, sdata[4], sdata[5]],
-            coords: item.coords.slice(),
-            base: item.base,
-          },
-          output = [arc],
-          // relative coordinates to adjust the found circle
-          relCenter = [
-            circle.center[0] - sdata[4],
-            circle.center[1] - sdata[5],
-          ],
-          relCircle = { center: relCenter, radius: circle.radius },
-          arcCurves = [item],
-          hasPrev = 0,
-          suffix = '',
-          nextLonghand;
-
-        if (
-          (prev.instruction == 'c' &&
-            isConvex(prev.data) &&
-            isArcPrev(prev.data, circle)) ||
-          (prev.instruction == 'a' &&
-            prev.sdata &&
-            isArcPrev(prev.sdata, circle))
-        ) {
-          arcCurves.unshift(prev);
-          arc.base = prev.base;
-          arc.data[5] = arc.coords[0] - arc.base[0];
-          arc.data[6] = arc.coords[1] - arc.base[1];
-          var prevData = prev.instruction == 'a' ? prev.sdata : prev.data;
-          var prevAngle = findArcAngle(prevData, {
-            center: [
-              prevData[4] + circle.center[0],
-              prevData[5] + circle.center[1],
-            ],
-            radius: circle.radius,
-          });
-          angle += prevAngle;
-          if (angle > Math.PI) arc.data[3] = 1;
-          hasPrev = 1;
-        }
-
-        // check if next curves are fitting the arc
-        for (
-          var j = index;
-          (next = path[++j]) && ~'cs'.indexOf(next.instruction);
-
-        ) {
-          var nextData = next.data;
-          if (next.instruction == 's') {
-            nextLonghand = makeLonghand(
-              { instruction: 's', data: next.data.slice() },
-              path[j - 1].data
-            );
-            nextData = nextLonghand.data;
-            nextLonghand.data = nextData.slice(0, 2);
-            suffix = stringify([nextLonghand]);
-          }
-          if (isConvex(nextData) && isArc(nextData, relCircle)) {
-            angle += findArcAngle(nextData, relCircle);
-            if (angle - 2 * Math.PI > 1e-3) break; // more than 360°
-            if (angle > Math.PI) arc.data[3] = 1;
-            arcCurves.push(next);
-            if (2 * Math.PI - angle > 1e-3) {
-              // less than 360°
-              arc.coords = next.coords;
-              arc.data[5] = arc.coords[0] - arc.base[0];
-              arc.data[6] = arc.coords[1] - arc.base[1];
-            } else {
-              // full circle, make a half-circle arc and add a second one
-              arc.data[5] = 2 * (relCircle.center[0] - nextData[4]);
-              arc.data[6] = 2 * (relCircle.center[1] - nextData[5]);
-              arc.coords = [
-                arc.base[0] + arc.data[5],
-                arc.base[1] + arc.data[6],
-              ];
-              arc = {
-                instruction: 'a',
-                data: [
-                  r,
-                  r,
-                  0,
-                  0,
-                  sweep,
-                  next.coords[0] - arc.coords[0],
-                  next.coords[1] - arc.coords[1],
-                ],
-                coords: next.coords,
-                base: arc.coords,
-              };
-              output.push(arc);
-              j++;
-              break;
-            }
-            relCenter[0] -= nextData[4];
-            relCenter[1] -= nextData[5];
-          } else break;
-        }
-
-        if ((stringify(output) + suffix).length < stringify(arcCurves).length) {
-          if (path[j] && path[j].instruction == 's') {
-            makeLonghand(path[j], path[j - 1].data);
-          }
-          if (hasPrev) {
-            var prevArc = output.shift();
-            roundData(prevArc.data);
-            relSubpoint[0] += prevArc.data[5] - prev.data[prev.data.length - 2];
-            relSubpoint[1] += prevArc.data[6] - prev.data[prev.data.length - 1];
-            prev.instruction = 'a';
-            prev.data = prevArc.data;
-            item.base = prev.coords = prevArc.coords;
-          }
-          arc = output.shift();
-          if (arcCurves.length == 1) {
-            item.sdata = sdata.slice(); // preserve curve data for future checks
-          } else if (arcCurves.length - 1 - hasPrev > 0) {
-            // filter out consumed next items
-            path.splice.apply(
-              path,
-              [index + 1, arcCurves.length - 1 - hasPrev].concat(output)
-            );
-          }
-          if (!arc) return false;
-          instruction = 'a';
-          data = arc.data;
-          item.coords = arc.coords;
-        }
-      }
-
-      // Rounding relative coordinates, taking in account accummulating error
-      // to get closer to absolute coordinates. Sum of rounded value remains same:
-      // l .25 3 .25 2 .25 3 .25 2 -> l .3 3 .2 2 .3 3 .2 2
-      if (precision !== false) {
-        if ('mltqsc'.indexOf(instruction) > -1) {
-          for (var i = data.length; i--; ) {
-            data[i] += item.base[i % 2] - relSubpoint[i % 2];
-          }
-        } else if (instruction == 'h') {
-          data[0] += item.base[0] - relSubpoint[0];
-        } else if (instruction == 'v') {
-          data[0] += item.base[1] - relSubpoint[1];
-        } else if (instruction == 'a') {
-          data[5] += item.base[0] - relSubpoint[0];
-          data[6] += item.base[1] - relSubpoint[1];
-        }
-        roundData(data);
-
-        if (instruction == 'h') relSubpoint[0] += data[0];
-        else if (instruction == 'v') relSubpoint[1] += data[0];
-        else {
-          relSubpoint[0] += data[data.length - 2];
-          relSubpoint[1] += data[data.length - 1];
-        }
-        roundData(relSubpoint);
-
-        if (instruction.toLowerCase() == 'm') {
-          pathBase[0] = relSubpoint[0];
-          pathBase[1] = relSubpoint[1];
-        }
-      }
-
-      // convert straight curves into lines segments
-      if (params.straightCurves) {
-        if (
-          (instruction === 'c' && isCurveStraightLine(data)) ||
-          (instruction === 's' && isCurveStraightLine(sdata))
-        ) {
-          if (next && next.instruction == 's') makeLonghand(next, data); // fix up next curve
-          instruction = 'l';
-          data = data.slice(-2);
-        } else if (instruction === 'q' && isCurveStraightLine(data)) {
-          if (next && next.instruction == 't') makeLonghand(next, data); // fix up next curve
-          instruction = 'l';
-          data = data.slice(-2);
-        } else if (
-          instruction === 't' &&
-          prev.instruction !== 'q' &&
-          prev.instruction !== 't'
-        ) {
-          instruction = 'l';
-          data = data.slice(-2);
-        } else if (instruction === 'a' && (data[0] === 0 || data[1] === 0)) {
-          instruction = 'l';
-          data = data.slice(-2);
-        }
-      }
-
-      // horizontal and vertical line shorthands
-      // l 50 0 → h 50
-      // l 0 50 → v 50
-      if (params.lineShorthands && instruction === 'l') {
-        if (data[1] === 0) {
-          instruction = 'h';
-          data.pop();
-        } else if (data[0] === 0) {
-          instruction = 'v';
-          data.shift();
-        }
-      }
-
-      // collapse repeated commands
-      // h 20 h 30 -> h 50
-      if (
-        params.collapseRepeated &&
-        hasMarkerMid === false &&
-        'mhv'.indexOf(instruction) > -1 &&
-        prev.instruction &&
-        instruction == prev.instruction.toLowerCase() &&
-        ((instruction != 'h' && instruction != 'v') ||
-          prev.data[0] >= 0 == data[0] >= 0)
-      ) {
-        prev.data[0] += data[0];
-        if (instruction != 'h' && instruction != 'v') {
-          prev.data[1] += data[1];
-        }
-        prev.coords = item.coords;
-        path[index] = prev;
-        return false;
-      }
-
-      // convert curves into smooth shorthands
-      if (params.curveSmoothShorthands && prev.instruction) {
-        // curveto
-        if (instruction === 'c') {
-          // c + c → c + s
-          if (
-            prev.instruction === 'c' &&
-            data[0] === -(prev.data[2] - prev.data[4]) &&
-            data[1] === -(prev.data[3] - prev.data[5])
-          ) {
-            instruction = 's';
-            data = data.slice(2);
-          }
-
-          // s + c → s + s
-          else if (
-            prev.instruction === 's' &&
-            data[0] === -(prev.data[0] - prev.data[2]) &&
-            data[1] === -(prev.data[1] - prev.data[3])
-          ) {
-            instruction = 's';
-            data = data.slice(2);
-          }
-
-          // [^cs] + c → [^cs] + s
-          else if (
-            'cs'.indexOf(prev.instruction) === -1 &&
-            data[0] === 0 &&
-            data[1] === 0
-          ) {
-            instruction = 's';
-            data = data.slice(2);
-          }
-        }
-
-        // quadratic Bézier curveto
-        else if (instruction === 'q') {
-          // q + q → q + t
-          if (
-            prev.instruction === 'q' &&
-            data[0] === prev.data[2] - prev.data[0] &&
-            data[1] === prev.data[3] - prev.data[1]
-          ) {
-            instruction = 't';
-            data = data.slice(2);
-          }
-
-          // t + q → t + t
-          else if (
-            prev.instruction === 't' &&
-            data[2] === prev.data[0] &&
-            data[3] === prev.data[1]
-          ) {
-            instruction = 't';
-            data = data.slice(2);
-          }
-        }
-      }
-
-      // remove useless non-first path segments
-      if (params.removeUseless && !maybeHasStrokeAndLinecap) {
-        // l 0,0 / h 0 / v 0 / q 0,0 0,0 / t 0,0 / c 0,0 0,0 0,0 / s 0,0 0,0
-        if (
-          'lhvqtcs'.indexOf(instruction) > -1 &&
-          data.every(function (i) {
-            return i === 0;
-          })
-        ) {
-          path[index] = prev;
-          return false;
-        }
-
-        // a 25,25 -30 0,1 0,0
-        if (instruction === 'a' && data[5] === 0 && data[6] === 0) {
-          path[index] = prev;
-          return false;
-        }
-      }
-
-      item.instruction = instruction;
-      item.data = data;
-
-      prev = item;
-    } else {
-      // z resets coordinates
-      relSubpoint[0] = pathBase[0];
-      relSubpoint[1] = pathBase[1];
-      if (prev.instruction == 'z') return false;
-      prev = item;
-    }
-
-    return true;
-  });
-
-  return path;
-}
-
-/**
- * Writes data in shortest form using absolute or relative coordinates.
- *
- * @param {Array} data input path data
- * @return {Boolean} output
- */
-function convertToMixed(path, params) {
-  var prev = path[0];
-
-  path = path.filter(function (item, index) {
-    if (index == 0) return true;
-    if (!item.data) {
-      prev = item;
-      return true;
-    }
-
-    var instruction = item.instruction,
-      data = item.data,
-      adata = data && data.slice(0);
-
-    if ('mltqsc'.indexOf(instruction) > -1) {
-      for (var i = adata.length; i--; ) {
-        adata[i] += item.base[i % 2];
-      }
-    } else if (instruction == 'h') {
-      adata[0] += item.base[0];
-    } else if (instruction == 'v') {
-      adata[0] += item.base[1];
-    } else if (instruction == 'a') {
-      adata[5] += item.base[0];
-      adata[6] += item.base[1];
-    }
-
-    roundData(adata);
-
-    var absoluteDataStr = cleanupOutData$1(adata, params),
-      relativeDataStr = cleanupOutData$1(data, params);
-
-    // Convert to absolute coordinates if it's shorter or forceAbsolutePath is true.
-    // v-20 -> V0
-    // Don't convert if it fits following previous instruction.
-    // l20 30-10-50 instead of l20 30L20 30
-    if (
-      params.forceAbsolutePath ||
-      (absoluteDataStr.length < relativeDataStr.length &&
-        !(
-          params.negativeExtraSpace &&
-          instruction == prev.instruction &&
-          prev.instruction.charCodeAt(0) > 96 &&
-          absoluteDataStr.length == relativeDataStr.length - 1 &&
-          (data[0] < 0 ||
-            (/^0\./.test(data[0]) && prev.data[prev.data.length - 1] % 1))
-        ))
-    ) {
-      item.instruction = instruction.toUpperCase();
-      item.data = adata;
-    }
-
-    prev = item;
-
-    return true;
-  });
-
-  return path;
-}
-
-/**
- * Checks if curve is convex. Control points of such a curve must form
- * a convex quadrilateral with diagonals crosspoint inside of it.
- *
- * @param {Array} data input path data
- * @return {Boolean} output
- */
-function isConvex(data) {
-  var center = getIntersection([
-    0,
-    0,
-    data[2],
-    data[3],
-    data[0],
-    data[1],
-    data[4],
-    data[5],
-  ]);
-
-  return (
-    center &&
-    data[2] < center[0] == center[0] < 0 &&
-    data[3] < center[1] == center[1] < 0 &&
-    data[4] < center[0] == center[0] < data[0] &&
-    data[5] < center[1] == center[1] < data[1]
-  );
-}
-
-/**
- * Computes lines equations by two points and returns their intersection point.
- *
- * @param {Array} coords 8 numbers for 4 pairs of coordinates (x,y)
- * @return {Array|undefined} output coordinate of lines' crosspoint
- */
-function getIntersection(coords) {
-  // Prev line equation parameters.
-  var a1 = coords[1] - coords[3], // y1 - y2
-    b1 = coords[2] - coords[0], // x2 - x1
-    c1 = coords[0] * coords[3] - coords[2] * coords[1], // x1 * y2 - x2 * y1
-    // Next line equation parameters
-    a2 = coords[5] - coords[7], // y1 - y2
-    b2 = coords[6] - coords[4], // x2 - x1
-    c2 = coords[4] * coords[7] - coords[5] * coords[6], // x1 * y2 - x2 * y1
-    denom = a1 * b2 - a2 * b1;
-
-  if (!denom) return; // parallel lines havn't an intersection
-
-  var cross = [(b1 * c2 - b2 * c1) / denom, (a1 * c2 - a2 * c1) / -denom];
-  if (
-    !isNaN(cross[0]) &&
-    !isNaN(cross[1]) &&
-    isFinite(cross[0]) &&
-    isFinite(cross[1])
-  ) {
-    return cross;
-  }
-}
-
-/**
- * Decrease accuracy of floating-point numbers
- * in path data keeping a specified number of decimals.
- * Smart rounds values like 2.3491 to 2.35 instead of 2.349.
- * Doesn't apply "smartness" if the number precision fits already.
- *
- * @param {Array} data input data array
- * @return {Array} output data array
- */
-function strongRound(data) {
-  for (var i = data.length; i-- > 0; ) {
-    if (data[i].toFixed(precision) != data[i]) {
-      var rounded = +data[i].toFixed(precision - 1);
-      data[i] =
-        +Math.abs(rounded - data[i]).toFixed(precision + 1) >= error
-          ? +data[i].toFixed(precision)
-          : rounded;
-    }
-  }
-  return data;
-}
-
-/**
- * Simple rounding function if precision is 0.
- *
- * @param {Array} data input data array
- * @return {Array} output data array
- */
-function round$1(data) {
-  for (var i = data.length; i-- > 0; ) {
-    data[i] = Math.round(data[i]);
-  }
-  return data;
-}
-
-/**
- * Checks if a curve is a straight line by measuring distance
- * from middle points to the line formed by end points.
- *
- * @param {Array} xs array of curve points x-coordinates
- * @param {Array} ys array of curve points y-coordinates
- * @return {Boolean}
- */
-
-function isCurveStraightLine(data) {
-  // Get line equation a·x + b·y + c = 0 coefficients a, b (c = 0) by start and end points.
-  var i = data.length - 2,
-    a = -data[i + 1], // y1 − y2 (y1 = 0)
-    b = data[i], // x2 − x1 (x1 = 0)
-    d = 1 / (a * a + b * b); // same part for all points
-
-  if (i <= 1 || !isFinite(d)) return false; // curve that ends at start point isn't the case
-
-  // Distance from point (x0, y0) to the line is sqrt((c − a·x0 − b·y0)² / (a² + b²))
-  while ((i -= 2) >= 0) {
-    if (Math.sqrt(Math.pow(a * data[i] + b * data[i + 1], 2) * d) > error)
-      return false;
-  }
-
-  return true;
-}
-
-/**
- * Converts next curve from shorthand to full form using the current curve data.
- *
- * @param {Object} item curve to convert
- * @param {Array} data current curve data
- */
-
-function makeLonghand(item, data) {
-  switch (item.instruction) {
-    case 's':
-      item.instruction = 'c';
-      break;
-    case 't':
-      item.instruction = 'q';
-      break;
-  }
-  item.data.unshift(
-    data[data.length - 2] - data[data.length - 4],
-    data[data.length - 1] - data[data.length - 3]
-  );
-  return item;
-}
-
-/**
- * Returns distance between two points
- *
- * @param {Array} point1 first point coordinates
- * @param {Array} point2 second point coordinates
- * @return {Number} distance
- */
-
-function getDistance(point1, point2) {
-  return Math.hypot(point1[0] - point2[0], point1[1] - point2[1]);
-}
-
-/**
- * Returns coordinates of the curve point corresponding to the certain t
- * a·(1 - t)³·p1 + b·(1 - t)²·t·p2 + c·(1 - t)·t²·p3 + d·t³·p4,
- * where pN are control points and p1 is zero due to relative coordinates.
- *
- * @param {Array} curve array of curve points coordinates
- * @param {Number} t parametric position from 0 to 1
- * @return {Array} Point coordinates
- */
-
-function getCubicBezierPoint(curve, t) {
-  var sqrT = t * t,
-    cubT = sqrT * t,
-    mt = 1 - t,
-    sqrMt = mt * mt;
-
-  return [
-    3 * sqrMt * t * curve[0] + 3 * mt * sqrT * curve[2] + cubT * curve[4],
-    3 * sqrMt * t * curve[1] + 3 * mt * sqrT * curve[3] + cubT * curve[5],
-  ];
-}
-
-/**
- * Finds circle by 3 points of the curve and checks if the curve fits the found circle.
- *
- * @param {Array} curve
- * @return {Object|undefined} circle
- */
-
-function findCircle(curve) {
-  var midPoint = getCubicBezierPoint(curve, 1 / 2),
-    m1 = [midPoint[0] / 2, midPoint[1] / 2],
-    m2 = [(midPoint[0] + curve[4]) / 2, (midPoint[1] + curve[5]) / 2],
-    center = getIntersection([
-      m1[0],
-      m1[1],
-      m1[0] + m1[1],
-      m1[1] - m1[0],
-      m2[0],
-      m2[1],
-      m2[0] + (m2[1] - midPoint[1]),
-      m2[1] - (m2[0] - midPoint[0]),
-    ]),
-    radius = center && getDistance([0, 0], center),
-    tolerance = Math.min(arcThreshold * error, (arcTolerance * radius) / 100);
-
-  if (
-    center &&
-    radius < 1e15 &&
-    [1 / 4, 3 / 4].every(function (point) {
-      return (
-        Math.abs(
-          getDistance(getCubicBezierPoint(curve, point), center) - radius
-        ) <= tolerance
-      );
-    })
-  )
-    return { center: center, radius: radius };
-}
-
-/**
- * Checks if a curve fits the given circle.
- *
- * @param {Object} circle
- * @param {Array} curve
- * @return {Boolean}
- */
-
-function isArc(curve, circle) {
-  var tolerance = Math.min(
-    arcThreshold * error,
-    (arcTolerance * circle.radius) / 100
-  );
-
-  return [0, 1 / 4, 1 / 2, 3 / 4, 1].every(function (point) {
-    return (
-      Math.abs(
-        getDistance(getCubicBezierPoint(curve, point), circle.center) -
-          circle.radius
-      ) <= tolerance
-    );
-  });
-}
-
-/**
- * Checks if a previous curve fits the given circle.
- *
- * @param {Object} circle
- * @param {Array} curve
- * @return {Boolean}
- */
-
-function isArcPrev(curve, circle) {
-  return isArc(curve, {
-    center: [circle.center[0] + curve[4], circle.center[1] + curve[5]],
-    radius: circle.radius,
-  });
-}
-
-/**
- * Finds angle of a curve fitting the given arc.
-
- * @param {Array} curve
- * @param {Object} relCircle
- * @return {Number} angle
- */
-
-function findArcAngle(curve, relCircle) {
-  var x1 = -relCircle.center[0],
-    y1 = -relCircle.center[1],
-    x2 = curve[4] - relCircle.center[0],
-    y2 = curve[5] - relCircle.center[1];
-
-  return Math.acos(
-    (x1 * x2 + y1 * y2) / Math.sqrt((x1 * x1 + y1 * y1) * (x2 * x2 + y2 * y2))
-  );
-}
-
-/**
- * Converts given path data to string.
- *
- * @param {Object} params
- * @param {Array} pathData
- * @return {String}
- */
-
-function data2Path(params, pathData) {
-  return pathData.reduce(function (pathString, item) {
-    var strData = '';
-    if (item.data) {
-      strData = cleanupOutData$1(roundData(item.data.slice()), params);
-    }
-    return pathString + item.instruction + strData;
-  }, '');
-}
-
-var convertShapeToPath = {};
-
-const { stringifyPathData } = path;
-
-convertShapeToPath.type = 'perItem';
-
-convertShapeToPath.active = true;
-
-convertShapeToPath.description = 'converts basic shapes to more compact path form';
-
-convertShapeToPath.params = {
-  convertArcs: false,
-  floatPrecision: null,
-};
-
-const regNumber = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
-
-/**
- * Converts basic shape to more compact path.
- * It also allows further optimizations like
- * combining paths with similar attributes.
- *
- * @see https://www.w3.org/TR/SVG11/shapes.html
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Lev Solntsev
- */
-convertShapeToPath.fn = function (item, params) {
-  const precision = params ? params.floatPrecision : null;
-  const convertArcs = params && params.convertArcs;
-
-  if (
-    item.isElem('rect') &&
-    item.attributes.width != null &&
-    item.attributes.height != null &&
-    item.attributes.rx == null &&
-    item.attributes.ry == null
-  ) {
-    const x = Number(item.attributes.x || '0');
-    const y = Number(item.attributes.y || '0');
-    const width = Number(item.attributes.width);
-    const height = Number(item.attributes.height);
-    // Values like '100%' compute to NaN, thus running after
-    // cleanupNumericValues when 'px' units has already been removed.
-    // TODO: Calculate sizes from % and non-px units if possible.
-    if (isNaN(x - y + width - height)) return;
-    const pathData = [
-      { command: 'M', args: [x, y] },
-      { command: 'H', args: [x + width] },
-      { command: 'V', args: [y + height] },
-      { command: 'H', args: [x] },
-      { command: 'z', args: [] },
-    ];
-    item.attributes.d = stringifyPathData({ pathData, precision });
-    item.renameElem('path');
-    delete item.attributes.x;
-    delete item.attributes.y;
-    delete item.attributes.width;
-    delete item.attributes.height;
-  }
-
-  if (item.isElem('line')) {
-    const x1 = Number(item.attributes.x1 || '0');
-    const y1 = Number(item.attributes.y1 || '0');
-    const x2 = Number(item.attributes.x2 || '0');
-    const y2 = Number(item.attributes.y2 || '0');
-    if (isNaN(x1 - y1 + x2 - y2)) return;
-    const pathData = [
-      { command: 'M', args: [x1, y1] },
-      { command: 'L', args: [x2, y2] },
-    ];
-    item.attributes.d = stringifyPathData({ pathData, precision });
-    item.renameElem('path');
-    delete item.attributes.x1;
-    delete item.attributes.y1;
-    delete item.attributes.x2;
-    delete item.attributes.y2;
-  }
-
-  if (
-    (item.isElem('polyline') || item.isElem('polygon')) &&
-    item.attributes.points != null
-  ) {
-    const coords = (item.attributes.points.match(regNumber) || []).map(Number);
-    if (coords.length < 4) return false;
-    const pathData = [];
-    for (let i = 0; i < coords.length; i += 2) {
-      pathData.push({
-        command: i === 0 ? 'M' : 'L',
-        args: coords.slice(i, i + 2),
-      });
-    }
-    if (item.isElem('polygon')) {
-      pathData.push({ command: 'z', args: [] });
-    }
-    item.attributes.d = stringifyPathData({ pathData, precision });
-    item.renameElem('path');
-    delete item.attributes.points;
-  }
-
-  if (item.isElem('circle') && convertArcs) {
-    const cx = Number(item.attributes.cx || '0');
-    const cy = Number(item.attributes.cy || '0');
-    const r = Number(item.attributes.r || '0');
-    if (isNaN(cx - cy + r)) {
-      return;
-    }
-    const pathData = [
-      { command: 'M', args: [cx, cy - r] },
-      { command: 'A', args: [r, r, 0, 1, 0, cx, cy + r] },
-      { command: 'A', args: [r, r, 0, 1, 0, cx, cy - r] },
-      { command: 'z', args: [] },
-    ];
-    item.attributes.d = stringifyPathData({ pathData, precision });
-    item.renameElem('path');
-    delete item.attributes.cx;
-    delete item.attributes.cy;
-    delete item.attributes.r;
-  }
-
-  if (item.isElem('ellipse') && convertArcs) {
-    const ecx = Number(item.attributes.cx || '0');
-    const ecy = Number(item.attributes.cy || '0');
-    const rx = Number(item.attributes.rx || '0');
-    const ry = Number(item.attributes.ry || '0');
-    if (isNaN(ecx - ecy + rx - ry)) {
-      return;
-    }
-    const pathData = [
-      { command: 'M', args: [ecx, ecy - ry] },
-      { command: 'A', args: [rx, ry, 0, 1, 0, ecx, ecy + ry] },
-      { command: 'A', args: [rx, ry, 0, 1, 0, ecx, ecy - ry] },
-      { command: 'z', args: [] },
-    ];
-    item.attributes.d = stringifyPathData({ pathData, precision });
-    item.renameElem('path');
-    delete item.attributes.cx;
-    delete item.attributes.cy;
-    delete item.attributes.rx;
-    delete item.attributes.ry;
-  }
-};
-
-var convertStyleToAttrs = {};
-
-convertStyleToAttrs.type = 'perItem';
-
-convertStyleToAttrs.active = false;
-
-convertStyleToAttrs.description = 'converts style to attributes';
-
-convertStyleToAttrs.params = {
-  keepImportant: false,
-};
-
-var stylingProps = _collections.attrsGroups.presentation,
-  rEscape = '\\\\(?:[0-9a-f]{1,6}\\s?|\\r\\n|.)', // Like \" or \2051. Code points consume one space.
-  rAttr = '\\s*(' + g('[^:;\\\\]', rEscape) + '*?)\\s*', // attribute name like ‘fill’
-  rSingleQuotes = "'(?:[^'\\n\\r\\\\]|" + rEscape + ")*?(?:'|$)", // string in single quotes: 'smth'
-  rQuotes = '"(?:[^"\\n\\r\\\\]|' + rEscape + ')*?(?:"|$)', // string in double quotes: "smth"
-  rQuotedString = new RegExp('^' + g(rSingleQuotes, rQuotes) + '$'),
-  // Parentheses, E.g.: url(data:image/png;base64,iVBO...).
-  // ':' and ';' inside of it should be threated as is. (Just like in strings.)
-  rParenthesis =
-    '\\(' + g('[^\'"()\\\\]+', rEscape, rSingleQuotes, rQuotes) + '*?' + '\\)',
-  // The value. It can have strings and parentheses (see above). Fallbacks to anything in case of unexpected input.
-  rValue =
-    '\\s*(' +
-    g(
-      '[^!\'"();\\\\]+?',
-      rEscape,
-      rSingleQuotes,
-      rQuotes,
-      rParenthesis,
-      '[^;]*?'
-    ) +
-    '*?' +
-    ')',
-  // End of declaration. Spaces outside of capturing groups help to do natural trimming.
-  rDeclEnd = '\\s*(?:;\\s*|$)',
-  // Important rule
-  rImportant = '(\\s*!important(?![-(\\w]))?',
-  // Final RegExp to parse CSS declarations.
-  regDeclarationBlock = new RegExp(
-    rAttr + ':' + rValue + rImportant + rDeclEnd,
-    'ig'
-  ),
-  // Comments expression. Honors escape sequences and strings.
-  regStripComments = new RegExp(
-    g(rEscape, rSingleQuotes, rQuotes, '/\\*[^]*?\\*/'),
-    'ig'
-  );
-
-/**
- * Convert style in attributes. Cleanups comments and illegal declarations (without colon) as a side effect.
- *
- * @example
- * <g style="fill:#000; color: #fff;">
- *             ⬇
- * <g fill="#000" color="#fff">
- *
- * @example
- * <g style="fill:#000; color: #fff; -webkit-blah: blah">
- *             ⬇
- * <g fill="#000" color="#fff" style="-webkit-blah: blah">
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-convertStyleToAttrs.fn = function (item, params) {
-  if (item.type === 'element' && item.attributes.style != null) {
-    // ['opacity: 1', 'color: #000']
-    let styles = [];
-    const newAttributes = {};
-
-    // Strip CSS comments preserving escape sequences and strings.
-    const styleValue = item.attributes.style.replace(
-      regStripComments,
-      (match) => {
-        return match[0] == '/'
-          ? ''
-          : match[0] == '\\' && /[-g-z]/i.test(match[1])
-          ? match[1]
-          : match;
-      }
-    );
-
-    regDeclarationBlock.lastIndex = 0;
-    // eslint-disable-next-line no-cond-assign
-    for (var rule; (rule = regDeclarationBlock.exec(styleValue)); ) {
-      if (!params.keepImportant || !rule[3]) {
-        styles.push([rule[1], rule[2]]);
-      }
-    }
-
-    if (styles.length) {
-      styles = styles.filter(function (style) {
-        if (style[0]) {
-          var prop = style[0].toLowerCase(),
-            val = style[1];
-
-          if (rQuotedString.test(val)) {
-            val = val.slice(1, -1);
-          }
-
-          if (stylingProps.includes(prop)) {
-            newAttributes[prop] = val;
-
-            return false;
-          }
-        }
-
-        return true;
-      });
-
-      Object.assign(item.attributes, newAttributes);
-
-      if (styles.length) {
-        item.attributes.style = styles
-          .map((declaration) => declaration.join(':'))
-          .join(';');
-      } else {
-        delete item.attributes.style;
-      }
-    }
-  }
-};
-
-function g() {
-  return '(?:' + Array.prototype.join.call(arguments, '|') + ')';
-}
-
-var convertTransform$1 = {};
-
-convertTransform$1.type = 'perItem';
-
-convertTransform$1.active = true;
-
-convertTransform$1.description = 'collapses multiple transformations and optimizes it';
-
-convertTransform$1.params = {
-  convertToShorts: true,
-  // degPrecision: 3, // transformPrecision (or matrix precision) - 2 by default
-  floatPrecision: 3,
-  transformPrecision: 5,
-  matrixToTransform: true,
-  shortTranslate: true,
-  shortScale: true,
-  shortRotate: true,
-  removeUseless: true,
-  collapseIntoOne: true,
-  leadingZero: true,
-  negativeExtraSpace: false,
-};
-
-var cleanupOutData = tools.cleanupOutData,
-  transform2js = _transforms.transform2js,
-  transformsMultiply = _transforms.transformsMultiply,
-  matrixToTransform = _transforms.matrixToTransform,
-  degRound,
-  floatRound,
-  transformRound;
-
-/**
- * Convert matrices to the short aliases,
- * convert long translate, scale or rotate transform notations to the shorts ones,
- * convert transforms to the matrices and multiply them all into one,
- * remove useless transforms.
- *
- * @see https://www.w3.org/TR/SVG11/coords.html#TransformMatrixDefined
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-convertTransform$1.fn = function (item, params) {
-  if (item.type === 'element') {
-    // transform
-    if (item.attributes.transform != null) {
-      convertTransform(item, 'transform', params);
-    }
-
-    // gradientTransform
-    if (item.attributes.gradientTransform != null) {
-      convertTransform(item, 'gradientTransform', params);
-    }
-
-    // patternTransform
-    if (item.attributes.patternTransform != null) {
-      convertTransform(item, 'patternTransform', params);
-    }
-  }
-};
-
-/**
- * Main function.
- *
- * @param {Object} item input item
- * @param {String} attrName attribute name
- * @param {Object} params plugin params
- */
-function convertTransform(item, attrName, params) {
-  let data = transform2js(item.attributes[attrName]);
-  params = definePrecision(data, params);
-
-  if (params.collapseIntoOne && data.length > 1) {
-    data = [transformsMultiply(data)];
-  }
-
-  if (params.convertToShorts) {
-    data = convertToShorts(data, params);
-  } else {
-    data.forEach(roundTransform);
-  }
-
-  if (params.removeUseless) {
-    data = removeUseless(data);
-  }
-
-  if (data.length) {
-    item.attributes[attrName] = js2transform(data, params);
-  } else {
-    delete item.attributes[attrName];
-  }
-}
-
-/**
- * Defines precision to work with certain parts.
- * transformPrecision - for scale and four first matrix parameters (needs a better precision due to multiplying),
- * floatPrecision - for translate including two last matrix and rotate parameters,
- * degPrecision - for rotate and skew. By default it's equal to (rougly)
- * transformPrecision - 2 or floatPrecision whichever is lower. Can be set in params.
- *
- * @param {Array} transforms input array
- * @param {Object} params plugin params
- * @return {Array} output array
- */
-function definePrecision(data, params) {
-  var matrixData = data.reduce(getMatrixData, []),
-    significantDigits = params.transformPrecision;
-
-  // Clone params so it don't affect other elements transformations.
-  params = Object.assign({}, params);
-
-  // Limit transform precision with matrix one. Calculating with larger precision doesn't add any value.
-  if (matrixData.length) {
-    params.transformPrecision = Math.min(
-      params.transformPrecision,
-      Math.max.apply(Math, matrixData.map(floatDigits)) ||
-        params.transformPrecision
-    );
-
-    significantDigits = Math.max.apply(
-      Math,
-      matrixData.map(function (n) {
-        return String(n).replace(/\D+/g, '').length; // Number of digits in a number. 123.45 → 5
-      })
-    );
-  }
-  // No sense in angle precision more then number of significant digits in matrix.
-  if (!('degPrecision' in params)) {
-    params.degPrecision = Math.max(
-      0,
-      Math.min(params.floatPrecision, significantDigits - 2)
-    );
-  }
-
-  floatRound =
-    params.floatPrecision >= 1 && params.floatPrecision < 20
-      ? smartRound.bind(this, params.floatPrecision)
-      : round;
-  degRound =
-    params.degPrecision >= 1 && params.floatPrecision < 20
-      ? smartRound.bind(this, params.degPrecision)
-      : round;
-  transformRound =
-    params.transformPrecision >= 1 && params.floatPrecision < 20
-      ? smartRound.bind(this, params.transformPrecision)
-      : round;
-
-  return params;
-}
-
-/**
- * Gathers four first matrix parameters.
- *
- * @param {Array} a array of data
- * @param {Object} transform
- * @return {Array} output array
- */
-function getMatrixData(a, b) {
-  return b.name == 'matrix' ? a.concat(b.data.slice(0, 4)) : a;
-}
-
-/**
- * Returns number of digits after the point. 0.125 → 3
- */
-function floatDigits(n) {
-  return (n = String(n)).slice(n.indexOf('.')).length - 1;
-}
-
-/**
- * Convert transforms to the shorthand alternatives.
- *
- * @param {Array} transforms input array
- * @param {Object} params plugin params
- * @return {Array} output array
- */
-function convertToShorts(transforms, params) {
-  for (var i = 0; i < transforms.length; i++) {
-    var transform = transforms[i];
-
-    // convert matrix to the short aliases
-    if (params.matrixToTransform && transform.name === 'matrix') {
-      var decomposed = matrixToTransform(transform, params);
-      if (
-        decomposed != transform &&
-        js2transform(decomposed, params).length <=
-          js2transform([transform], params).length
-      ) {
-        transforms.splice.apply(transforms, [i, 1].concat(decomposed));
-      }
-      transform = transforms[i];
-    }
-
-    // fixed-point numbers
-    // 12.754997 → 12.755
-    roundTransform(transform);
-
-    // convert long translate transform notation to the shorts one
-    // translate(10 0) → translate(10)
-    if (
-      params.shortTranslate &&
-      transform.name === 'translate' &&
-      transform.data.length === 2 &&
-      !transform.data[1]
-    ) {
-      transform.data.pop();
-    }
-
-    // convert long scale transform notation to the shorts one
-    // scale(2 2) → scale(2)
-    if (
-      params.shortScale &&
-      transform.name === 'scale' &&
-      transform.data.length === 2 &&
-      transform.data[0] === transform.data[1]
-    ) {
-      transform.data.pop();
-    }
-
-    // convert long rotate transform notation to the short one
-    // translate(cx cy) rotate(a) translate(-cx -cy) → rotate(a cx cy)
-    if (
-      params.shortRotate &&
-      transforms[i - 2] &&
-      transforms[i - 2].name === 'translate' &&
-      transforms[i - 1].name === 'rotate' &&
-      transforms[i].name === 'translate' &&
-      transforms[i - 2].data[0] === -transforms[i].data[0] &&
-      transforms[i - 2].data[1] === -transforms[i].data[1]
-    ) {
-      transforms.splice(i - 2, 3, {
-        name: 'rotate',
-        data: [
-          transforms[i - 1].data[0],
-          transforms[i - 2].data[0],
-          transforms[i - 2].data[1],
-        ],
-      });
-
-      // splice compensation
-      i -= 2;
-    }
-  }
-
-  return transforms;
-}
-
-/**
- * Remove useless transforms.
- *
- * @param {Array} transforms input array
- * @return {Array} output array
- */
-function removeUseless(transforms) {
-  return transforms.filter(function (transform) {
-    // translate(0), rotate(0[, cx, cy]), skewX(0), skewY(0)
-    if (
-      (['translate', 'rotate', 'skewX', 'skewY'].indexOf(transform.name) > -1 &&
-        (transform.data.length == 1 || transform.name == 'rotate') &&
-        !transform.data[0]) ||
-      // translate(0, 0)
-      (transform.name == 'translate' &&
-        !transform.data[0] &&
-        !transform.data[1]) ||
-      // scale(1)
-      (transform.name == 'scale' &&
-        transform.data[0] == 1 &&
-        (transform.data.length < 2 || transform.data[1] == 1)) ||
-      // matrix(1 0 0 1 0 0)
-      (transform.name == 'matrix' &&
-        transform.data[0] == 1 &&
-        transform.data[3] == 1 &&
-        !(
-          transform.data[1] ||
-          transform.data[2] ||
-          transform.data[4] ||
-          transform.data[5]
-        ))
-    ) {
-      return false;
-    }
-
-    return true;
-  });
-}
-
-/**
- * Convert transforms JS representation to string.
- *
- * @param {Array} transformJS JS representation array
- * @param {Object} params plugin params
- * @return {String} output string
- */
-function js2transform(transformJS, params) {
-  var transformString = '';
-
-  // collect output value string
-  transformJS.forEach(function (transform) {
-    roundTransform(transform);
-    transformString +=
-      (transformString && ' ') +
-      transform.name +
-      '(' +
-      cleanupOutData(transform.data, params) +
-      ')';
-  });
-
-  return transformString;
-}
-
-function roundTransform(transform) {
-  switch (transform.name) {
-    case 'translate':
-      transform.data = floatRound(transform.data);
-      break;
-    case 'rotate':
-      transform.data = degRound(transform.data.slice(0, 1)).concat(
-        floatRound(transform.data.slice(1))
-      );
-      break;
-    case 'skewX':
-    case 'skewY':
-      transform.data = degRound(transform.data);
-      break;
-    case 'scale':
-      transform.data = transformRound(transform.data);
-      break;
-    case 'matrix':
-      transform.data = transformRound(transform.data.slice(0, 4)).concat(
-        floatRound(transform.data.slice(4))
-      );
-      break;
-  }
-  return transform;
-}
-
-/**
- * Rounds numbers in array.
- *
- * @param {Array} data input data array
- * @return {Array} output data array
- */
-function round(data) {
-  return data.map(Math.round);
-}
-
-/**
- * Decrease accuracy of floating-point numbers
- * in transforms keeping a specified number of decimals.
- * Smart rounds values like 2.349 to 2.35.
- *
- * @param {Number} fixed number of decimals
- * @param {Array} data input data array
- * @return {Array} output data array
- */
-function smartRound(precision, data) {
-  for (
-    var i = data.length,
-      tolerance = +Math.pow(0.1, precision).toFixed(precision);
-    i--;
-
-  ) {
-    if (data[i].toFixed(precision) != data[i]) {
-      var rounded = +data[i].toFixed(precision - 1);
-      data[i] =
-        +Math.abs(rounded - data[i]).toFixed(precision + 1) >= tolerance
-          ? +data[i].toFixed(precision)
-          : rounded;
-    }
-  }
-  return data;
-}
-
-var mergeStyles = {};
-
-var CSSClassList$1 = function (node) {
-  this.parentNode = node;
-  this.classNames = new Set();
-  const value = node.attributes.class;
-  if (value != null) {
-    this.addClassValueHandler();
-    this.setClassValue(value);
-  }
-};
-
-// attr.class.value
-
-CSSClassList$1.prototype.addClassValueHandler = function () {
-  Object.defineProperty(this.parentNode.attributes, 'class', {
-    get: this.getClassValue.bind(this),
-    set: this.setClassValue.bind(this),
-    enumerable: true,
-    configurable: true,
-  });
-};
-
-CSSClassList$1.prototype.getClassValue = function () {
-  var arrClassNames = Array.from(this.classNames);
-  return arrClassNames.join(' ');
-};
-
-CSSClassList$1.prototype.setClassValue = function (newValue) {
-  if (typeof newValue === 'undefined') {
-    this.classNames.clear();
-    return;
-  }
-  var arrClassNames = newValue.split(' ');
-  this.classNames = new Set(arrClassNames);
-};
-
-CSSClassList$1.prototype.add = function (/* variadic */) {
-  this.addClassValueHandler();
-  Object.values(arguments).forEach(this._addSingle.bind(this));
-};
-
-CSSClassList$1.prototype._addSingle = function (className) {
-  this.classNames.add(className);
-};
-
-CSSClassList$1.prototype.remove = function (/* variadic */) {
-  this.addClassValueHandler();
-  Object.values(arguments).forEach(this._removeSingle.bind(this));
-};
-
-CSSClassList$1.prototype._removeSingle = function (className) {
-  this.classNames.delete(className);
-};
-
-CSSClassList$1.prototype.item = function (index) {
-  var arrClassNames = Array.from(this.classNames);
-  return arrClassNames[index];
-};
-
-CSSClassList$1.prototype.toggle = function (className, force) {
-  if (this.contains(className) || force === false) {
-    this.classNames.delete(className);
-  }
-  this.classNames.add(className);
-};
-
-CSSClassList$1.prototype.contains = function (className) {
-  return this.classNames.has(className);
-};
-
-var cssClassList = CSSClassList$1;
-
-var csstree$3 = lib$1,
+var csstree$4 = lib$1,
   csstools = cssTools$1;
 
 var CSSStyleDeclaration$1 = function (node) {
@@ -39170,7 +34830,7 @@ CSSStyleDeclaration$1.prototype._loadCssText = function () {
 
   var declarations = {};
   try {
-    declarations = csstree$3.parse(inlineCssStr, {
+    declarations = csstree$4.parse(inlineCssStr, {
       context: 'declarationList',
       parseValue: false,
     });
@@ -39680,12 +35340,12 @@ JSAPI$5.prototype.addAttr = function (attr) {
 
   if (attr.name === 'class') {
     // newly added class attribute
-    this.class.hasClass();
+    this.class.addClassValueHandler();
   }
 
   if (attr.name === 'style') {
     // newly added style attribute
-    this.style.hasStyle();
+    this.style.addStyleValueHandler();
   }
 
   return this.attrs[attr.name];
@@ -39762,24 +35422,25 @@ JSAPI$5.prototype.matches = function (selector) {
   return is(this, selector, cssSelectOpts);
 };
 
-const { closestByName: closestByName$3, detachNodeFromParent: detachNodeFromParent$2 } = xast;
+const { closestByName: closestByName$4, detachNodeFromParent: detachNodeFromParent$9 } = xast;
 const JSAPI$4 = jsAPI;
 
-mergeStyles.type = 'visitor';
-mergeStyles.active = true;
-mergeStyles.description = 'merge multiple style elements into one';
+mergeStyles$1.name = 'mergeStyles';
+mergeStyles$1.type = 'visitor';
+mergeStyles$1.active = true;
+mergeStyles$1.description = 'merge multiple style elements into one';
 
 /**
  * Merge multiple style elements into one.
  *
  * @author strarsis <strarsis@gmail.com>
  */
-mergeStyles.fn = () => {
+mergeStyles$1.fn = () => {
   let firstStyleElement = null;
   let collectedStyles = '';
   let styleContentType = 'text';
 
-  const enterElement = (node) => {
+  const enterElement = (node, parentNode) => {
     // collect style elements
     if (node.name !== 'style') {
       return;
@@ -39795,7 +35456,7 @@ mergeStyles.fn = () => {
     }
 
     // skip <foreignObject> content
-    if (closestByName$3(node, 'foreignObject')) {
+    if (closestByName$4(node, 'foreignObject')) {
       return;
     }
 
@@ -39813,7 +35474,7 @@ mergeStyles.fn = () => {
 
     // remove empty style elements
     if (css.trim().length === 0) {
-      detachNodeFromParent$2(node);
+      detachNodeFromParent$9(node, parentNode);
       return;
     }
 
@@ -39829,7 +35490,7 @@ mergeStyles.fn = () => {
     if (firstStyleElement == null) {
       firstStyleElement = node;
     } else {
-      detachNodeFromParent$2(node);
+      detachNodeFromParent$9(node, parentNode);
       firstStyleElement.children = [
         new JSAPI$4(
           { type: styleContentType, value: collectedStyles },
@@ -39846,24 +35507,26 @@ mergeStyles.fn = () => {
   };
 };
 
-var inlineStyles = {};
+var inlineStyles$1 = {};
 
-const csstree$2 = lib$1;
-const { querySelectorAll, closestByName: closestByName$2 } = xast;
+const csstree$3 = lib$1;
+const { querySelectorAll, closestByName: closestByName$3 } = xast;
 const cssTools = cssTools$1;
 
-inlineStyles.type = 'full';
+inlineStyles$1.name = 'inlineStyles';
 
-inlineStyles.active = true;
+inlineStyles$1.type = 'full';
 
-inlineStyles.params = {
+inlineStyles$1.active = true;
+
+inlineStyles$1.params = {
   onlyMatchedOnce: true,
   removeMatchedSelectors: true,
   useMqs: ['', 'screen'],
   usePseudos: [''],
 };
 
-inlineStyles.description = 'inline styles (additional options)';
+inlineStyles$1.description = 'inline styles (additional options)';
 
 /**
  * Moves + merges styles from style elements to element styles
@@ -39889,7 +35552,7 @@ inlineStyles.description = 'inline styles (additional options)';
  *
  * @author strarsis <strarsis@gmail.com>
  */
-inlineStyles.fn = function (root, opts) {
+inlineStyles$1.fn = function (root, opts) {
   // collect <style/>s
   var styleEls = querySelectorAll(root, 'style');
 
@@ -39913,7 +35576,7 @@ inlineStyles.fn = function (root, opts) {
     // skip empty <style/>s or <foreignObject> content.
     if (
       styleEl.children.length === 0 ||
-      closestByName$2(styleEl, 'foreignObject')
+      closestByName$3(styleEl, 'foreignObject')
     ) {
       continue;
     }
@@ -39923,7 +35586,7 @@ inlineStyles.fn = function (root, opts) {
     // collect <style/>s and their css ast
     var cssAst = {};
     try {
-      cssAst = csstree$2.parse(cssStr, {
+      cssAst = csstree$3.parse(cssStr, {
         parseValue: false,
         parseCustomProperty: false,
       });
@@ -39956,7 +35619,7 @@ inlineStyles.fn = function (root, opts) {
 
   // match selectors
   for (selector of sortedSelectors) {
-    var selectorStr = csstree$2.generate(selector.item.data),
+    var selectorStr = csstree$3.generate(selector.item.data),
       selectedEls = null;
 
     try {
@@ -39996,7 +35659,7 @@ inlineStyles.fn = function (root, opts) {
       }
 
       // merge declarations
-      csstree$2.walk(selector.rule, {
+      csstree$3.walk(selector.rule, {
         visit: 'Declaration',
         enter: function (styleCsstreeDeclaration) {
           // existing inline styles have higher priority
@@ -40073,7 +35736,7 @@ inlineStyles.fn = function (root, opts) {
 
   // clean up now empty elements
   for (var style of styles) {
-    csstree$2.walk(style.cssAst, {
+    csstree$3.walk(style.cssAst, {
       visit: 'Rule',
       enter: function (node, item, list) {
         // clean up <style/> atrules without any rulesets left
@@ -40118,113 +35781,13 @@ inlineStyles.fn = function (root, opts) {
     }
 
     // update existing, left over <style>s
-    cssTools.setCssStr(style.styleEl, csstree$2.generate(style.cssAst));
+    cssTools.setCssStr(style.styleEl, csstree$3.generate(style.cssAst));
   }
 
   return root;
 };
 
-var mergePaths = {};
-
-const { detachNodeFromParent: detachNodeFromParent$1 } = xast;
-const { computeStyle: computeStyle$1 } = style;
-const { path2js: path2js$1, js2path, intersects: intersects$1 } = _path$1;
-
-mergePaths.type = 'visitor';
-mergePaths.active = true;
-mergePaths.description = 'merges multiple paths in one if possible';
-
-/**
- * Merge multiple Paths into one.
- *
- * @param {Object} root
- * @param {Object} params
- *
- * @author Kir Belevich, Lev Solntsev
- */
-mergePaths.fn = (root, params) => {
-  const {
-    force = false,
-    floatPrecision,
-    noSpaceAfterFlags = false, // a20 60 45 0 1 30 20 → a20 60 45 0130 20
-  } = params;
-
-  return {
-    element: {
-      enter: (node) => {
-        let prevChild = null;
-
-        for (const child of node.children) {
-          // skip if previous element is not path or contains animation elements
-          if (
-            prevChild == null ||
-            prevChild.type !== 'element' ||
-            prevChild.name !== 'path' ||
-            prevChild.children.length !== 0 ||
-            prevChild.attributes.d == null
-          ) {
-            prevChild = child;
-            continue;
-          }
-
-          // skip if element is not path or contains animation elements
-          if (
-            child.type !== 'element' ||
-            child.name !== 'path' ||
-            child.children.length !== 0 ||
-            child.attributes.d == null
-          ) {
-            prevChild = child;
-            continue;
-          }
-
-          // preserve paths with markers
-          const computedStyle = computeStyle$1(child);
-          if (
-            computedStyle['marker-start'] ||
-            computedStyle['marker-mid'] ||
-            computedStyle['marker-end']
-          ) {
-            prevChild = child;
-            continue;
-          }
-
-          const prevChildAttrs = Object.keys(prevChild.attributes);
-          const childAttrs = Object.keys(child.attributes);
-          let attributesAreEqual = prevChildAttrs.length === childAttrs.length;
-          for (const name of childAttrs) {
-            if (name !== 'd') {
-              if (
-                prevChild.attributes[name] == null ||
-                prevChild.attributes[name] !== child.attributes[name]
-              ) {
-                attributesAreEqual = false;
-              }
-            }
-          }
-          const prevPathJS = path2js$1(prevChild);
-          const curPathJS = path2js$1(child);
-
-          if (
-            attributesAreEqual &&
-            (force || !intersects$1(prevPathJS, curPathJS))
-          ) {
-            js2path(prevChild, prevPathJS.concat(curPathJS), {
-              floatPrecision,
-              noSpaceAfterFlags,
-            });
-            detachNodeFromParent$1(child);
-            continue;
-          }
-
-          prevChild = child;
-        }
-      },
-    },
-  };
-};
-
-var minifyStyles = {};
+var minifyStyles$1 = {};
 
 var hasOwnProperty$4 = Object.prototype.hasOwnProperty;
 
@@ -41593,7 +37156,7 @@ var createDeclarationIndexer$1 = function createDeclarationIndexer() {
 };
 
 var generate$4 = lib$1.generate;
-var specificity = specificity$3;
+var specificity$1 = specificity$3;
 
 var nonFreezePseudoElements = {
     'first-letter': true,
@@ -41670,7 +37233,7 @@ var processSelector$1 = function freeze(node, usageData) {
             }
         });
 
-        simpleSelector.compareMarker = specificity(simpleSelector).toString();
+        simpleSelector.compareMarker = specificity$1(simpleSelector).toString();
         simpleSelector.id = null; // pre-init property to avoid multiple hidden class
         simpleSelector.id = generate$4(simpleSelector);
 
@@ -43314,50 +38877,51 @@ var compress$1 = function compress(ast, options) {
     };
 };
 
-var name = "csso";
-var version = "4.2.0";
-var description = "CSS minifier with structural optimisations";
-var homepage = "https://github.com/css/csso";
-var author = "Sergey Kryzhanovsky <skryzhanovsky@ya.ru> (https://github.com/afelix)";
-var maintainers = [
-	{
-		name: "Roman Dvornov",
-		email: "rdvornov@gmail.com",
-		"github-username": "lahmatiy"
-	}
+var _args = [
+	[
+		"csso@4.2.0",
+		"/home/sonny/Projects/OhMySVG"
+	]
 ];
-var license = "MIT";
-var repository = "css/csso";
-var bugs = {
-	url: "https://github.com/css/csso/issues"
+var _development = true;
+var _from = "csso@4.2.0";
+var _id = "csso@4.2.0";
+var _inBundle = false;
+var _integrity = "sha512-wvlcdIbf6pwKEk7vHj8/Bkc0B4ylXZruLvOgs9doS5eOsOpuodOV2zJChSpkp+pRpYQLQMeF04nr3Z68Sta9jA==";
+var _location = "/csso";
+var _phantomChildren = {
 };
-var keywords = [
-	"css",
-	"compress",
-	"minifier",
-	"minify",
-	"optimise",
-	"optimisation",
-	"csstree"
+var _requested = {
+	type: "version",
+	registry: true,
+	raw: "csso@4.2.0",
+	name: "csso",
+	escapedName: "csso",
+	rawSpec: "4.2.0",
+	saveSpec: null,
+	fetchSpec: "4.2.0"
+};
+var _requiredBy = [
+	"/svgo"
 ];
-var main = "./lib/index";
-var scripts = {
-	test: "mocha --reporter dot",
-	lint: "eslint lib test",
-	"lint-and-test": "npm run lint && npm test",
-	build: "rollup --config && terser dist/csso.js --compress --mangle -o dist/csso.min.js",
-	coverage: "nyc npm test",
-	coveralls: "nyc report --reporter=text-lcov | coveralls",
-	travis: "nyc npm run lint-and-test && npm run coveralls",
-	hydrogen: "node --trace-hydrogen --trace-phase=Z --trace-deopt --code-comments --hydrogen-track-positions --redirect-code-traces --redirect-code-traces-to=code.asm --trace_hydrogen_file=code.cfg --print-opt-code bin/csso --stat -o /dev/null",
-	prepublishOnly: "npm run build"
-};
-var dependencies = {
-	"css-tree": "^1.1.2"
+var _resolved = "https://registry.npmjs.org/csso/-/csso-4.2.0.tgz";
+var _spec = "4.2.0";
+var _where = "/home/sonny/Projects/OhMySVG";
+var author = {
+	name: "Sergey Kryzhanovsky",
+	email: "skryzhanovsky@ya.ru",
+	url: "https://github.com/afelix"
 };
 var browser = {
 	"css-tree": "css-tree/dist/csstree.min.js"
 };
+var bugs = {
+	url: "https://github.com/css/csso/issues"
+};
+var dependencies = {
+	"css-tree": "^1.1.2"
+};
+var description = "CSS minifier with structural optimisations";
 var devDependencies = {
 	"@rollup/plugin-commonjs": "^11.0.1",
 	"@rollup/plugin-json": "^4.0.1",
@@ -43377,30 +38941,78 @@ var files = [
 	"dist",
 	"lib"
 ];
+var homepage = "https://github.com/css/csso";
+var keywords = [
+	"css",
+	"compress",
+	"minifier",
+	"minify",
+	"optimise",
+	"optimisation",
+	"csstree"
+];
+var license = "MIT";
+var main = "./lib/index";
+var maintainers = [
+	{
+		name: "Roman Dvornov",
+		email: "rdvornov@gmail.com"
+	}
+];
+var name = "csso";
+var repository = {
+	type: "git",
+	url: "git+https://github.com/css/csso.git"
+};
+var scripts = {
+	build: "rollup --config && terser dist/csso.js --compress --mangle -o dist/csso.min.js",
+	coverage: "nyc npm test",
+	coveralls: "nyc report --reporter=text-lcov | coveralls",
+	hydrogen: "node --trace-hydrogen --trace-phase=Z --trace-deopt --code-comments --hydrogen-track-positions --redirect-code-traces --redirect-code-traces-to=code.asm --trace_hydrogen_file=code.cfg --print-opt-code bin/csso --stat -o /dev/null",
+	lint: "eslint lib test",
+	"lint-and-test": "npm run lint && npm test",
+	prepublishOnly: "npm run build",
+	test: "mocha --reporter dot",
+	travis: "nyc npm run lint-and-test && npm run coveralls"
+};
+var version = "4.2.0";
 var require$$2 = {
-	name: name,
-	version: version,
-	description: description,
-	homepage: homepage,
+	_args: _args,
+	_development: _development,
+	_from: _from,
+	_id: _id,
+	_inBundle: _inBundle,
+	_integrity: _integrity,
+	_location: _location,
+	_phantomChildren: _phantomChildren,
+	_requested: _requested,
+	_requiredBy: _requiredBy,
+	_resolved: _resolved,
+	_spec: _spec,
+	_where: _where,
 	author: author,
-	maintainers: maintainers,
-	license: license,
-	repository: repository,
-	bugs: bugs,
-	keywords: keywords,
-	main: main,
-	scripts: scripts,
-	dependencies: dependencies,
 	browser: browser,
+	bugs: bugs,
+	dependencies: dependencies,
+	description: description,
 	devDependencies: devDependencies,
 	engines: engines,
-	files: files
+	files: files,
+	homepage: homepage,
+	keywords: keywords,
+	license: license,
+	main: main,
+	maintainers: maintainers,
+	name: name,
+	repository: repository,
+	scripts: scripts,
+	version: version
 };
 
-var csstree$1 = lib$1;
-var parse = csstree$1.parse;
+var csstree$2 = lib$1;
+var parse = csstree$2.parse;
 var compress = compress$1;
-var generate = csstree$1.generate;
+var generate = csstree$2.generate;
 
 function debugOutput(name, options, startTime, data) {
     if (options.debug) {
@@ -43536,20 +39148,22 @@ var lib = {
     // css syntax parser/walkers/generator/etc
     syntax: Object.assign({
         compress: compress
-    }, csstree$1)
+    }, csstree$2)
 };
 
 const csso = lib;
-const { traverse: traverse$2 } = xast;
+const { traverse: traverse$4 } = xast;
 
-minifyStyles.type = 'full';
+minifyStyles$1.name = 'minifyStyles';
 
-minifyStyles.active = true;
+minifyStyles$1.type = 'full';
 
-minifyStyles.description =
+minifyStyles$1.active = true;
+
+minifyStyles$1.description =
   'minifies styles and removes unused styles based on usage data';
 
-minifyStyles.params = {
+minifyStyles$1.params = {
   // ... CSSO options goes here
 
   // additional
@@ -43566,7 +39180,7 @@ minifyStyles.params = {
  *
  * @author strarsis <strarsis@gmail.com>
  */
-minifyStyles.fn = function (ast, options) {
+minifyStyles$1.fn = function (ast, options) {
   options = options || {};
 
   var minifyOptionsForStylesheet = cloneObject(options);
@@ -43614,7 +39228,7 @@ function cloneObject(obj) {
 
 function findStyleElems(ast) {
   const nodesWithStyles = [];
-  traverse$2(ast, (node) => {
+  traverse$4(ast, (node) => {
     if (node.type === 'element') {
       if (node.name === 'style' && node.children.length !== 0) {
         nodesWithStyles.push(node);
@@ -43648,7 +39262,7 @@ function collectUsageData(ast, options) {
     tags: Object.create(null),
   };
 
-  traverse$2(ast, (node) => {
+  traverse$4(ast, (node) => {
     if (node.type === 'element') {
       if (node.name === 'script') {
         safe = false;
@@ -43689,15 +39303,2057 @@ function collectUsageData(ast, options) {
   return safe && hasData ? usageData : null;
 }
 
-var moveElemsAttrsToGroup = {};
+var cleanupIDs$1 = {};
 
-const { inheritableAttrs: inheritableAttrs$1, pathElems: pathElems$1 } = _collections;
+const { traverse: traverse$3, traverseBreak } = xast;
+const { parseName: parseName$3 } = tools;
 
-moveElemsAttrsToGroup.type = 'perItemReverse';
+cleanupIDs$1.name = 'cleanupIDs';
 
-moveElemsAttrsToGroup.active = true;
+cleanupIDs$1.type = 'full';
 
-moveElemsAttrsToGroup.description = 'moves elements attributes to the existing group wrapper';
+cleanupIDs$1.active = true;
+
+cleanupIDs$1.description = 'removes unused IDs and minifies used';
+
+cleanupIDs$1.params = {
+  remove: true,
+  minify: true,
+  prefix: '',
+  preserve: [],
+  preservePrefixes: [],
+  force: false,
+};
+
+var referencesProps$3 = new Set(_collections.referencesProps),
+  regReferencesUrl = /\burl\(("|')?#(.+?)\1\)/,
+  regReferencesHref = /^#(.+?)$/,
+  regReferencesBegin = /(\w+)\./,
+  styleOrScript$1 = ['style', 'script'],
+  generateIDchars = [
+    'a',
+    'b',
+    'c',
+    'd',
+    'e',
+    'f',
+    'g',
+    'h',
+    'i',
+    'j',
+    'k',
+    'l',
+    'm',
+    'n',
+    'o',
+    'p',
+    'q',
+    'r',
+    's',
+    't',
+    'u',
+    'v',
+    'w',
+    'x',
+    'y',
+    'z',
+    'A',
+    'B',
+    'C',
+    'D',
+    'E',
+    'F',
+    'G',
+    'H',
+    'I',
+    'J',
+    'K',
+    'L',
+    'M',
+    'N',
+    'O',
+    'P',
+    'Q',
+    'R',
+    'S',
+    'T',
+    'U',
+    'V',
+    'W',
+    'X',
+    'Y',
+    'Z',
+  ],
+  maxIDindex = generateIDchars.length - 1;
+
+/**
+ * Remove unused and minify used IDs
+ * (only if there are no any <style> or <script>).
+ *
+ * @param {Object} item current iteration item
+ * @param {Object} params plugin params
+ *
+ * @author Kir Belevich
+ */
+cleanupIDs$1.fn = function (root, params) {
+  var currentID,
+    currentIDstring,
+    IDs = new Map(),
+    referencesIDs = new Map(),
+    hasStyleOrScript = false,
+    preserveIDs = new Set(
+      Array.isArray(params.preserve)
+        ? params.preserve
+        : params.preserve
+        ? [params.preserve]
+        : []
+    ),
+    preserveIDPrefixes = new Set(
+      Array.isArray(params.preservePrefixes)
+        ? params.preservePrefixes
+        : params.preservePrefixes
+        ? [params.preservePrefixes]
+        : []
+    ),
+    idValuePrefix = '#',
+    idValuePostfix = '.';
+
+  traverse$3(root, (node) => {
+    if (hasStyleOrScript === true) {
+      return traverseBreak;
+    }
+
+    // quit if <style> or <script> present ('force' param prevents quitting)
+    if (!params.force) {
+      if (node.isElem(styleOrScript$1) && node.children.length !== 0) {
+        hasStyleOrScript = true;
+        return;
+      }
+
+      // Don't remove IDs if the whole SVG consists only of defs.
+      if (node.type === 'element' && node.name === 'svg') {
+        let hasDefsOnly = true;
+        for (const child of node.children) {
+          if (child.type !== 'element' || child.name !== 'defs') {
+            hasDefsOnly = false;
+            break;
+          }
+        }
+        if (hasDefsOnly) {
+          return traverseBreak;
+        }
+      }
+    }
+
+    // …and don't remove any ID if yes
+    if (node.type === 'element') {
+      for (const [name, value] of Object.entries(node.attributes)) {
+        let key;
+        let match;
+
+        // save IDs
+        if (name === 'id') {
+          key = value;
+          if (IDs.has(key)) {
+            delete node.attributes.id; // remove repeated id
+          } else {
+            IDs.set(key, node);
+          }
+        } else {
+          // save references
+          const { local } = parseName$3(name);
+          if (
+            referencesProps$3.has(name) &&
+            (match = value.match(regReferencesUrl))
+          ) {
+            key = match[2]; // url() reference
+          } else if (
+            (local === 'href' && (match = value.match(regReferencesHref))) ||
+            (name === 'begin' && (match = value.match(regReferencesBegin)))
+          ) {
+            key = match[1]; // href reference
+          }
+          if (key) {
+            const refs = referencesIDs.get(key) || [];
+            refs.push({ element: node, name, value });
+            referencesIDs.set(key, refs);
+          }
+        }
+      }
+    }
+  });
+
+  if (hasStyleOrScript) {
+    return root;
+  }
+
+  const idPreserved = (id) =>
+    preserveIDs.has(id) || idMatchesPrefix(preserveIDPrefixes, id);
+
+  for (const [key, refs] of referencesIDs) {
+    if (IDs.has(key)) {
+      // replace referenced IDs with the minified ones
+      if (params.minify && !idPreserved(key)) {
+        do {
+          currentIDstring = getIDstring(
+            (currentID = generateID(currentID)),
+            params
+          );
+        } while (idPreserved(currentIDstring));
+
+        IDs.get(key).attributes.id = currentIDstring;
+
+        for (const { element, name, value } of refs) {
+          element.attributes[name] = value.includes(idValuePrefix)
+            ? value.replace(
+                idValuePrefix + key,
+                idValuePrefix + currentIDstring
+              )
+            : value.replace(
+                key + idValuePostfix,
+                currentIDstring + idValuePostfix
+              );
+        }
+      }
+      // don't remove referenced IDs
+      IDs.delete(key);
+    }
+  }
+  // remove non-referenced IDs attributes from elements
+  if (params.remove) {
+    for (var keyElem of IDs) {
+      if (!idPreserved(keyElem[0])) {
+        delete keyElem[1].attributes.id;
+      }
+    }
+  }
+  return root;
+};
+
+/**
+ * Check if an ID starts with any one of a list of strings.
+ *
+ * @param {Array} of prefix strings
+ * @param {String} current ID
+ * @return {Boolean} if currentID starts with one of the strings in prefixArray
+ */
+function idMatchesPrefix(prefixArray, currentID) {
+  if (!currentID) return false;
+
+  for (var prefix of prefixArray) if (currentID.startsWith(prefix)) return true;
+  return false;
+}
+
+/**
+ * Generate unique minimal ID.
+ *
+ * @param {Array} [currentID] current ID
+ * @return {Array} generated ID array
+ */
+function generateID(currentID) {
+  if (!currentID) return [0];
+
+  currentID[currentID.length - 1]++;
+
+  for (var i = currentID.length - 1; i > 0; i--) {
+    if (currentID[i] > maxIDindex) {
+      currentID[i] = 0;
+
+      if (currentID[i - 1] !== undefined) {
+        currentID[i - 1]++;
+      }
+    }
+  }
+  if (currentID[0] > maxIDindex) {
+    currentID[0] = 0;
+    currentID.unshift(0);
+  }
+  return currentID;
+}
+
+/**
+ * Get string from generated ID array.
+ *
+ * @param {Array} arr input ID array
+ * @return {String} output ID string
+ */
+function getIDstring(arr, params) {
+  var str = params.prefix;
+  return str + arr.map((i) => generateIDchars[i]).join('');
+}
+
+var removeUselessDefs$1 = {};
+
+const { elemsGroups: elemsGroups$3 } = _collections;
+
+removeUselessDefs$1.name = 'removeUselessDefs';
+
+removeUselessDefs$1.type = 'perItem';
+
+removeUselessDefs$1.active = true;
+
+removeUselessDefs$1.description = 'removes elements in <defs> without id';
+
+/**
+ * Removes content of defs and properties that aren't rendered directly without ids.
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Lev Solntsev
+ */
+removeUselessDefs$1.fn = function (item) {
+  if (item.type === 'element') {
+    if (item.name === 'defs') {
+      item.children = getUsefulItems(item, []);
+      if (item.children.length === 0) {
+        return false;
+      }
+    } else if (
+      elemsGroups$3.nonRendering.includes(item.name) &&
+      item.attributes.id == null
+    ) {
+      return false;
+    }
+  }
+};
+
+function getUsefulItems(item, usefulItems) {
+  for (const child of item.children) {
+    if (child.type === 'element') {
+      if (child.attributes.id != null || child.name === 'style') {
+        usefulItems.push(child);
+        child.parentNode = item;
+      } else {
+        child.children = getUsefulItems(child, usefulItems);
+      }
+    }
+  }
+
+  return usefulItems;
+}
+
+var cleanupNumericValues$1 = {};
+
+cleanupNumericValues$1.name = 'cleanupNumericValues';
+
+cleanupNumericValues$1.type = 'perItem';
+
+cleanupNumericValues$1.active = true;
+
+cleanupNumericValues$1.description =
+  'rounds numeric values to the fixed precision, removes default ‘px’ units';
+
+cleanupNumericValues$1.params = {
+  floatPrecision: 3,
+  leadingZero: true,
+  defaultPx: true,
+  convertToPx: true,
+};
+
+var regNumericValues$3 = /^([-+]?\d*\.?\d+([eE][-+]?\d+)?)(px|pt|pc|mm|cm|m|in|ft|em|ex|%)?$/,
+  removeLeadingZero$2 = tools.removeLeadingZero,
+  absoluteLengths$1 = {
+    // relative to px
+    cm: 96 / 2.54,
+    mm: 96 / 25.4,
+    in: 96,
+    pt: 4 / 3,
+    pc: 16,
+  };
+
+/**
+ * Round numeric values to the fixed precision,
+ * remove default 'px' units.
+ *
+ * @param {Object} item current iteration item
+ * @param {Object} params plugin params
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+cleanupNumericValues$1.fn = function (item, params) {
+  if (item.type === 'element') {
+    var floatPrecision = params.floatPrecision;
+
+    if (item.attributes.viewBox != null) {
+      var nums = item.attributes.viewBox.split(/\s,?\s*|,\s*/g);
+      item.attributes.viewBox = nums
+        .map(function (value) {
+          var num = +value;
+          return isNaN(num) ? value : +num.toFixed(floatPrecision);
+        })
+        .join(' ');
+    }
+
+    for (const [name, value] of Object.entries(item.attributes)) {
+      // The `version` attribute is a text string and cannot be rounded
+      if (name === 'version') {
+        continue;
+      }
+
+      var match = value.match(regNumericValues$3);
+
+      // if attribute value matches regNumericValues
+      if (match) {
+        // round it to the fixed precision
+        var num = +(+match[1]).toFixed(floatPrecision),
+          units = match[3] || '';
+
+        // convert absolute values to pixels
+        if (params.convertToPx && units && units in absoluteLengths$1) {
+          var pxNum = +(absoluteLengths$1[units] * match[1]).toFixed(
+            floatPrecision
+          );
+
+          if (String(pxNum).length < match[0].length) {
+            num = pxNum;
+            units = 'px';
+          }
+        }
+
+        // and remove leading zero
+        if (params.leadingZero) {
+          num = removeLeadingZero$2(num);
+        }
+
+        // remove default 'px' units
+        if (params.defaultPx && units === 'px') {
+          units = '';
+        }
+
+        item.attributes[name] = num + units;
+      }
+    }
+  }
+};
+
+var convertColors$1 = {};
+
+convertColors$1.name = 'convertColors';
+
+convertColors$1.type = 'perItem';
+
+convertColors$1.active = true;
+
+convertColors$1.description = 'converts colors: rgb() to #rrggbb and #rrggbb to #rgb';
+
+convertColors$1.params = {
+  currentColor: false,
+  names2hex: true,
+  rgb2hex: true,
+  shorthex: true,
+  shortname: true,
+};
+
+var collections$2 = _collections,
+  rNumber = '([+-]?(?:\\d*\\.\\d+|\\d+\\.?)%?)',
+  rComma = '\\s*,\\s*',
+  regRGB = new RegExp(
+    '^rgb\\(\\s*' + rNumber + rComma + rNumber + rComma + rNumber + '\\s*\\)$'
+  ),
+  regHEX = /^#(([a-fA-F0-9])\2){3}$/,
+  none = /\bnone\b/i;
+
+/**
+ * Convert different colors formats in element attributes to hex.
+ *
+ * @see https://www.w3.org/TR/SVG11/types.html#DataTypeColor
+ * @see https://www.w3.org/TR/SVG11/single-page.html#types-ColorKeywords
+ *
+ * @example
+ * Convert color name keyword to long hex:
+ * fuchsia ➡ #ff00ff
+ *
+ * Convert rgb() to long hex:
+ * rgb(255, 0, 255) ➡ #ff00ff
+ * rgb(50%, 100, 100%) ➡ #7f64ff
+ *
+ * Convert long hex to short hex:
+ * #aabbcc ➡ #abc
+ *
+ * Convert hex to short name
+ * #000080 ➡ navy
+ *
+ * @param {Object} item current iteration item
+ * @param {Object} params plugin params
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+convertColors$1.fn = function (item, params) {
+  if (item.type === 'element') {
+    for (const [name, value] of Object.entries(item.attributes)) {
+      if (collections$2.colorsProps.includes(name)) {
+        let val = value;
+        let match;
+
+        // Convert colors to currentColor
+        if (params.currentColor) {
+          if (typeof params.currentColor === 'string') {
+            match = val === params.currentColor;
+          } else if (params.currentColor.exec) {
+            match = params.currentColor.exec(val);
+          } else {
+            match = !val.match(none);
+          }
+          if (match) {
+            val = 'currentColor';
+          }
+        }
+
+        // Convert color name keyword to long hex
+        if (params.names2hex && val.toLowerCase() in collections$2.colorsNames) {
+          val = collections$2.colorsNames[val.toLowerCase()];
+        }
+
+        // Convert rgb() to long hex
+        if (params.rgb2hex && (match = val.match(regRGB))) {
+          match = match.slice(1, 4).map(function (m) {
+            if (m.indexOf('%') > -1) m = Math.round(parseFloat(m) * 2.55);
+
+            return Math.max(0, Math.min(m, 255));
+          });
+
+          val = rgb2hex(match);
+        }
+
+        // Convert long hex to short hex
+        if (params.shorthex && (match = val.match(regHEX))) {
+          val = '#' + match[0][1] + match[0][3] + match[0][5];
+        }
+
+        // Convert hex to short name
+        if (params.shortname) {
+          var lowerVal = val.toLowerCase();
+          if (lowerVal in collections$2.colorsShortNames) {
+            val = collections$2.colorsShortNames[lowerVal];
+          }
+        }
+
+        item.attributes[name] = val;
+      }
+    }
+  }
+};
+
+/**
+ * Convert [r, g, b] to #rrggbb.
+ *
+ * @see https://gist.github.com/983535
+ *
+ * @example
+ * rgb2hex([255, 255, 255]) // '#ffffff'
+ *
+ * @param {Array} rgb [r, g, b]
+ * @return {String} #rrggbb
+ *
+ * @author Jed Schmidt
+ */
+function rgb2hex(rgb) {
+  return (
+    '#' +
+    ('00000' + ((rgb[0] << 16) | (rgb[1] << 8) | rgb[2]).toString(16))
+      .slice(-6)
+      .toUpperCase()
+  );
+}
+
+var removeUnknownsAndDefaults$1 = {};
+
+const { parseName: parseName$2 } = tools;
+
+removeUnknownsAndDefaults$1.name = 'removeUnknownsAndDefaults';
+
+removeUnknownsAndDefaults$1.type = 'perItem';
+
+removeUnknownsAndDefaults$1.active = true;
+
+removeUnknownsAndDefaults$1.description =
+  'removes unknown elements content and attributes, removes attrs with default values';
+
+removeUnknownsAndDefaults$1.params = {
+  unknownContent: true,
+  unknownAttrs: true,
+  defaultAttrs: true,
+  uselessOverrides: true,
+  keepDataAttrs: true,
+  keepAriaAttrs: true,
+  keepRoleAttr: false,
+};
+
+var collections$1 = _collections,
+  elems = collections$1.elems,
+  attrsGroups$3 = collections$1.attrsGroups,
+  elemsGroups$2 = collections$1.elemsGroups,
+  attrsGroupsDefaults$1 = collections$1.attrsGroupsDefaults,
+  attrsInheritable = collections$1.inheritableAttrs,
+  applyGroups = collections$1.presentationNonInheritableGroupAttrs;
+
+// collect and extend all references
+for (const elem of Object.values(elems)) {
+  if (elem.attrsGroups) {
+    elem.attrs = elem.attrs || [];
+
+    elem.attrsGroups.forEach(function (attrsGroupName) {
+      elem.attrs = elem.attrs.concat(attrsGroups$3[attrsGroupName]);
+
+      var groupDefaults = attrsGroupsDefaults$1[attrsGroupName];
+
+      if (groupDefaults) {
+        elem.defaults = elem.defaults || {};
+
+        for (const [attrName, attr] of Object.entries(groupDefaults)) {
+          elem.defaults[attrName] = attr;
+        }
+      }
+    });
+  }
+
+  if (elem.contentGroups) {
+    elem.content = elem.content || [];
+
+    elem.contentGroups.forEach(function (contentGroupName) {
+      elem.content = elem.content.concat(elemsGroups$2[contentGroupName]);
+    });
+  }
+}
+
+/**
+ * Remove unknown elements content and attributes,
+ * remove attributes with default values.
+ *
+ * @param {Object} item current iteration item
+ * @param {Object} params plugin params
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+removeUnknownsAndDefaults$1.fn = function (item, params) {
+  // elems w/o namespace prefix
+  if (item.type === 'element' && !parseName$2(item.name).prefix) {
+    var elem = item.name;
+
+    // remove unknown element's content
+    if (
+      params.unknownContent &&
+      elems[elem] && // make sure we know of this element before checking its children
+      elem !== 'foreignObject' // Don't check foreignObject
+    ) {
+      item.children.forEach(function (content, i) {
+        if (
+          content.type === 'element' &&
+          !parseName$2(content.name).prefix &&
+          ((elems[elem].content && // Do we have a record of its permitted content?
+            elems[elem].content.indexOf(content.name) === -1) ||
+            (!elems[elem].content && // we dont know about its permitted content
+              !elems[content.name])) // check that we know about the element at all
+        ) {
+          item.children.splice(i, 1);
+        }
+      });
+    }
+
+    // remove element's unknown attrs and attrs with default values
+    if (elems[elem] && elems[elem].attrs) {
+      for (const [name, value] of Object.entries(item.attributes)) {
+        const { prefix } = parseName$2(name);
+        if (
+          name !== 'xmlns' &&
+          (prefix === 'xml' || !prefix) &&
+          (!params.keepDataAttrs || name.indexOf('data-') != 0) &&
+          (!params.keepAriaAttrs || name.indexOf('aria-') != 0) &&
+          (!params.keepRoleAttr || name != 'role')
+        ) {
+          if (
+            // unknown attrs
+            (params.unknownAttrs && elems[elem].attrs.indexOf(name) === -1) ||
+            // attrs with default values
+            (params.defaultAttrs &&
+              item.attributes.id == null &&
+              elems[elem].defaults &&
+              elems[elem].defaults[name] === value &&
+              (attrsInheritable.includes(name) === false ||
+                !item.parentNode.computedAttr(name))) ||
+            // useless overrides
+            (params.uselessOverrides &&
+              item.attributes.id == null &&
+              applyGroups.includes(name) === false &&
+              attrsInheritable.includes(name) === true &&
+              item.parentNode.computedAttr(name, value))
+          ) {
+            delete item.attributes[name];
+          }
+        }
+      }
+    }
+  }
+};
+
+var removeNonInheritableGroupAttrs$1 = {};
+
+removeNonInheritableGroupAttrs$1.name = 'removeNonInheritableGroupAttrs';
+
+removeNonInheritableGroupAttrs$1.type = 'perItem';
+
+removeNonInheritableGroupAttrs$1.active = true;
+
+removeNonInheritableGroupAttrs$1.description =
+  'removes non-inheritable group’s presentational attributes';
+
+const {
+  inheritableAttrs: inheritableAttrs$3,
+  attrsGroups: attrsGroups$2,
+  presentationNonInheritableGroupAttrs: presentationNonInheritableGroupAttrs$1,
+} = _collections;
+
+/**
+ * Remove non-inheritable group's "presentation" attributes.
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+removeNonInheritableGroupAttrs$1.fn = function (item) {
+  if (item.type === 'element' && item.name === 'g') {
+    for (const name of Object.keys(item.attributes)) {
+      if (
+        attrsGroups$2.presentation.includes(name) === true &&
+        inheritableAttrs$3.includes(name) === false &&
+        presentationNonInheritableGroupAttrs$1.includes(name) === false
+      ) {
+        delete item.attributes[name];
+      }
+    }
+  }
+};
+
+var removeUselessStrokeAndFill$1 = {};
+
+removeUselessStrokeAndFill$1.name = 'removeUselessStrokeAndFill';
+
+removeUselessStrokeAndFill$1.type = 'perItem';
+
+removeUselessStrokeAndFill$1.active = true;
+
+removeUselessStrokeAndFill$1.description = 'removes useless stroke and fill attributes';
+
+removeUselessStrokeAndFill$1.params = {
+  stroke: true,
+  fill: true,
+  removeNone: false,
+  hasStyleOrScript: false,
+};
+
+var shape = _collections.elemsGroups.shape,
+  regStrokeProps = /^stroke/,
+  regFillProps = /^fill-/,
+  styleOrScript = ['style', 'script'];
+
+/**
+ * Remove useless stroke and fill attrs.
+ *
+ * @param {Object} item current iteration item
+ * @param {Object} params plugin params
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+removeUselessStrokeAndFill$1.fn = function (item, params) {
+  if (item.isElem(styleOrScript)) {
+    params.hasStyleOrScript = true;
+  }
+
+  if (
+    !params.hasStyleOrScript &&
+    item.isElem(shape) &&
+    !item.computedAttr('id')
+  ) {
+    var stroke = params.stroke && item.computedAttr('stroke'),
+      fill = params.fill && !item.computedAttr('fill', 'none');
+
+    // remove stroke*
+    if (
+      params.stroke &&
+      (!stroke ||
+        stroke == 'none' ||
+        item.computedAttr('stroke-opacity', '0') ||
+        item.computedAttr('stroke-width', '0'))
+    ) {
+      // stroke-width may affect the size of marker-end
+      if (
+        item.computedAttr('stroke-width', '0') === true ||
+        item.computedAttr('marker-end') == null
+      ) {
+        var parentStroke = item.parentNode.computedAttr('stroke'),
+          declineStroke = parentStroke && parentStroke != 'none';
+
+        for (const name of Object.keys(item.attributes)) {
+          if (regStrokeProps.test(name)) {
+            delete item.attributes[name];
+          }
+        }
+
+        if (declineStroke) {
+          item.attributes.stroke = 'none';
+        }
+      }
+    }
+
+    // remove fill*
+    if (params.fill && (!fill || item.computedAttr('fill-opacity', '0'))) {
+      for (const name of Object.keys(item.attributes)) {
+        if (regFillProps.test(name)) {
+          delete item.attributes[name];
+        }
+      }
+
+      if (fill) {
+        item.attributes.fill = 'none';
+      }
+    }
+
+    if (
+      params.removeNone &&
+      (!stroke || item.attributes.stroke == 'none') &&
+      (!fill || item.attributes.fill == 'none')
+    ) {
+      return false;
+    }
+  }
+};
+
+var removeViewBox$1 = {};
+
+const { closestByName: closestByName$2 } = xast;
+
+removeViewBox$1.name = 'removeViewBox';
+
+removeViewBox$1.type = 'perItem';
+
+removeViewBox$1.active = true;
+
+removeViewBox$1.description = 'removes viewBox attribute when possible';
+
+const viewBoxElems = ['svg', 'pattern', 'symbol'];
+
+/**
+ * Remove viewBox attr which coincides with a width/height box.
+ *
+ * @see https://www.w3.org/TR/SVG11/coords.html#ViewBoxAttribute
+ *
+ * @example
+ * <svg width="100" height="50" viewBox="0 0 100 50">
+ *             ⬇
+ * <svg width="100" height="50">
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+removeViewBox$1.fn = function (item) {
+  if (
+    item.type === 'element' &&
+    viewBoxElems.includes(item.name) &&
+    item.attributes.viewBox != null &&
+    item.attributes.width != null &&
+    item.attributes.height != null
+  ) {
+    // TODO remove width/height for such case instead
+    if (item.name === 'svg' && closestByName$2(item.parentNode, 'svg')) {
+      return;
+    }
+
+    const nums = item.attributes.viewBox.split(/[ ,]+/g);
+
+    if (
+      nums[0] === '0' &&
+      nums[1] === '0' &&
+      item.attributes.width.replace(/px$/, '') === nums[2] && // could use parseFloat too
+      item.attributes.height.replace(/px$/, '') === nums[3]
+    ) {
+      delete item.attributes.viewBox;
+    }
+  }
+};
+
+var cleanupEnableBackground$1 = {};
+
+const { traverse: traverse$2 } = xast;
+
+cleanupEnableBackground$1.name = 'cleanupEnableBackground';
+
+cleanupEnableBackground$1.type = 'full';
+
+cleanupEnableBackground$1.active = true;
+
+cleanupEnableBackground$1.description =
+  'remove or cleanup enable-background attribute when possible';
+
+/**
+ * Remove or cleanup enable-background attr which coincides with a width/height box.
+ *
+ * @see https://www.w3.org/TR/SVG11/filters.html#EnableBackgroundProperty
+ *
+ * @example
+ * <svg width="100" height="50" enable-background="new 0 0 100 50">
+ *             ⬇
+ * <svg width="100" height="50">
+ *
+ * @param {Object} root current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+cleanupEnableBackground$1.fn = function (root) {
+  const regEnableBackground = /^new\s0\s0\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)$/;
+  let hasFilter = false;
+  const elems = ['svg', 'mask', 'pattern'];
+
+  traverse$2(root, (node) => {
+    if (node.type === 'element') {
+      if (
+        elems.includes(node.name) &&
+        node.attributes['enable-background'] != null &&
+        node.attributes.width != null &&
+        node.attributes.height != null
+      ) {
+        const match = node.attributes['enable-background'].match(
+          regEnableBackground
+        );
+
+        if (match) {
+          if (
+            node.attributes.width === match[1] &&
+            node.attributes.height === match[3]
+          ) {
+            if (node.name === 'svg') {
+              delete node.attributes['enable-background'];
+            } else {
+              node.attributes['enable-background'] = 'new';
+            }
+          }
+        }
+      }
+      if (node.name === 'filter') {
+        hasFilter = true;
+      }
+    }
+  });
+
+  if (hasFilter === false) {
+    traverse$2(root, (node) => {
+      if (node.type === 'element') {
+        //we don't need 'enable-background' if we have no filters
+        delete node.attributes['enable-background'];
+      }
+    });
+  }
+
+  return root;
+};
+
+var removeHiddenElems$1 = {};
+
+var style = {};
+
+const stable = stable$2.exports;
+const csstree$1 = lib$1;
+const specificity = specificity$3;
+const { visit, matches } = xast;
+const { compareSpecificity } = cssTools$1;
+const {
+  attrsGroups: attrsGroups$1,
+  inheritableAttrs: inheritableAttrs$2,
+  presentationNonInheritableGroupAttrs,
+} = _collections;
+
+const parseRule = (ruleNode, dynamic) => {
+  let selectors;
+  let selectorsSpecificity;
+  const declarations = [];
+  csstree$1.walk(ruleNode, (cssNode) => {
+    if (cssNode.type === 'SelectorList') {
+      // compute specificity from original node to consider pseudo classes
+      selectorsSpecificity = specificity(cssNode);
+      const newSelectorsNode = csstree$1.clone(cssNode);
+      csstree$1.walk(newSelectorsNode, (pseudoClassNode, item, list) => {
+        if (pseudoClassNode.type === 'PseudoClassSelector') {
+          dynamic = true;
+          list.remove(item);
+        }
+      });
+      selectors = csstree$1.generate(newSelectorsNode);
+      return csstree$1.walk.skip;
+    }
+    if (cssNode.type === 'Declaration') {
+      declarations.push({
+        name: cssNode.property,
+        value: csstree$1.generate(cssNode.value),
+        important: cssNode.important,
+      });
+      return csstree$1.walk.skip;
+    }
+  });
+  return {
+    dynamic,
+    selectors,
+    specificity: selectorsSpecificity,
+    declarations,
+  };
+};
+
+const parseStylesheet = (css, dynamic) => {
+  const rules = [];
+  const ast = csstree$1.parse(css);
+  csstree$1.walk(ast, (cssNode) => {
+    if (cssNode.type === 'Rule') {
+      rules.push(parseRule(cssNode, dynamic || false));
+      return csstree$1.walk.skip;
+    }
+    if (cssNode.type === 'Atrule') {
+      if (cssNode.name === 'keyframes') {
+        return csstree$1.walk.skip;
+      }
+      csstree$1.walk(cssNode, (ruleNode) => {
+        if (ruleNode.type === 'Rule') {
+          rules.push(parseRule(ruleNode, dynamic || true));
+          return csstree$1.walk.skip;
+        }
+      });
+      return csstree$1.walk.skip;
+    }
+  });
+  return rules;
+};
+
+const computeOwnStyle = (stylesheet, node) => {
+  const computedStyle = {};
+  const importantStyles = new Map();
+
+  // collect attributes
+  for (const [name, value] of Object.entries(node.attributes)) {
+    if (attrsGroups$1.presentation.includes(name)) {
+      computedStyle[name] = { type: 'static', inherited: false, value };
+      importantStyles.set(name, false);
+    }
+  }
+
+  // collect matching rules
+  for (const { selectors, declarations, dynamic } of stylesheet) {
+    if (matches(node, selectors)) {
+      for (const { name, value, important } of declarations) {
+        const computed = computedStyle[name];
+        if (computed && computed.type === 'dynamic') {
+          continue;
+        }
+        if (dynamic) {
+          computedStyle[name] = { type: 'dynamic', inherited: false };
+          continue;
+        }
+        if (
+          computed == null ||
+          important === true ||
+          importantStyles.get(name) === false
+        ) {
+          computedStyle[name] = { type: 'static', inherited: false, value };
+          importantStyles.set(name, important);
+        }
+      }
+    }
+  }
+
+  // collect inline styles
+  for (const [name, { value, priority }] of node.style.properties) {
+    const computed = computedStyle[name];
+    const important = priority === 'important';
+    if (computed && computed.type === 'dynamic') {
+      continue;
+    }
+    if (
+      computed == null ||
+      important === true ||
+      importantStyles.get(name) === false
+    ) {
+      computedStyle[name] = { type: 'static', inherited: false, value };
+      importantStyles.set(name, important);
+    }
+  }
+
+  return computedStyle;
+};
+
+const collectStylesheet$3 = (root) => {
+  const stylesheet = [];
+  // find and parse all styles
+  visit(root, {
+    element: {
+      enter: (node) => {
+        if (node.name === 'style') {
+          const dynamic =
+            node.attributes.media != null && node.attributes.media !== 'all';
+          if (
+            node.attributes.type == null ||
+            node.attributes.type === '' ||
+            node.attributes.type === 'text/css'
+          ) {
+            const children = node.children;
+            for (const child of children) {
+              if (child.type === 'text' || child.type === 'cdata') {
+                stylesheet.push(...parseStylesheet(child.value, dynamic));
+              }
+            }
+          }
+        }
+      },
+    },
+  });
+  // sort by selectors specificity
+  stable.inplace(stylesheet, (a, b) =>
+    compareSpecificity(a.specificity, b.specificity)
+  );
+  return stylesheet;
+};
+style.collectStylesheet = collectStylesheet$3;
+
+const computeStyle$3 = (stylesheet, node) => {
+  // collect inherited styles
+  const computedStyles = computeOwnStyle(stylesheet, node);
+  let parent = node;
+  while (parent.parentNode && parent.parentNode.type !== 'root') {
+    const inheritedStyles = computeOwnStyle(stylesheet, parent.parentNode);
+    for (const [name, computed] of Object.entries(inheritedStyles)) {
+      if (
+        computedStyles[name] == null &&
+        // ignore not inheritable styles
+        inheritableAttrs$2.includes(name) === true &&
+        presentationNonInheritableGroupAttrs.includes(name) === false
+      ) {
+        computedStyles[name] = { ...computed, inherited: true };
+      }
+    }
+    parent = parent.parentNode;
+  }
+
+  return computedStyles;
+};
+style.computeStyle = computeStyle$3;
+
+var path = {};
+
+// Based on https://www.w3.org/TR/SVG11/paths.html#PathDataBNF
+
+const argsCountPerCommand = {
+  M: 2,
+  m: 2,
+  Z: 0,
+  z: 0,
+  L: 2,
+  l: 2,
+  H: 1,
+  h: 1,
+  V: 1,
+  v: 1,
+  C: 6,
+  c: 6,
+  S: 4,
+  s: 4,
+  Q: 4,
+  q: 4,
+  T: 2,
+  t: 2,
+  A: 7,
+  a: 7,
+};
+
+/**
+ * @param {string} c
+ */
+const isCommand = (c) => {
+  return c in argsCountPerCommand;
+};
+
+/**
+ * @param {string} c
+ */
+const isWsp = (c) => {
+  const codePoint = c.codePointAt(0);
+  return (
+    codePoint === 0x20 ||
+    codePoint === 0x9 ||
+    codePoint === 0xd ||
+    codePoint === 0xa
+  );
+};
+
+/**
+ * @param {string} c
+ */
+const isDigit = (c) => {
+  const codePoint = c.codePointAt(0);
+  if (codePoint == null) {
+    return false;
+  }
+  return 48 <= codePoint && codePoint <= 57;
+};
+
+/**
+ * @typedef {'none' | 'sign' | 'whole' | 'decimal_point' | 'decimal' | 'e' | 'exponent_sign' | 'exponent'} ReadNumberState
+ */
+
+/**
+ * @param {string} string
+ * @param {number} cursor
+ * @return {[number, number | null]}
+ */
+const readNumber = (string, cursor) => {
+  let i = cursor;
+  let value = '';
+  let state = /** @type {ReadNumberState} */ ('none');
+  for (; i < string.length; i += 1) {
+    const c = string[i];
+    if (c === '+' || c === '-') {
+      if (state === 'none') {
+        state = 'sign';
+        value += c;
+        continue;
+      }
+      if (state === 'e') {
+        state = 'exponent_sign';
+        value += c;
+        continue;
+      }
+    }
+    if (isDigit(c)) {
+      if (state === 'none' || state === 'sign' || state === 'whole') {
+        state = 'whole';
+        value += c;
+        continue;
+      }
+      if (state === 'decimal_point' || state === 'decimal') {
+        state = 'decimal';
+        value += c;
+        continue;
+      }
+      if (state === 'e' || state === 'exponent_sign' || state === 'exponent') {
+        state = 'exponent';
+        value += c;
+        continue;
+      }
+    }
+    if (c === '.') {
+      if (state === 'none' || state === 'sign' || state === 'whole') {
+        state = 'decimal_point';
+        value += c;
+        continue;
+      }
+    }
+    if (c === 'E' || c == 'e') {
+      if (
+        state === 'whole' ||
+        state === 'decimal_point' ||
+        state === 'decimal'
+      ) {
+        state = 'e';
+        value += c;
+        continue;
+      }
+    }
+    break;
+  }
+  const number = Number.parseFloat(value);
+  if (Number.isNaN(number)) {
+    return [cursor, null];
+  } else {
+    // step back to delegate iteration to parent loop
+    return [i - 1, number];
+  }
+};
+
+/**
+ * @param {string} string
+ */
+const parsePathData$2 = (string) => {
+  const pathData = [];
+  let command = null;
+  let args = /** @type {number[]} */ ([]);
+  let argsCount = 0;
+  let canHaveComma = false;
+  let hadComma = false;
+  for (let i = 0; i < string.length; i += 1) {
+    const c = string.charAt(i);
+    if (isWsp(c)) {
+      continue;
+    }
+    // allow comma only between arguments
+    if (canHaveComma && c === ',') {
+      if (hadComma) {
+        break;
+      }
+      hadComma = true;
+      continue;
+    }
+    if (isCommand(c)) {
+      if (hadComma) {
+        return pathData;
+      }
+      if (command == null) {
+        // moveto should be leading command
+        if (c !== 'M' && c !== 'm') {
+          return pathData;
+        }
+      } else {
+        // stop if previous command arguments are not flushed
+        if (args.length !== 0) {
+          return pathData;
+        }
+      }
+      command = c;
+      args = [];
+      argsCount = argsCountPerCommand[command];
+      canHaveComma = false;
+      // flush command without arguments
+      if (argsCount === 0) {
+        pathData.push({ command, args });
+      }
+      continue;
+    }
+    // avoid parsing arguments if no command detected
+    if (command == null) {
+      return pathData;
+    }
+    // read next argument
+    let newCursor = i;
+    let number = null;
+    if (command === 'A' || command === 'a') {
+      const position = args.length;
+      if (position === 0 || position === 1) {
+        // allow only positive number without sign as first two arguments
+        if (c !== '+' && c !== '-') {
+          [newCursor, number] = readNumber(string, i);
+        }
+      }
+      if (position === 2 || position === 5 || position === 6) {
+        [newCursor, number] = readNumber(string, i);
+      }
+      if (position === 3 || position === 4) {
+        // read flags
+        if (c === '0') {
+          number = 0;
+        }
+        if (c === '1') {
+          number = 1;
+        }
+      }
+    } else {
+      [newCursor, number] = readNumber(string, i);
+    }
+    if (number == null) {
+      return pathData;
+    }
+    args.push(number);
+    canHaveComma = true;
+    hadComma = false;
+    i = newCursor;
+    // flush arguments when necessary count is reached
+    if (args.length === argsCount) {
+      pathData.push({ command, args });
+      // subsequent moveto coordinates are threated as implicit lineto commands
+      if (command === 'M') {
+        command = 'L';
+      }
+      if (command === 'm') {
+        command = 'l';
+      }
+      args = [];
+    }
+  }
+  return pathData;
+};
+path.parsePathData = parsePathData$2;
+
+/**
+ * @typedef {{
+ *   number: number;
+ *   precision?: number;
+ * }} StringifyNumberOptions
+ */
+/**
+ * @param {StringifyNumberOptions} param
+ */
+const stringifyNumber = ({ number, precision }) => {
+  if (precision != null) {
+    const ratio = 10 ** precision;
+    number = Math.round(number * ratio) / ratio;
+  }
+  // remove zero whole from decimal number
+  return number.toString().replace(/^0\./, '.').replace(/^-0\./, '-.');
+};
+
+/**
+ * @typedef {{
+ *   command: string;
+ *   args: number[];
+ *   precision?: number;
+ *   disableSpaceAfterFlags?: boolean;
+ * }} StringifyArgsOptions
+ */
+/**
+ *
+ * Elliptical arc large-arc and sweep flags are rendered with spaces
+ * because many non-browser environments are not able to parse such paths
+ *
+ * @param {StringifyArgsOptions} param
+ */
+const stringifyArgs = ({
+  command,
+  args,
+  precision,
+  disableSpaceAfterFlags,
+}) => {
+  let result = '';
+  let prev = '';
+  for (let i = 0; i < args.length; i += 1) {
+    const number = args[i];
+    const numberString = stringifyNumber({ number, precision });
+    if (
+      disableSpaceAfterFlags &&
+      (command === 'A' || command === 'a') &&
+      // consider combined arcs
+      (i % 7 === 4 || i % 7 === 5)
+    ) {
+      result += numberString;
+    } else if (i === 0 || numberString.startsWith('-')) {
+      // avoid space before first and negative numbers
+      result += numberString;
+    } else if (prev.includes('.') && numberString.startsWith('.')) {
+      // remove space before decimal with zero whole
+      // only when previous number is also decimal
+      result += numberString;
+    } else {
+      result += ` ${numberString}`;
+    }
+    prev = numberString;
+  }
+  return result;
+};
+
+/**
+ *
+ * @typedef {{
+ *   command: string;
+ *   args: number[];
+ * }} Command
+ */
+/**
+ * @typedef {{
+ *   pathData: Command[];
+ *   precision?: number;
+ *   disableSpaceAfterFlags?: boolean;
+ * }} StringifyPathDataOptions
+ */
+/**
+ * @param {StringifyPathDataOptions} param
+ */
+const stringifyPathData$2 = ({ pathData, precision, disableSpaceAfterFlags }) => {
+  // combine sequence of the same commands
+  let combined = [];
+  for (let i = 0; i < pathData.length; i += 1) {
+    const { command, args } = pathData[i];
+    if (i === 0) {
+      combined.push({ command, args });
+    } else {
+      const last = combined[combined.length - 1];
+      // match leading moveto with following lineto
+      if (i === 1) {
+        if (command === 'L') {
+          last.command = 'M';
+        }
+        if (command === 'l') {
+          last.command = 'm';
+        }
+      }
+      if (
+        (last.command === command &&
+          last.command !== 'M' &&
+          last.command !== 'm') ||
+        // combine matching moveto and lineto sequences
+        (last.command === 'M' && command === 'L') ||
+        (last.command === 'm' && command === 'l')
+      ) {
+        last.args = [...last.args, ...args];
+      } else {
+        combined.push({ command, args });
+      }
+    }
+  }
+  let result = '';
+  for (const { command, args } of combined) {
+    result +=
+      command +
+      stringifyArgs({ command, args, precision, disableSpaceAfterFlags });
+  }
+  return result;
+};
+path.stringifyPathData = stringifyPathData$2;
+
+const {
+  querySelector,
+  closestByName: closestByName$1,
+  detachNodeFromParent: detachNodeFromParent$8,
+} = xast;
+const { collectStylesheet: collectStylesheet$2, computeStyle: computeStyle$2 } = style;
+const { parsePathData: parsePathData$1 } = path;
+
+removeHiddenElems$1.name = 'removeHiddenElems';
+removeHiddenElems$1.type = 'visitor';
+removeHiddenElems$1.active = true;
+removeHiddenElems$1.description =
+  'removes hidden elements (zero sized, with absent attributes)';
+
+/**
+ * Remove hidden elements with disabled rendering:
+ * - display="none"
+ * - opacity="0"
+ * - circle with zero radius
+ * - ellipse with zero x-axis or y-axis radius
+ * - rectangle with zero width or height
+ * - pattern with zero width or height
+ * - image with zero width or height
+ * - path with empty data
+ * - polyline with empty points
+ * - polygon with empty points
+ *
+ * @param {Object} root
+ * @param {Object} params
+ *
+ * @author Kir Belevich
+ */
+removeHiddenElems$1.fn = (root, params) => {
+  const {
+    isHidden = true,
+    displayNone = true,
+    opacity0 = true,
+    circleR0 = true,
+    ellipseRX0 = true,
+    ellipseRY0 = true,
+    rectWidth0 = true,
+    rectHeight0 = true,
+    patternWidth0 = true,
+    patternHeight0 = true,
+    imageWidth0 = true,
+    imageHeight0 = true,
+    pathEmptyD = true,
+    polylineEmptyPoints = true,
+    polygonEmptyPoints = true,
+  } = params;
+  const stylesheet = collectStylesheet$2(root);
+
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        // Removes hidden elements
+        // https://www.w3schools.com/cssref/pr_class_visibility.asp
+        const computedStyle = computeStyle$2(stylesheet, node);
+        if (
+          isHidden &&
+          computedStyle.visibility &&
+          computedStyle.visibility.type === 'static' &&
+          computedStyle.visibility.value === 'hidden' &&
+          // keep if any descendant enables visibility
+          querySelector(node, '[visibility=visible]') == null
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // display="none"
+        //
+        // https://www.w3.org/TR/SVG11/painting.html#DisplayProperty
+        // "A value of display: none indicates that the given element
+        // and its children shall not be rendered directly"
+        if (
+          displayNone &&
+          computedStyle.display &&
+          computedStyle.display.type === 'static' &&
+          computedStyle.display.value === 'none' &&
+          // markers with display: none still rendered
+          node.name !== 'marker'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // opacity="0"
+        //
+        // https://www.w3.org/TR/SVG11/masking.html#ObjectAndGroupOpacityProperties
+        if (
+          opacity0 &&
+          computedStyle.opacity &&
+          computedStyle.opacity.type === 'static' &&
+          computedStyle.opacity.value === '0' &&
+          // transparent element inside clipPath still affect clipped elements
+          closestByName$1(node, 'clipPath') == null
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Circles with zero radius
+        //
+        // https://www.w3.org/TR/SVG11/shapes.html#CircleElementRAttribute
+        // "A value of zero disables rendering of the element"
+        //
+        // <circle r="0">
+        if (
+          circleR0 &&
+          node.name === 'circle' &&
+          node.children.length === 0 &&
+          node.attributes.r === '0'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Ellipse with zero x-axis radius
+        //
+        // https://www.w3.org/TR/SVG11/shapes.html#EllipseElementRXAttribute
+        // "A value of zero disables rendering of the element"
+        //
+        // <ellipse rx="0">
+        if (
+          ellipseRX0 &&
+          node.name === 'ellipse' &&
+          node.children.length === 0 &&
+          node.attributes.rx === '0'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Ellipse with zero y-axis radius
+        //
+        // https://www.w3.org/TR/SVG11/shapes.html#EllipseElementRYAttribute
+        // "A value of zero disables rendering of the element"
+        //
+        // <ellipse ry="0">
+        if (
+          ellipseRY0 &&
+          node.name === 'ellipse' &&
+          node.children.length === 0 &&
+          node.attributes.ry === '0'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Rectangle with zero width
+        //
+        // https://www.w3.org/TR/SVG11/shapes.html#RectElementWidthAttribute
+        // "A value of zero disables rendering of the element"
+        //
+        // <rect width="0">
+        if (
+          rectWidth0 &&
+          node.name === 'rect' &&
+          node.children.length === 0 &&
+          node.attributes.width === '0'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Rectangle with zero height
+        //
+        // https://www.w3.org/TR/SVG11/shapes.html#RectElementHeightAttribute
+        // "A value of zero disables rendering of the element"
+        //
+        // <rect height="0">
+        if (
+          rectHeight0 &&
+          rectWidth0 &&
+          node.name === 'rect' &&
+          node.children.length === 0 &&
+          node.attributes.height === '0'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Pattern with zero width
+        //
+        // https://www.w3.org/TR/SVG11/pservers.html#PatternElementWidthAttribute
+        // "A value of zero disables rendering of the element (i.e., no paint is applied)"
+        //
+        // <pattern width="0">
+        if (
+          patternWidth0 &&
+          node.name === 'pattern' &&
+          node.attributes.width === '0'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Pattern with zero height
+        //
+        // https://www.w3.org/TR/SVG11/pservers.html#PatternElementHeightAttribute
+        // "A value of zero disables rendering of the element (i.e., no paint is applied)"
+        //
+        // <pattern height="0">
+        if (
+          patternHeight0 &&
+          node.name === 'pattern' &&
+          node.attributes.height === '0'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Image with zero width
+        //
+        // https://www.w3.org/TR/SVG11/struct.html#ImageElementWidthAttribute
+        // "A value of zero disables rendering of the element"
+        //
+        // <image width="0">
+        if (
+          imageWidth0 &&
+          node.name === 'image' &&
+          node.attributes.width === '0'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Image with zero height
+        //
+        // https://www.w3.org/TR/SVG11/struct.html#ImageElementHeightAttribute
+        // "A value of zero disables rendering of the element"
+        //
+        // <image height="0">
+        if (
+          imageHeight0 &&
+          node.name === 'image' &&
+          node.attributes.height === '0'
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Path with empty data
+        //
+        // https://www.w3.org/TR/SVG11/paths.html#DAttribute
+        //
+        // <path d=""/>
+        if (pathEmptyD && node.name === 'path') {
+          if (node.attributes.d == null) {
+            detachNodeFromParent$8(node, parentNode);
+            return;
+          }
+          const pathData = parsePathData$1(node.attributes.d);
+          if (pathData.length === 0) {
+            detachNodeFromParent$8(node, parentNode);
+            return;
+          }
+          // keep single point paths for markers
+          if (
+            pathData.length === 1 &&
+            computedStyle['marker-start'] == null &&
+            computedStyle['marker-end'] == null
+          ) {
+            detachNodeFromParent$8(node, parentNode);
+            return;
+          }
+          return;
+        }
+
+        // Polyline with empty points
+        //
+        // https://www.w3.org/TR/SVG11/shapes.html#PolylineElementPointsAttribute
+        //
+        // <polyline points="">
+        if (
+          polylineEmptyPoints &&
+          node.name === 'polyline' &&
+          node.attributes.points == null
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+
+        // Polygon with empty points
+        //
+        // https://www.w3.org/TR/SVG11/shapes.html#PolygonElementPointsAttribute
+        //
+        // <polygon points="">
+        if (
+          polygonEmptyPoints &&
+          node.name === 'polygon' &&
+          node.attributes.points == null
+        ) {
+          detachNodeFromParent$8(node, parentNode);
+          return;
+        }
+      },
+    },
+  };
+};
+
+var removeEmptyText$1 = {};
+
+const { detachNodeFromParent: detachNodeFromParent$7 } = xast;
+
+removeEmptyText$1.name = 'removeEmptyText';
+removeEmptyText$1.type = 'visitor';
+removeEmptyText$1.active = true;
+removeEmptyText$1.description = 'removes empty <text> elements';
+
+/**
+ * Remove empty Text elements.
+ *
+ * @see https://www.w3.org/TR/SVG11/text.html
+ *
+ * @example
+ * Remove empty text element:
+ * <text/>
+ *
+ * Remove empty tspan element:
+ * <tspan/>
+ *
+ * Remove tref with empty xlink:href attribute:
+ * <tref xlink:href=""/>
+ *
+ * @author Kir Belevich
+ */
+removeEmptyText$1.fn = (root, params) => {
+  const { text = true, tspan = true, tref = true } = params;
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        // Remove empty text element
+        if (text && node.name === 'text' && node.children.length === 0) {
+          detachNodeFromParent$7(node, parentNode);
+        }
+        // Remove empty tspan element
+        if (tspan && node.name === 'tspan' && node.children.length === 0) {
+          detachNodeFromParent$7(node, parentNode);
+        }
+        // Remove tref with empty xlink:href attribute
+        if (
+          tref &&
+          node.name === 'tref' &&
+          node.attributes['xlink:href'] == null
+        ) {
+          detachNodeFromParent$7(node, parentNode);
+        }
+      },
+    },
+  };
+};
+
+var convertShapeToPath$1 = {};
+
+const { stringifyPathData: stringifyPathData$1 } = path;
+const { detachNodeFromParent: detachNodeFromParent$6 } = xast;
+
+convertShapeToPath$1.name = 'convertShapeToPath';
+convertShapeToPath$1.type = 'visitor';
+convertShapeToPath$1.active = true;
+convertShapeToPath$1.description = 'converts basic shapes to more compact path form';
+
+const regNumber = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
+
+/**
+ * Converts basic shape to more compact path.
+ * It also allows further optimizations like
+ * combining paths with similar attributes.
+ *
+ * @see https://www.w3.org/TR/SVG11/shapes.html
+ *
+ * @author Lev Solntsev
+ */
+convertShapeToPath$1.fn = (root, params) => {
+  const { convertArcs = false, floatPrecision: precision = null } = params;
+
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        // convert rect to path
+        if (
+          node.name === 'rect' &&
+          node.attributes.width != null &&
+          node.attributes.height != null &&
+          node.attributes.rx == null &&
+          node.attributes.ry == null
+        ) {
+          const x = Number(node.attributes.x || '0');
+          const y = Number(node.attributes.y || '0');
+          const width = Number(node.attributes.width);
+          const height = Number(node.attributes.height);
+          // Values like '100%' compute to NaN, thus running after
+          // cleanupNumericValues when 'px' units has already been removed.
+          // TODO: Calculate sizes from % and non-px units if possible.
+          if (Number.isNaN(x - y + width - height)) return;
+          const pathData = [
+            { command: 'M', args: [x, y] },
+            { command: 'H', args: [x + width] },
+            { command: 'V', args: [y + height] },
+            { command: 'H', args: [x] },
+            { command: 'z', args: [] },
+          ];
+          node.name = 'path';
+          node.attributes.d = stringifyPathData$1({ pathData, precision });
+          delete node.attributes.x;
+          delete node.attributes.y;
+          delete node.attributes.width;
+          delete node.attributes.height;
+        }
+
+        // convert line to path
+        if (node.name === 'line') {
+          const x1 = Number(node.attributes.x1 || '0');
+          const y1 = Number(node.attributes.y1 || '0');
+          const x2 = Number(node.attributes.x2 || '0');
+          const y2 = Number(node.attributes.y2 || '0');
+          if (Number.isNaN(x1 - y1 + x2 - y2)) return;
+          const pathData = [
+            { command: 'M', args: [x1, y1] },
+            { command: 'L', args: [x2, y2] },
+          ];
+          node.name = 'path';
+          node.attributes.d = stringifyPathData$1({ pathData, precision });
+          delete node.attributes.x1;
+          delete node.attributes.y1;
+          delete node.attributes.x2;
+          delete node.attributes.y2;
+        }
+
+        // convert polyline and polygon to path
+        if (
+          (node.name === 'polyline' || node.name === 'polygon') &&
+          node.attributes.points != null
+        ) {
+          const coords = (node.attributes.points.match(regNumber) || []).map(
+            Number
+          );
+          if (coords.length < 4) {
+            detachNodeFromParent$6(node, parentNode);
+            return;
+          }
+          const pathData = [];
+          for (let i = 0; i < coords.length; i += 2) {
+            pathData.push({
+              command: i === 0 ? 'M' : 'L',
+              args: coords.slice(i, i + 2),
+            });
+          }
+          if (node.name === 'polygon') {
+            pathData.push({ command: 'z', args: [] });
+          }
+          node.name = 'path';
+          node.attributes.d = stringifyPathData$1({ pathData, precision });
+          delete node.attributes.points;
+        }
+
+        //  optionally convert circle
+        if (node.name === 'circle' && convertArcs) {
+          const cx = Number(node.attributes.cx || '0');
+          const cy = Number(node.attributes.cy || '0');
+          const r = Number(node.attributes.r || '0');
+          if (Number.isNaN(cx - cy + r)) {
+            return;
+          }
+          const pathData = [
+            { command: 'M', args: [cx, cy - r] },
+            { command: 'A', args: [r, r, 0, 1, 0, cx, cy + r] },
+            { command: 'A', args: [r, r, 0, 1, 0, cx, cy - r] },
+            { command: 'z', args: [] },
+          ];
+          node.name = 'path';
+          node.attributes.d = stringifyPathData$1({ pathData, precision });
+          delete node.attributes.cx;
+          delete node.attributes.cy;
+          delete node.attributes.r;
+        }
+
+        // optionally covert ellipse
+        if (node.name === 'ellipse' && convertArcs) {
+          const ecx = Number(node.attributes.cx || '0');
+          const ecy = Number(node.attributes.cy || '0');
+          const rx = Number(node.attributes.rx || '0');
+          const ry = Number(node.attributes.ry || '0');
+          if (Number.isNaN(ecx - ecy + rx - ry)) {
+            return;
+          }
+          const pathData = [
+            { command: 'M', args: [ecx, ecy - ry] },
+            { command: 'A', args: [rx, ry, 0, 1, 0, ecx, ecy + ry] },
+            { command: 'A', args: [rx, ry, 0, 1, 0, ecx, ecy - ry] },
+            { command: 'z', args: [] },
+          ];
+          node.name = 'path';
+          node.attributes.d = stringifyPathData$1({ pathData, precision });
+          delete node.attributes.cx;
+          delete node.attributes.cy;
+          delete node.attributes.rx;
+          delete node.attributes.ry;
+        }
+      },
+    },
+  };
+};
+
+var convertEllipseToCircle$1 = {};
+
+convertEllipseToCircle$1.name = 'convertEllipseToCircle';
+convertEllipseToCircle$1.type = 'visitor';
+convertEllipseToCircle$1.active = true;
+convertEllipseToCircle$1.description = 'converts non-eccentric <ellipse>s to <circle>s';
+
+/**
+ * Converts non-eccentric <ellipse>s to <circle>s.
+ *
+ * @see https://www.w3.org/TR/SVG11/shapes.html
+ *
+ * @author Taylor Hunt
+ */
+convertEllipseToCircle$1.fn = () => {
+  return {
+    element: {
+      enter: (node) => {
+        if (node.name === 'ellipse') {
+          const rx = node.attributes.rx || 0;
+          const ry = node.attributes.ry || 0;
+          if (
+            rx === ry ||
+            rx === 'auto' ||
+            ry === 'auto' // SVG2
+          ) {
+            node.name = 'circle';
+            const radius = rx === 'auto' ? ry : rx;
+            delete node.attributes.rx;
+            delete node.attributes.ry;
+            node.attributes.r = radius;
+          }
+        }
+      },
+    },
+  };
+};
+
+var moveElemsAttrsToGroup$1 = {};
+
+const { inheritableAttrs: inheritableAttrs$1, pathElems: pathElems$2 } = _collections;
+
+moveElemsAttrsToGroup$1.name = 'moveElemsAttrsToGroup';
+
+moveElemsAttrsToGroup$1.type = 'perItemReverse';
+
+moveElemsAttrsToGroup$1.active = true;
+
+moveElemsAttrsToGroup$1.description = 'moves elements attributes to the existing group wrapper';
 
 /**
  * Collapse content's intersected and inheritable
@@ -43723,7 +41379,7 @@ moveElemsAttrsToGroup.description = 'moves elements attributes to the existing g
  *
  * @author Kir Belevich
  */
-moveElemsAttrsToGroup.fn = function (item) {
+moveElemsAttrsToGroup$1.fn = function (item) {
   if (
     item.type === 'element' &&
     item.name === 'g' &&
@@ -43755,7 +41411,7 @@ moveElemsAttrsToGroup.fn = function (item) {
         }
       }),
       allPath = item.children.every(function (inner) {
-        return inner.isElem(pathElems$1);
+        return inner.isElem(pathElems$2);
       });
 
     if (intersected) {
@@ -43812,17 +41468,19 @@ function intersectInheritableAttrs(a, b) {
   return c;
 }
 
-var moveGroupAttrsToElems = {};
+var moveGroupAttrsToElems$1 = {};
 
-const { pathElems, referencesProps: referencesProps$1 } = _collections;
+const { pathElems: pathElems$1, referencesProps: referencesProps$2 } = _collections;
 
-moveGroupAttrsToElems.type = 'perItem';
+moveGroupAttrsToElems$1.name = 'moveGroupAttrsToElems';
 
-moveGroupAttrsToElems.active = true;
+moveGroupAttrsToElems$1.type = 'perItem';
 
-moveGroupAttrsToElems.description = 'moves some group attributes to the content elements';
+moveGroupAttrsToElems$1.active = true;
 
-const pathElemsWithGroupsAndText = [...pathElems, 'g', 'text'];
+moveGroupAttrsToElems$1.description = 'moves some group attributes to the content elements';
+
+const pathElemsWithGroupsAndText = [...pathElems$1, 'g', 'text'];
 
 /**
  * Move group attrs to the content elements.
@@ -43843,7 +41501,7 @@ const pathElemsWithGroupsAndText = [...pathElems, 'g', 'text'];
  *
  * @author Kir Belevich
  */
-moveGroupAttrsToElems.fn = function (item) {
+moveGroupAttrsToElems$1.fn = function (item) {
   // move group transform attr to content's pathElems
   if (
     item.type === 'element' &&
@@ -43852,7 +41510,7 @@ moveGroupAttrsToElems.fn = function (item) {
     item.attributes.transform != null &&
     Object.entries(item.attributes).some(
       ([name, value]) =>
-        referencesProps$1.includes(name) && value.includes('url(')
+        referencesProps$2.includes(name) && value.includes('url(')
     ) === false &&
     item.children.every(
       (inner) =>
@@ -43873,7 +41531,3859 @@ moveGroupAttrsToElems.fn = function (item) {
   }
 };
 
+var collapseGroups$1 = {};
+
+const { inheritableAttrs, elemsGroups: elemsGroups$1 } = _collections;
+
+collapseGroups$1.name = 'collapseGroups';
+
+collapseGroups$1.type = 'perItemReverse';
+
+collapseGroups$1.active = true;
+
+collapseGroups$1.description = 'collapses useless groups';
+
+function hasAnimatedAttr(item, name) {
+  if (item.type === 'element') {
+    return (
+      (elemsGroups$1.animation.includes(item.name) &&
+        item.attributes.attributeName === name) ||
+      (item.children.length !== 0 &&
+        item.children.some((child) => hasAnimatedAttr(child, name)))
+    );
+  }
+  return false;
+}
+
+/*
+ * Collapse useless groups.
+ *
+ * @example
+ * <g>
+ *     <g attr1="val1">
+ *         <path d="..."/>
+ *     </g>
+ * </g>
+ *         ⬇
+ * <g>
+ *     <g>
+ *         <path attr1="val1" d="..."/>
+ *     </g>
+ * </g>
+ *         ⬇
+ * <path attr1="val1" d="..."/>
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+collapseGroups$1.fn = function (item) {
+  // non-empty elements
+  if (
+    item.type === 'element' &&
+    item.name !== 'switch' &&
+    item.children.length !== 0
+  ) {
+    item.children.forEach(function (g, i) {
+      // non-empty groups
+      if (g.type === 'element' && g.name === 'g' && g.children.length !== 0) {
+        // move group attibutes to the single child element
+        if (Object.keys(g.attributes).length !== 0 && g.children.length === 1) {
+          var inner = g.children[0];
+
+          if (
+            inner.type === 'element' &&
+            inner.attributes.id == null &&
+            g.attributes.filter == null &&
+            (g.attributes.class == null || inner.attributes.class == null) &&
+            ((g.attributes['clip-path'] == null && g.attributes.mask == null) ||
+              (inner.type === 'element' &&
+                inner.name === 'g' &&
+                g.attributes.transform == null &&
+                inner.attributes.transform == null))
+          ) {
+            for (const [name, value] of Object.entries(g.attributes)) {
+              if (g.children.some((item) => hasAnimatedAttr(item, name)))
+                return;
+
+              if (inner.attributes[name] == null) {
+                inner.attributes[name] = value;
+              } else if (name == 'transform') {
+                inner.attributes[name] = value + ' ' + inner.attributes[name];
+              } else if (inner.attributes[name] === 'inherit') {
+                inner.attributes[name] = value;
+              } else if (
+                inheritableAttrs.includes(name) === false &&
+                inner.attributes[name] !== value
+              ) {
+                return;
+              }
+
+              delete g.attributes[name];
+            }
+          }
+        }
+
+        // collapse groups without attributes
+        if (
+          Object.keys(g.attributes).length === 0 &&
+          !g.children.some((item) => item.isElem(elemsGroups$1.animation))
+        ) {
+          item.spliceContent(i, 1, g.children);
+        }
+      }
+    });
+  }
+};
+
+var convertPathData$1 = {};
+
+var _path$1 = {};
+
+const { parsePathData, stringifyPathData } = path;
+
+var prevCtrlPoint;
+
+/**
+ * Convert path string to JS representation.
+ *
+ * @param {String} pathString input string
+ * @param {Object} params plugin params
+ * @return {Array} output array
+ */
+_path$1.path2js = function (path) {
+  if (path.pathJS) return path.pathJS;
+  const pathData = []; // JS representation of the path data
+  const newPathData = parsePathData(path.attributes.d);
+  for (const { command, args } of newPathData) {
+    if (command === 'Z' || command === 'z') {
+      pathData.push({ instruction: 'z' });
+    } else {
+      pathData.push({ instruction: command, data: args });
+    }
+  }
+  // First moveto is actually absolute. Subsequent coordinates were separated above.
+  if (pathData.length && pathData[0].instruction == 'm') {
+    pathData[0].instruction = 'M';
+  }
+  path.pathJS = pathData;
+  return pathData;
+};
+
+/**
+ * Convert relative Path data to absolute.
+ *
+ * @param {Array} data input data
+ * @return {Array} output data
+ */
+var relative2absolute = (_path$1.relative2absolute = function (data) {
+  var currentPoint = [0, 0],
+    subpathPoint = [0, 0],
+    i;
+
+  return data.map(function (item) {
+    var instruction = item.instruction,
+      itemData = item.data && item.data.slice();
+
+    if (instruction == 'M') {
+      set(currentPoint, itemData);
+      set(subpathPoint, itemData);
+    } else if ('mlcsqt'.indexOf(instruction) > -1) {
+      for (i = 0; i < itemData.length; i++) {
+        itemData[i] += currentPoint[i % 2];
+      }
+      set(currentPoint, itemData);
+
+      if (instruction == 'm') {
+        set(subpathPoint, itemData);
+      }
+    } else if (instruction == 'a') {
+      itemData[5] += currentPoint[0];
+      itemData[6] += currentPoint[1];
+      set(currentPoint, itemData);
+    } else if (instruction == 'h') {
+      itemData[0] += currentPoint[0];
+      currentPoint[0] = itemData[0];
+    } else if (instruction == 'v') {
+      itemData[0] += currentPoint[1];
+      currentPoint[1] = itemData[0];
+    } else if ('MZLCSQTA'.indexOf(instruction) > -1) {
+      set(currentPoint, itemData);
+    } else if (instruction == 'H') {
+      currentPoint[0] = itemData[0];
+    } else if (instruction == 'V') {
+      currentPoint[1] = itemData[0];
+    } else if (instruction == 'z') {
+      set(currentPoint, subpathPoint);
+    }
+
+    return instruction == 'z'
+      ? { instruction: 'z' }
+      : {
+          instruction: instruction.toUpperCase(),
+          data: itemData,
+        };
+  });
+});
+
+/**
+ * Compute Cubic Bézie bounding box.
+ *
+ * @see https://pomax.github.io/bezierinfo/
+ *
+ * @param {Float} xa
+ * @param {Float} ya
+ * @param {Float} xb
+ * @param {Float} yb
+ * @param {Float} xc
+ * @param {Float} yc
+ * @param {Float} xd
+ * @param {Float} yd
+ *
+ * @return {Object}
+ */
+_path$1.computeCubicBoundingBox = function (xa, ya, xb, yb, xc, yc, xd, yd) {
+  var minx = Number.POSITIVE_INFINITY,
+    miny = Number.POSITIVE_INFINITY,
+    maxx = Number.NEGATIVE_INFINITY,
+    maxy = Number.NEGATIVE_INFINITY,
+    ts,
+    t,
+    x,
+    y,
+    i;
+
+  // X
+  if (xa < minx) {
+    minx = xa;
+  }
+  if (xa > maxx) {
+    maxx = xa;
+  }
+  if (xd < minx) {
+    minx = xd;
+  }
+  if (xd > maxx) {
+    maxx = xd;
+  }
+
+  ts = computeCubicFirstDerivativeRoots(xa, xb, xc, xd);
+
+  for (i = 0; i < ts.length; i++) {
+    t = ts[i];
+
+    if (t >= 0 && t <= 1) {
+      x = computeCubicBaseValue(t, xa, xb, xc, xd);
+      // y = computeCubicBaseValue(t, ya, yb, yc, yd);
+
+      if (x < minx) {
+        minx = x;
+      }
+      if (x > maxx) {
+        maxx = x;
+      }
+    }
+  }
+
+  // Y
+  if (ya < miny) {
+    miny = ya;
+  }
+  if (ya > maxy) {
+    maxy = ya;
+  }
+  if (yd < miny) {
+    miny = yd;
+  }
+  if (yd > maxy) {
+    maxy = yd;
+  }
+
+  ts = computeCubicFirstDerivativeRoots(ya, yb, yc, yd);
+
+  for (i = 0; i < ts.length; i++) {
+    t = ts[i];
+
+    if (t >= 0 && t <= 1) {
+      // x = computeCubicBaseValue(t, xa, xb, xc, xd);
+      y = computeCubicBaseValue(t, ya, yb, yc, yd);
+
+      if (y < miny) {
+        miny = y;
+      }
+      if (y > maxy) {
+        maxy = y;
+      }
+    }
+  }
+
+  return {
+    minx: minx,
+    miny: miny,
+    maxx: maxx,
+    maxy: maxy,
+  };
+};
+
+// compute the value for the cubic bezier function at time=t
+function computeCubicBaseValue(t, a, b, c, d) {
+  var mt = 1 - t;
+
+  return (
+    mt * mt * mt * a + 3 * mt * mt * t * b + 3 * mt * t * t * c + t * t * t * d
+  );
+}
+
+// compute the value for the first derivative of the cubic bezier function at time=t
+function computeCubicFirstDerivativeRoots(a, b, c, d) {
+  var result = [-1, -1],
+    tl = -a + 2 * b - c,
+    tr = -Math.sqrt(-a * (c - d) + b * b - b * (c + d) + c * c),
+    dn = -a + 3 * b - 3 * c + d;
+
+  if (dn !== 0) {
+    result[0] = (tl + tr) / dn;
+    result[1] = (tl - tr) / dn;
+  }
+
+  return result;
+}
+
+/**
+ * Compute Quadratic Bézier bounding box.
+ *
+ * @see https://pomax.github.io/bezierinfo/
+ *
+ * @param {Float} xa
+ * @param {Float} ya
+ * @param {Float} xb
+ * @param {Float} yb
+ * @param {Float} xc
+ * @param {Float} yc
+ *
+ * @return {Object}
+ */
+_path$1.computeQuadraticBoundingBox = function (xa, ya, xb, yb, xc, yc) {
+  var minx = Number.POSITIVE_INFINITY,
+    miny = Number.POSITIVE_INFINITY,
+    maxx = Number.NEGATIVE_INFINITY,
+    maxy = Number.NEGATIVE_INFINITY,
+    t,
+    x,
+    y;
+
+  // X
+  if (xa < minx) {
+    minx = xa;
+  }
+  if (xa > maxx) {
+    maxx = xa;
+  }
+  if (xc < minx) {
+    minx = xc;
+  }
+  if (xc > maxx) {
+    maxx = xc;
+  }
+
+  t = computeQuadraticFirstDerivativeRoot(xa, xb, xc);
+
+  if (t >= 0 && t <= 1) {
+    x = computeQuadraticBaseValue(t, xa, xb, xc);
+    // y = computeQuadraticBaseValue(t, ya, yb, yc);
+
+    if (x < minx) {
+      minx = x;
+    }
+    if (x > maxx) {
+      maxx = x;
+    }
+  }
+
+  // Y
+  if (ya < miny) {
+    miny = ya;
+  }
+  if (ya > maxy) {
+    maxy = ya;
+  }
+  if (yc < miny) {
+    miny = yc;
+  }
+  if (yc > maxy) {
+    maxy = yc;
+  }
+
+  t = computeQuadraticFirstDerivativeRoot(ya, yb, yc);
+
+  if (t >= 0 && t <= 1) {
+    // x = computeQuadraticBaseValue(t, xa, xb, xc);
+    y = computeQuadraticBaseValue(t, ya, yb, yc);
+
+    if (y < miny) {
+      miny = y;
+    }
+    if (y > maxy) {
+      maxy = y;
+    }
+  }
+
+  return {
+    minx: minx,
+    miny: miny,
+    maxx: maxx,
+    maxy: maxy,
+  };
+};
+
+// compute the value for the quadratic bezier function at time=t
+function computeQuadraticBaseValue(t, a, b, c) {
+  var mt = 1 - t;
+
+  return mt * mt * a + 2 * mt * t * b + t * t * c;
+}
+
+// compute the value for the first derivative of the quadratic bezier function at time=t
+function computeQuadraticFirstDerivativeRoot(a, b, c) {
+  var t = -1,
+    denominator = a - 2 * b + c;
+
+  if (denominator !== 0) {
+    t = (a - b) / denominator;
+  }
+
+  return t;
+}
+
+/**
+ * Convert path array to string.
+ *
+ * @param {Array} path input path data
+ * @param {Object} params plugin params
+ * @return {String} output path string
+ */
+_path$1.js2path = function (path, data, params) {
+  path.pathJS = data;
+
+  const pathData = [];
+  for (const item of data) {
+    // remove moveto commands which are followed by moveto commands
+    if (
+      pathData.length !== 0 &&
+      (item.instruction === 'M' || item.instruction === 'm')
+    ) {
+      const last = pathData[pathData.length - 1];
+      if (last.command === 'M' || last.command === 'm') {
+        pathData.pop();
+      }
+    }
+    pathData.push({
+      command: item.instruction,
+      args: item.data || [],
+    });
+  }
+
+  path.attributes.d = stringifyPathData({
+    pathData,
+    precision: params.floatPrecision,
+    disableSpaceAfterFlags: params.noSpaceAfterFlags,
+  });
+};
+
+function set(dest, source) {
+  dest[0] = source[source.length - 2];
+  dest[1] = source[source.length - 1];
+  return dest;
+}
+
+/**
+ * Checks if two paths have an intersection by checking convex hulls
+ * collision using Gilbert-Johnson-Keerthi distance algorithm
+ * https://web.archive.org/web/20180822200027/http://entropyinteractive.com/2011/04/gjk-algorithm/
+ *
+ * @param {Array} path1 JS path representation
+ * @param {Array} path2 JS path representation
+ * @return {Boolean}
+ */
+_path$1.intersects = function (path1, path2) {
+  // Collect points of every subpath.
+  var points1 = relative2absolute(path1).reduce(gatherPoints, []),
+    points2 = relative2absolute(path2).reduce(gatherPoints, []);
+
+  // Axis-aligned bounding box check.
+  if (
+    points1.maxX <= points2.minX ||
+    points2.maxX <= points1.minX ||
+    points1.maxY <= points2.minY ||
+    points2.maxY <= points1.minY ||
+    points1.every(function (set1) {
+      return points2.every(function (set2) {
+        return (
+          set1[set1.maxX][0] <= set2[set2.minX][0] ||
+          set2[set2.maxX][0] <= set1[set1.minX][0] ||
+          set1[set1.maxY][1] <= set2[set2.minY][1] ||
+          set2[set2.maxY][1] <= set1[set1.minY][1]
+        );
+      });
+    })
+  )
+    return false;
+
+  // Get a convex hull from points of each subpath. Has the most complexity O(n·log n).
+  var hullNest1 = points1.map(convexHull),
+    hullNest2 = points2.map(convexHull);
+
+  // Check intersection of every subpath of the first path with every subpath of the second.
+  return hullNest1.some(function (hull1) {
+    if (hull1.length < 3) return false;
+
+    return hullNest2.some(function (hull2) {
+      if (hull2.length < 3) return false;
+
+      var simplex = [getSupport(hull1, hull2, [1, 0])], // create the initial simplex
+        direction = minus(simplex[0]); // set the direction to point towards the origin
+
+      var iterations = 1e4; // infinite loop protection, 10 000 iterations is more than enough
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        // eslint-disable-next-line no-constant-condition
+        if (iterations-- == 0) {
+          console.error(
+            'Error: infinite loop while processing mergePaths plugin.'
+          );
+          return true; // true is the safe value that means “do nothing with paths”
+        }
+        // add a new point
+        simplex.push(getSupport(hull1, hull2, direction));
+        // see if the new point was on the correct side of the origin
+        if (dot(direction, simplex[simplex.length - 1]) <= 0) return false;
+        // process the simplex
+        if (processSimplex(simplex, direction)) return true;
+      }
+    });
+  });
+
+  function getSupport(a, b, direction) {
+    return sub(supportPoint(a, direction), supportPoint(b, minus(direction)));
+  }
+
+  // Computes farthest polygon point in particular direction.
+  // Thanks to knowledge of min/max x and y coordinates we can choose a quadrant to search in.
+  // Since we're working on convex hull, the dot product is increasing until we find the farthest point.
+  function supportPoint(polygon, direction) {
+    var index =
+        direction[1] >= 0
+          ? direction[0] < 0
+            ? polygon.maxY
+            : polygon.maxX
+          : direction[0] < 0
+          ? polygon.minX
+          : polygon.minY,
+      max = -Infinity,
+      value;
+    while ((value = dot(polygon[index], direction)) > max) {
+      max = value;
+      index = ++index % polygon.length;
+    }
+    return polygon[(index || polygon.length) - 1];
+  }
+};
+
+function processSimplex(simplex, direction) {
+  // we only need to handle to 1-simplex and 2-simplex
+  if (simplex.length == 2) {
+    // 1-simplex
+    let a = simplex[1],
+      b = simplex[0],
+      AO = minus(simplex[1]),
+      AB = sub(b, a);
+    // AO is in the same direction as AB
+    if (dot(AO, AB) > 0) {
+      // get the vector perpendicular to AB facing O
+      set(direction, orth(AB, a));
+    } else {
+      set(direction, AO);
+      // only A remains in the simplex
+      simplex.shift();
+    }
+  } else {
+    // 2-simplex
+    let a = simplex[2], // [a, b, c] = simplex
+      b = simplex[1],
+      c = simplex[0],
+      AB = sub(b, a),
+      AC = sub(c, a),
+      AO = minus(a),
+      ACB = orth(AB, AC), // the vector perpendicular to AB facing away from C
+      ABC = orth(AC, AB); // the vector perpendicular to AC facing away from B
+
+    if (dot(ACB, AO) > 0) {
+      if (dot(AB, AO) > 0) {
+        // region 4
+        set(direction, ACB);
+        simplex.shift(); // simplex = [b, a]
+      } else {
+        // region 5
+        set(direction, AO);
+        simplex.splice(0, 2); // simplex = [a]
+      }
+    } else if (dot(ABC, AO) > 0) {
+      if (dot(AC, AO) > 0) {
+        // region 6
+        set(direction, ABC);
+        simplex.splice(1, 1); // simplex = [c, a]
+      } else {
+        // region 5 (again)
+        set(direction, AO);
+        simplex.splice(0, 2); // simplex = [a]
+      }
+    } // region 7
+    else return true;
+  }
+  return false;
+}
+
+function minus(v) {
+  return [-v[0], -v[1]];
+}
+
+function sub(v1, v2) {
+  return [v1[0] - v2[0], v1[1] - v2[1]];
+}
+
+function dot(v1, v2) {
+  return v1[0] * v2[0] + v1[1] * v2[1];
+}
+
+function orth(v, from) {
+  var o = [-v[1], v[0]];
+  return dot(o, minus(from)) < 0 ? minus(o) : o;
+}
+
+function gatherPoints(points, item, index, path) {
+  var subPath = points.length && points[points.length - 1],
+    prev = index && path[index - 1],
+    basePoint = subPath.length && subPath[subPath.length - 1],
+    data = item.data,
+    ctrlPoint = basePoint;
+
+  switch (item.instruction) {
+    case 'M':
+      points.push((subPath = []));
+      break;
+    case 'H':
+      addPoint(subPath, [data[0], basePoint[1]]);
+      break;
+    case 'V':
+      addPoint(subPath, [basePoint[0], data[0]]);
+      break;
+    case 'Q':
+      addPoint(subPath, data.slice(0, 2));
+      prevCtrlPoint = [data[2] - data[0], data[3] - data[1]]; // Save control point for shorthand
+      break;
+    case 'T':
+      if (prev.instruction == 'Q' || prev.instruction == 'T') {
+        ctrlPoint = [
+          basePoint[0] + prevCtrlPoint[0],
+          basePoint[1] + prevCtrlPoint[1],
+        ];
+        addPoint(subPath, ctrlPoint);
+        prevCtrlPoint = [data[0] - ctrlPoint[0], data[1] - ctrlPoint[1]];
+      }
+      break;
+    case 'C':
+      // Approximate quibic Bezier curve with middle points between control points
+      addPoint(subPath, [
+        0.5 * (basePoint[0] + data[0]),
+        0.5 * (basePoint[1] + data[1]),
+      ]);
+      addPoint(subPath, [0.5 * (data[0] + data[2]), 0.5 * (data[1] + data[3])]);
+      addPoint(subPath, [0.5 * (data[2] + data[4]), 0.5 * (data[3] + data[5])]);
+      prevCtrlPoint = [data[4] - data[2], data[5] - data[3]]; // Save control point for shorthand
+      break;
+    case 'S':
+      if (prev.instruction == 'C' || prev.instruction == 'S') {
+        addPoint(subPath, [
+          basePoint[0] + 0.5 * prevCtrlPoint[0],
+          basePoint[1] + 0.5 * prevCtrlPoint[1],
+        ]);
+        ctrlPoint = [
+          basePoint[0] + prevCtrlPoint[0],
+          basePoint[1] + prevCtrlPoint[1],
+        ];
+      }
+      addPoint(subPath, [
+        0.5 * (ctrlPoint[0] + data[0]),
+        0.5 * (ctrlPoint[1] + data[1]),
+      ]);
+      addPoint(subPath, [0.5 * (data[0] + data[2]), 0.5 * (data[1] + data[3])]);
+      prevCtrlPoint = [data[2] - data[0], data[3] - data[1]];
+      break;
+    case 'A':
+      // Convert the arc to bezier curves and use the same approximation
+      var curves = a2c.apply(0, basePoint.concat(data));
+      for (var cData; (cData = curves.splice(0, 6).map(toAbsolute)).length; ) {
+        addPoint(subPath, [
+          0.5 * (basePoint[0] + cData[0]),
+          0.5 * (basePoint[1] + cData[1]),
+        ]);
+        addPoint(subPath, [
+          0.5 * (cData[0] + cData[2]),
+          0.5 * (cData[1] + cData[3]),
+        ]);
+        addPoint(subPath, [
+          0.5 * (cData[2] + cData[4]),
+          0.5 * (cData[3] + cData[5]),
+        ]);
+        if (curves.length) addPoint(subPath, (basePoint = cData.slice(-2)));
+      }
+      break;
+  }
+  // Save final command coordinates
+  if (data && data.length >= 2) addPoint(subPath, data.slice(-2));
+  return points;
+
+  function toAbsolute(n, i) {
+    return n + basePoint[i % 2];
+  }
+
+  // Writes data about the extreme points on each axle
+  function addPoint(path, point) {
+    if (!path.length || point[1] > path[path.maxY][1]) {
+      path.maxY = path.length;
+      points.maxY = points.length ? Math.max(point[1], points.maxY) : point[1];
+    }
+    if (!path.length || point[0] > path[path.maxX][0]) {
+      path.maxX = path.length;
+      points.maxX = points.length ? Math.max(point[0], points.maxX) : point[0];
+    }
+    if (!path.length || point[1] < path[path.minY][1]) {
+      path.minY = path.length;
+      points.minY = points.length ? Math.min(point[1], points.minY) : point[1];
+    }
+    if (!path.length || point[0] < path[path.minX][0]) {
+      path.minX = path.length;
+      points.minX = points.length ? Math.min(point[0], points.minX) : point[0];
+    }
+    path.push(point);
+  }
+}
+
+/**
+ * Forms a convex hull from set of points of every subpath using monotone chain convex hull algorithm.
+ * https://en.wikibooks.org/wiki/Algorithm_Implementation/Geometry/Convex_hull/Monotone_chain
+ *
+ * @param points An array of [X, Y] coordinates
+ */
+function convexHull(points) {
+  points.sort(function (a, b) {
+    return a[0] == b[0] ? a[1] - b[1] : a[0] - b[0];
+  });
+
+  var lower = [],
+    minY = 0,
+    bottom = 0;
+  for (let i = 0; i < points.length; i++) {
+    while (
+      lower.length >= 2 &&
+      cross(lower[lower.length - 2], lower[lower.length - 1], points[i]) <= 0
+    ) {
+      lower.pop();
+    }
+    if (points[i][1] < points[minY][1]) {
+      minY = i;
+      bottom = lower.length;
+    }
+    lower.push(points[i]);
+  }
+
+  var upper = [],
+    maxY = points.length - 1,
+    top = 0;
+  for (let i = points.length; i--; ) {
+    while (
+      upper.length >= 2 &&
+      cross(upper[upper.length - 2], upper[upper.length - 1], points[i]) <= 0
+    ) {
+      upper.pop();
+    }
+    if (points[i][1] > points[maxY][1]) {
+      maxY = i;
+      top = upper.length;
+    }
+    upper.push(points[i]);
+  }
+
+  // last points are equal to starting points of the other part
+  upper.pop();
+  lower.pop();
+
+  var hull = lower.concat(upper);
+
+  hull.minX = 0; // by sorting
+  hull.maxX = lower.length;
+  hull.minY = bottom;
+  hull.maxY = (lower.length + top) % hull.length;
+
+  return hull;
+}
+
+function cross(o, a, b) {
+  return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+}
+
+/* Based on code from Snap.svg (Apache 2 license). http://snapsvg.io/
+ * Thanks to Dmitry Baranovskiy for his great work!
+ */
+
+function a2c(
+  x1,
+  y1,
+  rx,
+  ry,
+  angle,
+  large_arc_flag,
+  sweep_flag,
+  x2,
+  y2,
+  recursive
+) {
+  // for more information of where this Math came from visit:
+  // https://www.w3.org/TR/SVG11/implnote.html#ArcImplementationNotes
+  var _120 = (Math.PI * 120) / 180,
+    rad = (Math.PI / 180) * (+angle || 0),
+    res = [],
+    rotateX = function (x, y, rad) {
+      return x * Math.cos(rad) - y * Math.sin(rad);
+    },
+    rotateY = function (x, y, rad) {
+      return x * Math.sin(rad) + y * Math.cos(rad);
+    };
+  if (!recursive) {
+    x1 = rotateX(x1, y1, -rad);
+    y1 = rotateY(x1, y1, -rad);
+    x2 = rotateX(x2, y2, -rad);
+    y2 = rotateY(x2, y2, -rad);
+    var x = (x1 - x2) / 2,
+      y = (y1 - y2) / 2;
+    var h = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+    if (h > 1) {
+      h = Math.sqrt(h);
+      rx = h * rx;
+      ry = h * ry;
+    }
+    var rx2 = rx * rx,
+      ry2 = ry * ry,
+      k =
+        (large_arc_flag == sweep_flag ? -1 : 1) *
+        Math.sqrt(
+          Math.abs(
+            (rx2 * ry2 - rx2 * y * y - ry2 * x * x) /
+              (rx2 * y * y + ry2 * x * x)
+          )
+        ),
+      cx = (k * rx * y) / ry + (x1 + x2) / 2,
+      cy = (k * -ry * x) / rx + (y1 + y2) / 2,
+      f1 = Math.asin(((y1 - cy) / ry).toFixed(9)),
+      f2 = Math.asin(((y2 - cy) / ry).toFixed(9));
+
+    f1 = x1 < cx ? Math.PI - f1 : f1;
+    f2 = x2 < cx ? Math.PI - f2 : f2;
+    f1 < 0 && (f1 = Math.PI * 2 + f1);
+    f2 < 0 && (f2 = Math.PI * 2 + f2);
+    if (sweep_flag && f1 > f2) {
+      f1 = f1 - Math.PI * 2;
+    }
+    if (!sweep_flag && f2 > f1) {
+      f2 = f2 - Math.PI * 2;
+    }
+  } else {
+    f1 = recursive[0];
+    f2 = recursive[1];
+    cx = recursive[2];
+    cy = recursive[3];
+  }
+  var df = f2 - f1;
+  if (Math.abs(df) > _120) {
+    var f2old = f2,
+      x2old = x2,
+      y2old = y2;
+    f2 = f1 + _120 * (sweep_flag && f2 > f1 ? 1 : -1);
+    x2 = cx + rx * Math.cos(f2);
+    y2 = cy + ry * Math.sin(f2);
+    res = a2c(x2, y2, rx, ry, angle, 0, sweep_flag, x2old, y2old, [
+      f2,
+      f2old,
+      cx,
+      cy,
+    ]);
+  }
+  df = f2 - f1;
+  var c1 = Math.cos(f1),
+    s1 = Math.sin(f1),
+    c2 = Math.cos(f2),
+    s2 = Math.sin(f2),
+    t = Math.tan(df / 4),
+    hx = (4 / 3) * rx * t,
+    hy = (4 / 3) * ry * t,
+    m = [
+      -hx * s1,
+      hy * c1,
+      x2 + hx * s2 - x1,
+      y2 - hy * c2 - y1,
+      x2 - x1,
+      y2 - y1,
+    ];
+  if (recursive) {
+    return m.concat(res);
+  } else {
+    res = m.concat(res);
+    var newres = [];
+    for (var i = 0, n = res.length; i < n; i++) {
+      newres[i] =
+        i % 2
+          ? rotateY(res[i - 1], res[i], rad)
+          : rotateX(res[i], res[i + 1], rad);
+    }
+    return newres;
+  }
+}
+
+var _applyTransforms = {};
+
+var _transforms = {};
+
+var regTransformTypes = /matrix|translate|scale|rotate|skewX|skewY/,
+  regTransformSplit = /\s*(matrix|translate|scale|rotate|skewX|skewY)\s*\(\s*(.+?)\s*\)[\s,]*/,
+  regNumericValues$2 = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
+
+/**
+ * Convert transform string to JS representation.
+ *
+ * @param {String} transformString input string
+ * @param {Object} params plugin params
+ * @return {Array} output array
+ */
+_transforms.transform2js = function (transformString) {
+  // JS representation of the transform data
+  var transforms = [],
+    // current transform context
+    current;
+
+  // split value into ['', 'translate', '10 50', '', 'scale', '2', '', 'rotate', '-45', '']
+  transformString.split(regTransformSplit).forEach(function (item) {
+    var num;
+
+    if (item) {
+      // if item is a translate function
+      if (regTransformTypes.test(item)) {
+        // then collect it and change current context
+        transforms.push((current = { name: item }));
+        // else if item is data
+      } else {
+        // then split it into [10, 50] and collect as context.data
+        // eslint-disable-next-line no-cond-assign
+        while ((num = regNumericValues$2.exec(item))) {
+          num = Number(num);
+          if (current.data) current.data.push(num);
+          else current.data = [num];
+        }
+      }
+    }
+  });
+
+  // return empty array if broken transform (no data)
+  return current && current.data ? transforms : [];
+};
+
+/**
+ * Multiply transforms into one.
+ *
+ * @param {Array} input transforms array
+ * @return {Array} output matrix array
+ */
+_transforms.transformsMultiply = function (transforms) {
+  // convert transforms objects to the matrices
+  transforms = transforms.map(function (transform) {
+    if (transform.name === 'matrix') {
+      return transform.data;
+    }
+    return transformToMatrix(transform);
+  });
+
+  // multiply all matrices into one
+  transforms = {
+    name: 'matrix',
+    data:
+      transforms.length > 0 ? transforms.reduce(multiplyTransformMatrices) : [],
+  };
+
+  return transforms;
+};
+
+/**
+ * Do math like a schoolgirl.
+ *
+ * @type {Object}
+ */
+var mth = (_transforms.mth = {
+  rad: function (deg) {
+    return (deg * Math.PI) / 180;
+  },
+
+  deg: function (rad) {
+    return (rad * 180) / Math.PI;
+  },
+
+  cos: function (deg) {
+    return Math.cos(this.rad(deg));
+  },
+
+  acos: function (val, floatPrecision) {
+    return +this.deg(Math.acos(val)).toFixed(floatPrecision);
+  },
+
+  sin: function (deg) {
+    return Math.sin(this.rad(deg));
+  },
+
+  asin: function (val, floatPrecision) {
+    return +this.deg(Math.asin(val)).toFixed(floatPrecision);
+  },
+
+  tan: function (deg) {
+    return Math.tan(this.rad(deg));
+  },
+
+  atan: function (val, floatPrecision) {
+    return +this.deg(Math.atan(val)).toFixed(floatPrecision);
+  },
+});
+
+/**
+ * Decompose matrix into simple transforms. See
+ * https://frederic-wang.fr/decomposition-of-2d-transform-matrices.html
+ *
+ * @param {Object} data matrix transform object
+ * @return {Object|Array} transforms array or original transform object
+ */
+_transforms.matrixToTransform = function (transform, params) {
+  var floatPrecision = params.floatPrecision,
+    data = transform.data,
+    transforms = [],
+    sx = +Math.hypot(data[0], data[1]).toFixed(params.transformPrecision),
+    sy = +((data[0] * data[3] - data[1] * data[2]) / sx).toFixed(
+      params.transformPrecision
+    ),
+    colsSum = data[0] * data[2] + data[1] * data[3],
+    rowsSum = data[0] * data[1] + data[2] * data[3],
+    scaleBefore = rowsSum != 0 || sx == sy;
+
+  // [..., ..., ..., ..., tx, ty] → translate(tx, ty)
+  if (data[4] || data[5]) {
+    transforms.push({
+      name: 'translate',
+      data: data.slice(4, data[5] ? 6 : 5),
+    });
+  }
+
+  // [sx, 0, tan(a)·sy, sy, 0, 0] → skewX(a)·scale(sx, sy)
+  if (!data[1] && data[2]) {
+    transforms.push({
+      name: 'skewX',
+      data: [mth.atan(data[2] / sy, floatPrecision)],
+    });
+
+    // [sx, sx·tan(a), 0, sy, 0, 0] → skewY(a)·scale(sx, sy)
+  } else if (data[1] && !data[2]) {
+    transforms.push({
+      name: 'skewY',
+      data: [mth.atan(data[1] / data[0], floatPrecision)],
+    });
+    sx = data[0];
+    sy = data[3];
+
+    // [sx·cos(a), sx·sin(a), sy·-sin(a), sy·cos(a), x, y] → rotate(a[, cx, cy])·(scale or skewX) or
+    // [sx·cos(a), sy·sin(a), sx·-sin(a), sy·cos(a), x, y] → scale(sx, sy)·rotate(a[, cx, cy]) (if !scaleBefore)
+  } else if (!colsSum || (sx == 1 && sy == 1) || !scaleBefore) {
+    if (!scaleBefore) {
+      sx = (data[0] < 0 ? -1 : 1) * Math.hypot(data[0], data[2]);
+      sy = (data[3] < 0 ? -1 : 1) * Math.hypot(data[1], data[3]);
+      transforms.push({ name: 'scale', data: [sx, sy] });
+    }
+    var angle = Math.min(Math.max(-1, data[0] / sx), 1),
+      rotate = [
+        mth.acos(angle, floatPrecision) *
+          ((scaleBefore ? 1 : sy) * data[1] < 0 ? -1 : 1),
+      ];
+
+    if (rotate[0]) transforms.push({ name: 'rotate', data: rotate });
+
+    if (rowsSum && colsSum)
+      transforms.push({
+        name: 'skewX',
+        data: [mth.atan(colsSum / (sx * sx), floatPrecision)],
+      });
+
+    // rotate(a, cx, cy) can consume translate() within optional arguments cx, cy (rotation point)
+    if (rotate[0] && (data[4] || data[5])) {
+      transforms.shift();
+      var cos = data[0] / sx,
+        sin = data[1] / (scaleBefore ? sx : sy),
+        x = data[4] * (scaleBefore || sy),
+        y = data[5] * (scaleBefore || sx),
+        denom =
+          (Math.pow(1 - cos, 2) + Math.pow(sin, 2)) * (scaleBefore || sx * sy);
+      rotate.push(((1 - cos) * x - sin * y) / denom);
+      rotate.push(((1 - cos) * y + sin * x) / denom);
+    }
+
+    // Too many transformations, return original matrix if it isn't just a scale/translate
+  } else if (data[1] || data[2]) {
+    return transform;
+  }
+
+  if ((scaleBefore && (sx != 1 || sy != 1)) || !transforms.length)
+    transforms.push({
+      name: 'scale',
+      data: sx == sy ? [sx] : [sx, sy],
+    });
+
+  return transforms;
+};
+
+/**
+ * Convert transform to the matrix data.
+ *
+ * @param {Object} transform transform object
+ * @return {Array} matrix data
+ */
+function transformToMatrix(transform) {
+  if (transform.name === 'matrix') return transform.data;
+
+  var matrix;
+
+  switch (transform.name) {
+    case 'translate':
+      // [1, 0, 0, 1, tx, ty]
+      matrix = [1, 0, 0, 1, transform.data[0], transform.data[1] || 0];
+      break;
+    case 'scale':
+      // [sx, 0, 0, sy, 0, 0]
+      matrix = [
+        transform.data[0],
+        0,
+        0,
+        transform.data[1] || transform.data[0],
+        0,
+        0,
+      ];
+      break;
+    case 'rotate':
+      // [cos(a), sin(a), -sin(a), cos(a), x, y]
+      var cos = mth.cos(transform.data[0]),
+        sin = mth.sin(transform.data[0]),
+        cx = transform.data[1] || 0,
+        cy = transform.data[2] || 0;
+
+      matrix = [
+        cos,
+        sin,
+        -sin,
+        cos,
+        (1 - cos) * cx + sin * cy,
+        (1 - cos) * cy - sin * cx,
+      ];
+      break;
+    case 'skewX':
+      // [1, 0, tan(a), 1, 0, 0]
+      matrix = [1, 0, mth.tan(transform.data[0]), 1, 0, 0];
+      break;
+    case 'skewY':
+      // [1, tan(a), 0, 1, 0, 0]
+      matrix = [1, mth.tan(transform.data[0]), 0, 1, 0, 0];
+      break;
+  }
+
+  return matrix;
+}
+
+/**
+ * Applies transformation to an arc. To do so, we represent ellipse as a matrix, multiply it
+ * by the transformation matrix and use a singular value decomposition to represent in a form
+ * rotate(θ)·scale(a b)·rotate(φ). This gives us new ellipse params a, b and θ.
+ * SVD is being done with the formulae provided by Wolffram|Alpha (svd {{m0, m2}, {m1, m3}})
+ *
+ * @param {Array} cursor [x, y]
+ * @param {Array} arc [a, b, rotation in deg]
+ * @param {Array} transform transformation matrix
+ * @return {Array} arc transformed input arc
+ */
+_transforms.transformArc = function (cursor, arc, transform) {
+  const x = arc[5] - cursor[0];
+  const y = arc[6] - cursor[1];
+  var a = arc[0],
+    b = arc[1],
+    rot = (arc[2] * Math.PI) / 180,
+    cos = Math.cos(rot),
+    sin = Math.sin(rot),
+    h =
+      Math.pow(x * cos + y * sin, 2) / (4 * a * a) +
+      Math.pow(y * cos - x * sin, 2) / (4 * b * b);
+  if (h > 1) {
+    h = Math.sqrt(h);
+    a *= h;
+    b *= h;
+  }
+  var ellipse = [a * cos, a * sin, -b * sin, b * cos, 0, 0],
+    m = multiplyTransformMatrices(transform, ellipse),
+    // Decompose the new ellipse matrix
+    lastCol = m[2] * m[2] + m[3] * m[3],
+    squareSum = m[0] * m[0] + m[1] * m[1] + lastCol,
+    root =
+      Math.hypot(m[0] - m[3], m[1] + m[2]) *
+      Math.hypot(m[0] + m[3], m[1] - m[2]);
+
+  if (!root) {
+    // circle
+    arc[0] = arc[1] = Math.sqrt(squareSum / 2);
+    arc[2] = 0;
+  } else {
+    var majorAxisSqr = (squareSum + root) / 2,
+      minorAxisSqr = (squareSum - root) / 2,
+      major = Math.abs(majorAxisSqr - lastCol) > 1e-6,
+      sub = (major ? majorAxisSqr : minorAxisSqr) - lastCol,
+      rowsSum = m[0] * m[2] + m[1] * m[3],
+      term1 = m[0] * sub + m[2] * rowsSum,
+      term2 = m[1] * sub + m[3] * rowsSum;
+    arc[0] = Math.sqrt(majorAxisSqr);
+    arc[1] = Math.sqrt(minorAxisSqr);
+    arc[2] =
+      (((major ? term2 < 0 : term1 > 0) ? -1 : 1) *
+        Math.acos((major ? term1 : term2) / Math.hypot(term1, term2)) *
+        180) /
+      Math.PI;
+  }
+
+  if (transform[0] < 0 !== transform[3] < 0) {
+    // Flip the sweep flag if coordinates are being flipped horizontally XOR vertically
+    arc[4] = 1 - arc[4];
+  }
+
+  return arc;
+};
+
+/**
+ * Multiply transformation matrices.
+ *
+ * @param {Array} a matrix A data
+ * @param {Array} b matrix B data
+ * @return {Array} result
+ */
+function multiplyTransformMatrices(a, b) {
+  return [
+    a[0] * b[0] + a[2] * b[1],
+    a[1] * b[0] + a[3] * b[1],
+    a[0] * b[2] + a[2] * b[3],
+    a[1] * b[2] + a[3] * b[3],
+    a[0] * b[4] + a[2] * b[5] + a[4],
+    a[1] * b[4] + a[3] * b[5] + a[5],
+  ];
+}
+
+// TODO implement as separate plugin
+
+const {
+  transformsMultiply: transformsMultiply$1,
+  transform2js: transform2js$1,
+  transformArc,
+} = _transforms;
+const { removeLeadingZero: removeLeadingZero$1 } = tools;
+const { referencesProps: referencesProps$1, attrsGroupsDefaults } = _collections;
+
+const regNumericValues$1 = /[-+]?(\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
+const defaultStrokeWidth = attrsGroupsDefaults.presentation['stroke-width'];
+
+/**
+ * Apply transformation(s) to the Path data.
+ *
+ * @param {Object} elem current element
+ * @param {Array} path input path data
+ * @param {Object} params whether to apply transforms to stroked lines and transform precision (used for stroke width)
+ * @return {Array} output path data
+ */
+const applyTransforms$1 = (elem, pathData, params) => {
+  // if there are no 'stroke' attr and references to other objects such as
+  // gradiends or clip-path which are also subjects to transform.
+  if (
+    elem.attributes.transform == null ||
+    elem.attributes.transform === '' ||
+    // styles are not considered when applying transform
+    // can be fixed properly with new style engine
+    elem.attributes.style != null ||
+    Object.entries(elem.attributes).some(
+      ([name, value]) =>
+        referencesProps$1.includes(name) && value.includes('url(')
+    )
+  ) {
+    return;
+  }
+
+  const matrix = transformsMultiply$1(transform2js$1(elem.attributes.transform));
+  const stroke = elem.computedAttr('stroke');
+  const id = elem.computedAttr('id');
+  const transformPrecision = params.transformPrecision;
+
+  if (stroke && stroke != 'none') {
+    if (
+      !params.applyTransformsStroked ||
+      ((matrix.data[0] != matrix.data[3] ||
+        matrix.data[1] != -matrix.data[2]) &&
+        (matrix.data[0] != -matrix.data[3] || matrix.data[1] != matrix.data[2]))
+    )
+      return;
+
+    // "stroke-width" should be inside the part with ID, otherwise it can be overrided in <use>
+    if (id) {
+      let idElem = elem;
+      let hasStrokeWidth = false;
+
+      do {
+        if (idElem.attributes['stroke-width']) {
+          hasStrokeWidth = true;
+        }
+      } while (
+        idElem.attributes.id !== id &&
+        !hasStrokeWidth &&
+        (idElem = idElem.parentNode)
+      );
+
+      if (!hasStrokeWidth) return;
+    }
+
+    const scale = +Math.sqrt(
+      matrix.data[0] * matrix.data[0] + matrix.data[1] * matrix.data[1]
+    ).toFixed(transformPrecision);
+
+    if (scale !== 1) {
+      const strokeWidth =
+        elem.computedAttr('stroke-width') || defaultStrokeWidth;
+
+      if (
+        elem.attributes['vector-effect'] == null ||
+        elem.attributes['vector-effect'] !== 'non-scaling-stroke'
+      ) {
+        if (elem.attributes['stroke-width'] != null) {
+          elem.attributes['stroke-width'] = elem.attributes['stroke-width']
+            .trim()
+            .replace(regNumericValues$1, (num) => removeLeadingZero$1(num * scale));
+        } else {
+          elem.attributes[
+            'stroke-width'
+          ] = strokeWidth.replace(regNumericValues$1, (num) =>
+            removeLeadingZero$1(num * scale)
+          );
+        }
+
+        if (elem.attributes['stroke-dashoffset'] != null) {
+          elem.attributes['stroke-dashoffset'] = elem.attributes[
+            'stroke-dashoffset'
+          ]
+            .trim()
+            .replace(regNumericValues$1, (num) => removeLeadingZero$1(num * scale));
+        }
+
+        if (elem.attributes['stroke-dasharray'] != null) {
+          elem.attributes['stroke-dasharray'] = elem.attributes[
+            'stroke-dasharray'
+          ]
+            .trim()
+            .replace(regNumericValues$1, (num) => removeLeadingZero$1(num * scale));
+        }
+      }
+    }
+  } else if (id) {
+    // Stroke and stroke-width can be redefined with <use>
+    return;
+  }
+
+  applyMatrixToPathData(pathData, matrix.data);
+
+  // remove transform attr
+  delete elem.attributes.transform;
+
+  return;
+};
+_applyTransforms.applyTransforms = applyTransforms$1;
+
+const transformAbsolutePoint = (matrix, x, y) => {
+  const newX = matrix[0] * x + matrix[2] * y + matrix[4];
+  const newY = matrix[1] * x + matrix[3] * y + matrix[5];
+  return [newX, newY];
+};
+
+const transformRelativePoint = (matrix, x, y) => {
+  const newX = matrix[0] * x + matrix[2] * y;
+  const newY = matrix[1] * x + matrix[3] * y;
+  return [newX, newY];
+};
+
+const applyMatrixToPathData = (pathData, matrix) => {
+  let start = [0, 0];
+  let cursor = [0, 0];
+
+  for (const pathItem of pathData) {
+    let { instruction: command, data: args } = pathItem;
+    // moveto (x y)
+    if (command === 'M') {
+      cursor[0] = args[0];
+      cursor[1] = args[1];
+      start[0] = cursor[0];
+      start[1] = cursor[1];
+      const [x, y] = transformAbsolutePoint(matrix, args[0], args[1]);
+      args[0] = x;
+      args[1] = y;
+    }
+    if (command === 'm') {
+      cursor[0] += args[0];
+      cursor[1] += args[1];
+      start[0] = cursor[0];
+      start[1] = cursor[1];
+      const [x, y] = transformRelativePoint(matrix, args[0], args[1]);
+      args[0] = x;
+      args[1] = y;
+    }
+
+    // horizontal lineto (x)
+    // convert to lineto to handle two-dimentional transforms
+    if (command === 'H') {
+      command = 'L';
+      args = [args[0], cursor[1]];
+    }
+    if (command === 'h') {
+      command = 'l';
+      args = [args[0], 0];
+    }
+
+    // vertical lineto (y)
+    // convert to lineto to handle two-dimentional transforms
+    if (command === 'V') {
+      command = 'L';
+      args = [cursor[0], args[0]];
+    }
+    if (command === 'v') {
+      command = 'l';
+      args = [0, args[0]];
+    }
+
+    // lineto (x y)
+    if (command === 'L') {
+      cursor[0] = args[0];
+      cursor[1] = args[1];
+      const [x, y] = transformAbsolutePoint(matrix, args[0], args[1]);
+      args[0] = x;
+      args[1] = y;
+    }
+    if (command === 'l') {
+      cursor[0] += args[0];
+      cursor[1] += args[1];
+      const [x, y] = transformRelativePoint(matrix, args[0], args[1]);
+      args[0] = x;
+      args[1] = y;
+    }
+
+    // curveto (x1 y1 x2 y2 x y)
+    if (command === 'C') {
+      cursor[0] = args[4];
+      cursor[1] = args[5];
+      const [x1, y1] = transformAbsolutePoint(matrix, args[0], args[1]);
+      const [x2, y2] = transformAbsolutePoint(matrix, args[2], args[3]);
+      const [x, y] = transformAbsolutePoint(matrix, args[4], args[5]);
+      args[0] = x1;
+      args[1] = y1;
+      args[2] = x2;
+      args[3] = y2;
+      args[4] = x;
+      args[5] = y;
+    }
+    if (command === 'c') {
+      cursor[0] += args[4];
+      cursor[1] += args[5];
+      const [x1, y1] = transformRelativePoint(matrix, args[0], args[1]);
+      const [x2, y2] = transformRelativePoint(matrix, args[2], args[3]);
+      const [x, y] = transformRelativePoint(matrix, args[4], args[5]);
+      args[0] = x1;
+      args[1] = y1;
+      args[2] = x2;
+      args[3] = y2;
+      args[4] = x;
+      args[5] = y;
+    }
+
+    // smooth curveto (x2 y2 x y)
+    if (command === 'S') {
+      cursor[0] = args[2];
+      cursor[1] = args[3];
+      const [x2, y2] = transformAbsolutePoint(matrix, args[0], args[1]);
+      const [x, y] = transformAbsolutePoint(matrix, args[2], args[3]);
+      args[0] = x2;
+      args[1] = y2;
+      args[2] = x;
+      args[3] = y;
+    }
+    if (command === 's') {
+      cursor[0] += args[2];
+      cursor[1] += args[3];
+      const [x2, y2] = transformRelativePoint(matrix, args[0], args[1]);
+      const [x, y] = transformRelativePoint(matrix, args[2], args[3]);
+      args[0] = x2;
+      args[1] = y2;
+      args[2] = x;
+      args[3] = y;
+    }
+
+    // quadratic Bézier curveto (x1 y1 x y)
+    if (command === 'Q') {
+      cursor[0] = args[2];
+      cursor[1] = args[3];
+      const [x1, y1] = transformAbsolutePoint(matrix, args[0], args[1]);
+      const [x, y] = transformAbsolutePoint(matrix, args[2], args[3]);
+      args[0] = x1;
+      args[1] = y1;
+      args[2] = x;
+      args[3] = y;
+    }
+    if (command === 'q') {
+      cursor[0] += args[2];
+      cursor[1] += args[3];
+      const [x1, y1] = transformRelativePoint(matrix, args[0], args[1]);
+      const [x, y] = transformRelativePoint(matrix, args[2], args[3]);
+      args[0] = x1;
+      args[1] = y1;
+      args[2] = x;
+      args[3] = y;
+    }
+
+    // smooth quadratic Bézier curveto (x y)
+    if (command === 'T') {
+      cursor[0] = args[0];
+      cursor[1] = args[1];
+      const [x, y] = transformAbsolutePoint(matrix, args[0], args[1]);
+      args[0] = x;
+      args[1] = y;
+    }
+    if (command === 't') {
+      cursor[0] += args[0];
+      cursor[1] += args[1];
+      const [x, y] = transformRelativePoint(matrix, args[0], args[1]);
+      args[0] = x;
+      args[1] = y;
+    }
+
+    // elliptical arc (rx ry x-axis-rotation large-arc-flag sweep-flag x y)
+    if (command === 'A') {
+      transformArc(cursor, args, matrix);
+      cursor[0] = args[5];
+      cursor[1] = args[6];
+      // reduce number of digits in rotation angle
+      if (Math.abs(args[2]) > 80) {
+        const a = args[0];
+        const rotation = args[2];
+        args[0] = args[1];
+        args[1] = a;
+        args[2] = rotation + (rotation > 0 ? -90 : 90);
+      }
+      const [x, y] = transformAbsolutePoint(matrix, args[5], args[6]);
+      args[5] = x;
+      args[6] = y;
+    }
+    if (command === 'a') {
+      transformArc([0, 0], args, matrix);
+      cursor[0] += args[5];
+      cursor[1] += args[6];
+      // reduce number of digits in rotation angle
+      if (Math.abs(args[2]) > 80) {
+        const a = args[0];
+        const rotation = args[2];
+        args[0] = args[1];
+        args[1] = a;
+        args[2] = rotation + (rotation > 0 ? -90 : 90);
+      }
+      const [x, y] = transformRelativePoint(matrix, args[5], args[6]);
+      args[5] = x;
+      args[6] = y;
+    }
+
+    if (command === 'z' || command === 'Z') {
+      cursor[0] = start[0];
+      cursor[1] = start[1];
+    }
+
+    pathItem.instruction = command;
+    pathItem.data = args;
+  }
+};
+
+const { collectStylesheet: collectStylesheet$1, computeStyle: computeStyle$1 } = style;
+const { pathElems } = _collections;
+const { path2js: path2js$2, js2path: js2path$1 } = _path$1;
+const { applyTransforms } = _applyTransforms;
+const { cleanupOutData: cleanupOutData$1 } = tools;
+
+convertPathData$1.name = 'convertPathData';
+convertPathData$1.type = 'visitor';
+convertPathData$1.active = true;
+convertPathData$1.description =
+  'optimizes path data: writes in shorter form, applies transformations';
+
+convertPathData$1.params = {
+  applyTransforms: true,
+  applyTransformsStroked: true,
+  makeArcs: {
+    threshold: 2.5, // coefficient of rounding error
+    tolerance: 0.5, // percentage of radius
+  },
+  straightCurves: true,
+  lineShorthands: true,
+  curveSmoothShorthands: true,
+  floatPrecision: 3,
+  transformPrecision: 5,
+  removeUseless: true,
+  collapseRepeated: true,
+  utilizeAbsolute: true,
+  leadingZero: true,
+  negativeExtraSpace: true,
+  noSpaceAfterFlags: false, // a20 60 45 0 1 30 20 → a20 60 45 0130 20
+  forceAbsolutePath: false,
+};
+
+let roundData;
+let precision;
+let error;
+let arcThreshold;
+let arcTolerance;
+
+/**
+ * Convert absolute Path to relative,
+ * collapse repeated instructions,
+ * detect and convert Lineto shorthands,
+ * remove useless instructions like "l0,0",
+ * trim useless delimiters and leading zeros,
+ * decrease accuracy of floating-point numbers.
+ *
+ * @see https://www.w3.org/TR/SVG11/paths.html#PathData
+ *
+ * @param {Object} item current iteration item
+ * @param {Object} params plugin params
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+convertPathData$1.fn = (root, params) => {
+  const stylesheet = collectStylesheet$1(root);
+  return {
+    element: {
+      enter: (node) => {
+        if (pathElems.includes(node.name) && node.attributes.d != null) {
+          const computedStyle = computeStyle$1(stylesheet, node);
+          precision = params.floatPrecision;
+          error =
+            precision !== false
+              ? +Math.pow(0.1, precision).toFixed(precision)
+              : 1e-2;
+          roundData = precision > 0 && precision < 20 ? strongRound : round$1;
+          if (params.makeArcs) {
+            arcThreshold = params.makeArcs.threshold;
+            arcTolerance = params.makeArcs.tolerance;
+          }
+          const hasMarkerMid = computedStyle['marker-mid'] != null;
+
+          const maybeHasStroke =
+            computedStyle.stroke &&
+            (computedStyle.stroke.type === 'dynamic' ||
+              computedStyle.stroke.value !== 'none');
+          const maybeHasLinecap =
+            computedStyle['stroke-linecap'] &&
+            (computedStyle['stroke-linecap'].type === 'dynamic' ||
+              computedStyle['stroke-linecap'].value !== 'butt');
+          const maybeHasStrokeAndLinecap = maybeHasStroke && maybeHasLinecap;
+
+          var data = path2js$2(node);
+
+          // TODO: get rid of functions returns
+          if (data.length) {
+            if (params.applyTransforms) {
+              applyTransforms(node, data, params);
+            }
+
+            convertToRelative(data);
+
+            data = filters(data, params, {
+              maybeHasStrokeAndLinecap,
+              hasMarkerMid,
+            });
+
+            if (params.utilizeAbsolute) {
+              data = convertToMixed(data, params);
+            }
+
+            js2path$1(node, data, params);
+          }
+        }
+      },
+    },
+  };
+};
+
+/**
+ * Convert absolute path data coordinates to relative.
+ *
+ * @param {Array} path input path data
+ * @param {Object} params plugin params
+ * @return {Array} output path data
+ */
+const convertToRelative = (pathData) => {
+  let start = [0, 0];
+  let cursor = [0, 0];
+  let prevCoords = [0, 0];
+
+  for (let i = 0; i < pathData.length; i += 1) {
+    const pathItem = pathData[i];
+    let { instruction: command, data: args } = pathItem;
+
+    // moveto (x y)
+    if (command === 'm') {
+      // update start and cursor
+      cursor[0] += args[0];
+      cursor[1] += args[1];
+      start[0] = cursor[0];
+      start[1] = cursor[1];
+    }
+    if (command === 'M') {
+      // M → m
+      // skip first moveto
+      if (i !== 0) {
+        command = 'm';
+      }
+      args[0] -= cursor[0];
+      args[1] -= cursor[1];
+      // update start and cursor
+      cursor[0] += args[0];
+      cursor[1] += args[1];
+      start[0] = cursor[0];
+      start[1] = cursor[1];
+    }
+
+    // lineto (x y)
+    if (command === 'l') {
+      cursor[0] += args[0];
+      cursor[1] += args[1];
+    }
+    if (command === 'L') {
+      // L → l
+      command = 'l';
+      args[0] -= cursor[0];
+      args[1] -= cursor[1];
+      cursor[0] += args[0];
+      cursor[1] += args[1];
+    }
+
+    // horizontal lineto (x)
+    if (command === 'h') {
+      cursor[0] += args[0];
+    }
+    if (command === 'H') {
+      // H → h
+      command = 'h';
+      args[0] -= cursor[0];
+      cursor[0] += args[0];
+    }
+
+    // vertical lineto (y)
+    if (command === 'v') {
+      cursor[1] += args[0];
+    }
+    if (command === 'V') {
+      // V → v
+      command = 'v';
+      args[0] -= cursor[1];
+      cursor[1] += args[0];
+    }
+
+    // curveto (x1 y1 x2 y2 x y)
+    if (command === 'c') {
+      cursor[0] += args[4];
+      cursor[1] += args[5];
+    }
+    if (command === 'C') {
+      // C → c
+      command = 'c';
+      args[0] -= cursor[0];
+      args[1] -= cursor[1];
+      args[2] -= cursor[0];
+      args[3] -= cursor[1];
+      args[4] -= cursor[0];
+      args[5] -= cursor[1];
+      cursor[0] += args[4];
+      cursor[1] += args[5];
+    }
+
+    // smooth curveto (x2 y2 x y)
+    if (command === 's') {
+      cursor[0] += args[2];
+      cursor[1] += args[3];
+    }
+    if (command === 'S') {
+      // S → s
+      command = 's';
+      args[0] -= cursor[0];
+      args[1] -= cursor[1];
+      args[2] -= cursor[0];
+      args[3] -= cursor[1];
+      cursor[0] += args[2];
+      cursor[1] += args[3];
+    }
+
+    // quadratic Bézier curveto (x1 y1 x y)
+    if (command === 'q') {
+      cursor[0] += args[2];
+      cursor[1] += args[3];
+    }
+    if (command === 'Q') {
+      // Q → q
+      command = 'q';
+      args[0] -= cursor[0];
+      args[1] -= cursor[1];
+      args[2] -= cursor[0];
+      args[3] -= cursor[1];
+      cursor[0] += args[2];
+      cursor[1] += args[3];
+    }
+
+    // smooth quadratic Bézier curveto (x y)
+    if (command === 't') {
+      cursor[0] += args[0];
+      cursor[1] += args[1];
+    }
+    if (command === 'T') {
+      // T → t
+      command = 't';
+      args[0] -= cursor[0];
+      args[1] -= cursor[1];
+      cursor[0] += args[0];
+      cursor[1] += args[1];
+    }
+
+    // elliptical arc (rx ry x-axis-rotation large-arc-flag sweep-flag x y)
+    if (command === 'a') {
+      cursor[0] += args[5];
+      cursor[1] += args[6];
+    }
+    if (command === 'A') {
+      // A → a
+      command = 'a';
+      args[5] -= cursor[0];
+      args[6] -= cursor[1];
+      cursor[0] += args[5];
+      cursor[1] += args[6];
+    }
+
+    // closepath
+    if (command === 'Z' || command === 'z') {
+      // reset cursor
+      cursor[0] = start[0];
+      cursor[1] = start[1];
+    }
+
+    pathItem.instruction = command;
+    pathItem.data = args;
+    // store absolute coordinates for later use
+    // base should preserve reference from other element
+    pathItem.base = prevCoords;
+    pathItem.coords = [cursor[0], cursor[1]];
+    prevCoords = pathItem.coords;
+  }
+
+  return pathData;
+};
+
+/**
+ * Main filters loop.
+ *
+ * @param {Array} path input path data
+ * @param {Object} params plugin params
+ * @return {Array} output path data
+ */
+function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
+  var stringify = data2Path.bind(null, params),
+    relSubpoint = [0, 0],
+    pathBase = [0, 0],
+    prev = {};
+
+  path = path.filter(function (item, index, path) {
+    var instruction = item.instruction,
+      data = item.data,
+      next = path[index + 1];
+
+    if (data) {
+      var sdata = data,
+        circle;
+
+      if (instruction === 's') {
+        sdata = [0, 0].concat(data);
+
+        if ('cs'.indexOf(prev.instruction) > -1) {
+          var pdata = prev.data,
+            n = pdata.length;
+
+          // (-x, -y) of the prev tangent point relative to the current point
+          sdata[0] = pdata[n - 2] - pdata[n - 4];
+          sdata[1] = pdata[n - 1] - pdata[n - 3];
+        }
+      }
+
+      // convert curves to arcs if possible
+      if (
+        params.makeArcs &&
+        (instruction == 'c' || instruction == 's') &&
+        isConvex(sdata) &&
+        (circle = findCircle(sdata))
+      ) {
+        var r = roundData([circle.radius])[0],
+          angle = findArcAngle(sdata, circle),
+          sweep = sdata[5] * sdata[0] - sdata[4] * sdata[1] > 0 ? 1 : 0,
+          arc = {
+            instruction: 'a',
+            data: [r, r, 0, 0, sweep, sdata[4], sdata[5]],
+            coords: item.coords.slice(),
+            base: item.base,
+          },
+          output = [arc],
+          // relative coordinates to adjust the found circle
+          relCenter = [
+            circle.center[0] - sdata[4],
+            circle.center[1] - sdata[5],
+          ],
+          relCircle = { center: relCenter, radius: circle.radius },
+          arcCurves = [item],
+          hasPrev = 0,
+          suffix = '',
+          nextLonghand;
+
+        if (
+          (prev.instruction == 'c' &&
+            isConvex(prev.data) &&
+            isArcPrev(prev.data, circle)) ||
+          (prev.instruction == 'a' &&
+            prev.sdata &&
+            isArcPrev(prev.sdata, circle))
+        ) {
+          arcCurves.unshift(prev);
+          arc.base = prev.base;
+          arc.data[5] = arc.coords[0] - arc.base[0];
+          arc.data[6] = arc.coords[1] - arc.base[1];
+          var prevData = prev.instruction == 'a' ? prev.sdata : prev.data;
+          var prevAngle = findArcAngle(prevData, {
+            center: [
+              prevData[4] + circle.center[0],
+              prevData[5] + circle.center[1],
+            ],
+            radius: circle.radius,
+          });
+          angle += prevAngle;
+          if (angle > Math.PI) arc.data[3] = 1;
+          hasPrev = 1;
+        }
+
+        // check if next curves are fitting the arc
+        for (
+          var j = index;
+          (next = path[++j]) && ~'cs'.indexOf(next.instruction);
+
+        ) {
+          var nextData = next.data;
+          if (next.instruction == 's') {
+            nextLonghand = makeLonghand(
+              { instruction: 's', data: next.data.slice() },
+              path[j - 1].data
+            );
+            nextData = nextLonghand.data;
+            nextLonghand.data = nextData.slice(0, 2);
+            suffix = stringify([nextLonghand]);
+          }
+          if (isConvex(nextData) && isArc(nextData, relCircle)) {
+            angle += findArcAngle(nextData, relCircle);
+            if (angle - 2 * Math.PI > 1e-3) break; // more than 360°
+            if (angle > Math.PI) arc.data[3] = 1;
+            arcCurves.push(next);
+            if (2 * Math.PI - angle > 1e-3) {
+              // less than 360°
+              arc.coords = next.coords;
+              arc.data[5] = arc.coords[0] - arc.base[0];
+              arc.data[6] = arc.coords[1] - arc.base[1];
+            } else {
+              // full circle, make a half-circle arc and add a second one
+              arc.data[5] = 2 * (relCircle.center[0] - nextData[4]);
+              arc.data[6] = 2 * (relCircle.center[1] - nextData[5]);
+              arc.coords = [
+                arc.base[0] + arc.data[5],
+                arc.base[1] + arc.data[6],
+              ];
+              arc = {
+                instruction: 'a',
+                data: [
+                  r,
+                  r,
+                  0,
+                  0,
+                  sweep,
+                  next.coords[0] - arc.coords[0],
+                  next.coords[1] - arc.coords[1],
+                ],
+                coords: next.coords,
+                base: arc.coords,
+              };
+              output.push(arc);
+              j++;
+              break;
+            }
+            relCenter[0] -= nextData[4];
+            relCenter[1] -= nextData[5];
+          } else break;
+        }
+
+        if ((stringify(output) + suffix).length < stringify(arcCurves).length) {
+          if (path[j] && path[j].instruction == 's') {
+            makeLonghand(path[j], path[j - 1].data);
+          }
+          if (hasPrev) {
+            var prevArc = output.shift();
+            roundData(prevArc.data);
+            relSubpoint[0] += prevArc.data[5] - prev.data[prev.data.length - 2];
+            relSubpoint[1] += prevArc.data[6] - prev.data[prev.data.length - 1];
+            prev.instruction = 'a';
+            prev.data = prevArc.data;
+            item.base = prev.coords = prevArc.coords;
+          }
+          arc = output.shift();
+          if (arcCurves.length == 1) {
+            item.sdata = sdata.slice(); // preserve curve data for future checks
+          } else if (arcCurves.length - 1 - hasPrev > 0) {
+            // filter out consumed next items
+            path.splice.apply(
+              path,
+              [index + 1, arcCurves.length - 1 - hasPrev].concat(output)
+            );
+          }
+          if (!arc) return false;
+          instruction = 'a';
+          data = arc.data;
+          item.coords = arc.coords;
+        }
+      }
+
+      // Rounding relative coordinates, taking in account accummulating error
+      // to get closer to absolute coordinates. Sum of rounded value remains same:
+      // l .25 3 .25 2 .25 3 .25 2 -> l .3 3 .2 2 .3 3 .2 2
+      if (precision !== false) {
+        if ('mltqsc'.indexOf(instruction) > -1) {
+          for (var i = data.length; i--; ) {
+            data[i] += item.base[i % 2] - relSubpoint[i % 2];
+          }
+        } else if (instruction == 'h') {
+          data[0] += item.base[0] - relSubpoint[0];
+        } else if (instruction == 'v') {
+          data[0] += item.base[1] - relSubpoint[1];
+        } else if (instruction == 'a') {
+          data[5] += item.base[0] - relSubpoint[0];
+          data[6] += item.base[1] - relSubpoint[1];
+        }
+        roundData(data);
+
+        if (instruction == 'h') relSubpoint[0] += data[0];
+        else if (instruction == 'v') relSubpoint[1] += data[0];
+        else {
+          relSubpoint[0] += data[data.length - 2];
+          relSubpoint[1] += data[data.length - 1];
+        }
+        roundData(relSubpoint);
+
+        if (instruction.toLowerCase() == 'm') {
+          pathBase[0] = relSubpoint[0];
+          pathBase[1] = relSubpoint[1];
+        }
+      }
+
+      // convert straight curves into lines segments
+      if (params.straightCurves) {
+        if (
+          (instruction === 'c' && isCurveStraightLine(data)) ||
+          (instruction === 's' && isCurveStraightLine(sdata))
+        ) {
+          if (next && next.instruction == 's') makeLonghand(next, data); // fix up next curve
+          instruction = 'l';
+          data = data.slice(-2);
+        } else if (instruction === 'q' && isCurveStraightLine(data)) {
+          if (next && next.instruction == 't') makeLonghand(next, data); // fix up next curve
+          instruction = 'l';
+          data = data.slice(-2);
+        } else if (
+          instruction === 't' &&
+          prev.instruction !== 'q' &&
+          prev.instruction !== 't'
+        ) {
+          instruction = 'l';
+          data = data.slice(-2);
+        } else if (instruction === 'a' && (data[0] === 0 || data[1] === 0)) {
+          instruction = 'l';
+          data = data.slice(-2);
+        }
+      }
+
+      // horizontal and vertical line shorthands
+      // l 50 0 → h 50
+      // l 0 50 → v 50
+      if (params.lineShorthands && instruction === 'l') {
+        if (data[1] === 0) {
+          instruction = 'h';
+          data.pop();
+        } else if (data[0] === 0) {
+          instruction = 'v';
+          data.shift();
+        }
+      }
+
+      // collapse repeated commands
+      // h 20 h 30 -> h 50
+      if (
+        params.collapseRepeated &&
+        hasMarkerMid === false &&
+        'mhv'.indexOf(instruction) > -1 &&
+        prev.instruction &&
+        instruction == prev.instruction.toLowerCase() &&
+        ((instruction != 'h' && instruction != 'v') ||
+          prev.data[0] >= 0 == data[0] >= 0)
+      ) {
+        prev.data[0] += data[0];
+        if (instruction != 'h' && instruction != 'v') {
+          prev.data[1] += data[1];
+        }
+        prev.coords = item.coords;
+        path[index] = prev;
+        return false;
+      }
+
+      // convert curves into smooth shorthands
+      if (params.curveSmoothShorthands && prev.instruction) {
+        // curveto
+        if (instruction === 'c') {
+          // c + c → c + s
+          if (
+            prev.instruction === 'c' &&
+            data[0] === -(prev.data[2] - prev.data[4]) &&
+            data[1] === -(prev.data[3] - prev.data[5])
+          ) {
+            instruction = 's';
+            data = data.slice(2);
+          }
+
+          // s + c → s + s
+          else if (
+            prev.instruction === 's' &&
+            data[0] === -(prev.data[0] - prev.data[2]) &&
+            data[1] === -(prev.data[1] - prev.data[3])
+          ) {
+            instruction = 's';
+            data = data.slice(2);
+          }
+
+          // [^cs] + c → [^cs] + s
+          else if (
+            'cs'.indexOf(prev.instruction) === -1 &&
+            data[0] === 0 &&
+            data[1] === 0
+          ) {
+            instruction = 's';
+            data = data.slice(2);
+          }
+        }
+
+        // quadratic Bézier curveto
+        else if (instruction === 'q') {
+          // q + q → q + t
+          if (
+            prev.instruction === 'q' &&
+            data[0] === prev.data[2] - prev.data[0] &&
+            data[1] === prev.data[3] - prev.data[1]
+          ) {
+            instruction = 't';
+            data = data.slice(2);
+          }
+
+          // t + q → t + t
+          else if (
+            prev.instruction === 't' &&
+            data[2] === prev.data[0] &&
+            data[3] === prev.data[1]
+          ) {
+            instruction = 't';
+            data = data.slice(2);
+          }
+        }
+      }
+
+      // remove useless non-first path segments
+      if (params.removeUseless && !maybeHasStrokeAndLinecap) {
+        // l 0,0 / h 0 / v 0 / q 0,0 0,0 / t 0,0 / c 0,0 0,0 0,0 / s 0,0 0,0
+        if (
+          'lhvqtcs'.indexOf(instruction) > -1 &&
+          data.every(function (i) {
+            return i === 0;
+          })
+        ) {
+          path[index] = prev;
+          return false;
+        }
+
+        // a 25,25 -30 0,1 0,0
+        if (instruction === 'a' && data[5] === 0 && data[6] === 0) {
+          path[index] = prev;
+          return false;
+        }
+      }
+
+      item.instruction = instruction;
+      item.data = data;
+
+      prev = item;
+    } else {
+      // z resets coordinates
+      relSubpoint[0] = pathBase[0];
+      relSubpoint[1] = pathBase[1];
+      if (prev.instruction == 'z') return false;
+      prev = item;
+    }
+
+    return true;
+  });
+
+  return path;
+}
+
+/**
+ * Writes data in shortest form using absolute or relative coordinates.
+ *
+ * @param {Array} data input path data
+ * @return {Boolean} output
+ */
+function convertToMixed(path, params) {
+  var prev = path[0];
+
+  path = path.filter(function (item, index) {
+    if (index == 0) return true;
+    if (!item.data) {
+      prev = item;
+      return true;
+    }
+
+    var instruction = item.instruction,
+      data = item.data,
+      adata = data && data.slice(0);
+
+    if ('mltqsc'.indexOf(instruction) > -1) {
+      for (var i = adata.length; i--; ) {
+        adata[i] += item.base[i % 2];
+      }
+    } else if (instruction == 'h') {
+      adata[0] += item.base[0];
+    } else if (instruction == 'v') {
+      adata[0] += item.base[1];
+    } else if (instruction == 'a') {
+      adata[5] += item.base[0];
+      adata[6] += item.base[1];
+    }
+
+    roundData(adata);
+
+    var absoluteDataStr = cleanupOutData$1(adata, params),
+      relativeDataStr = cleanupOutData$1(data, params);
+
+    // Convert to absolute coordinates if it's shorter or forceAbsolutePath is true.
+    // v-20 -> V0
+    // Don't convert if it fits following previous instruction.
+    // l20 30-10-50 instead of l20 30L20 30
+    if (
+      params.forceAbsolutePath ||
+      (absoluteDataStr.length < relativeDataStr.length &&
+        !(
+          params.negativeExtraSpace &&
+          instruction == prev.instruction &&
+          prev.instruction.charCodeAt(0) > 96 &&
+          absoluteDataStr.length == relativeDataStr.length - 1 &&
+          (data[0] < 0 ||
+            (/^0\./.test(data[0]) && prev.data[prev.data.length - 1] % 1))
+        ))
+    ) {
+      item.instruction = instruction.toUpperCase();
+      item.data = adata;
+    }
+
+    prev = item;
+
+    return true;
+  });
+
+  return path;
+}
+
+/**
+ * Checks if curve is convex. Control points of such a curve must form
+ * a convex quadrilateral with diagonals crosspoint inside of it.
+ *
+ * @param {Array} data input path data
+ * @return {Boolean} output
+ */
+function isConvex(data) {
+  var center = getIntersection([
+    0,
+    0,
+    data[2],
+    data[3],
+    data[0],
+    data[1],
+    data[4],
+    data[5],
+  ]);
+
+  return (
+    center &&
+    data[2] < center[0] == center[0] < 0 &&
+    data[3] < center[1] == center[1] < 0 &&
+    data[4] < center[0] == center[0] < data[0] &&
+    data[5] < center[1] == center[1] < data[1]
+  );
+}
+
+/**
+ * Computes lines equations by two points and returns their intersection point.
+ *
+ * @param {Array} coords 8 numbers for 4 pairs of coordinates (x,y)
+ * @return {Array|undefined} output coordinate of lines' crosspoint
+ */
+function getIntersection(coords) {
+  // Prev line equation parameters.
+  var a1 = coords[1] - coords[3], // y1 - y2
+    b1 = coords[2] - coords[0], // x2 - x1
+    c1 = coords[0] * coords[3] - coords[2] * coords[1], // x1 * y2 - x2 * y1
+    // Next line equation parameters
+    a2 = coords[5] - coords[7], // y1 - y2
+    b2 = coords[6] - coords[4], // x2 - x1
+    c2 = coords[4] * coords[7] - coords[5] * coords[6], // x1 * y2 - x2 * y1
+    denom = a1 * b2 - a2 * b1;
+
+  if (!denom) return; // parallel lines havn't an intersection
+
+  var cross = [(b1 * c2 - b2 * c1) / denom, (a1 * c2 - a2 * c1) / -denom];
+  if (
+    !isNaN(cross[0]) &&
+    !isNaN(cross[1]) &&
+    isFinite(cross[0]) &&
+    isFinite(cross[1])
+  ) {
+    return cross;
+  }
+}
+
+/**
+ * Decrease accuracy of floating-point numbers
+ * in path data keeping a specified number of decimals.
+ * Smart rounds values like 2.3491 to 2.35 instead of 2.349.
+ * Doesn't apply "smartness" if the number precision fits already.
+ *
+ * @param {Array} data input data array
+ * @return {Array} output data array
+ */
+function strongRound(data) {
+  for (var i = data.length; i-- > 0; ) {
+    if (data[i].toFixed(precision) != data[i]) {
+      var rounded = +data[i].toFixed(precision - 1);
+      data[i] =
+        +Math.abs(rounded - data[i]).toFixed(precision + 1) >= error
+          ? +data[i].toFixed(precision)
+          : rounded;
+    }
+  }
+  return data;
+}
+
+/**
+ * Simple rounding function if precision is 0.
+ *
+ * @param {Array} data input data array
+ * @return {Array} output data array
+ */
+function round$1(data) {
+  for (var i = data.length; i-- > 0; ) {
+    data[i] = Math.round(data[i]);
+  }
+  return data;
+}
+
+/**
+ * Checks if a curve is a straight line by measuring distance
+ * from middle points to the line formed by end points.
+ *
+ * @param {Array} xs array of curve points x-coordinates
+ * @param {Array} ys array of curve points y-coordinates
+ * @return {Boolean}
+ */
+
+function isCurveStraightLine(data) {
+  // Get line equation a·x + b·y + c = 0 coefficients a, b (c = 0) by start and end points.
+  var i = data.length - 2,
+    a = -data[i + 1], // y1 − y2 (y1 = 0)
+    b = data[i], // x2 − x1 (x1 = 0)
+    d = 1 / (a * a + b * b); // same part for all points
+
+  if (i <= 1 || !isFinite(d)) return false; // curve that ends at start point isn't the case
+
+  // Distance from point (x0, y0) to the line is sqrt((c − a·x0 − b·y0)² / (a² + b²))
+  while ((i -= 2) >= 0) {
+    if (Math.sqrt(Math.pow(a * data[i] + b * data[i + 1], 2) * d) > error)
+      return false;
+  }
+
+  return true;
+}
+
+/**
+ * Converts next curve from shorthand to full form using the current curve data.
+ *
+ * @param {Object} item curve to convert
+ * @param {Array} data current curve data
+ */
+
+function makeLonghand(item, data) {
+  switch (item.instruction) {
+    case 's':
+      item.instruction = 'c';
+      break;
+    case 't':
+      item.instruction = 'q';
+      break;
+  }
+  item.data.unshift(
+    data[data.length - 2] - data[data.length - 4],
+    data[data.length - 1] - data[data.length - 3]
+  );
+  return item;
+}
+
+/**
+ * Returns distance between two points
+ *
+ * @param {Array} point1 first point coordinates
+ * @param {Array} point2 second point coordinates
+ * @return {Number} distance
+ */
+
+function getDistance(point1, point2) {
+  return Math.hypot(point1[0] - point2[0], point1[1] - point2[1]);
+}
+
+/**
+ * Returns coordinates of the curve point corresponding to the certain t
+ * a·(1 - t)³·p1 + b·(1 - t)²·t·p2 + c·(1 - t)·t²·p3 + d·t³·p4,
+ * where pN are control points and p1 is zero due to relative coordinates.
+ *
+ * @param {Array} curve array of curve points coordinates
+ * @param {Number} t parametric position from 0 to 1
+ * @return {Array} Point coordinates
+ */
+
+function getCubicBezierPoint(curve, t) {
+  var sqrT = t * t,
+    cubT = sqrT * t,
+    mt = 1 - t,
+    sqrMt = mt * mt;
+
+  return [
+    3 * sqrMt * t * curve[0] + 3 * mt * sqrT * curve[2] + cubT * curve[4],
+    3 * sqrMt * t * curve[1] + 3 * mt * sqrT * curve[3] + cubT * curve[5],
+  ];
+}
+
+/**
+ * Finds circle by 3 points of the curve and checks if the curve fits the found circle.
+ *
+ * @param {Array} curve
+ * @return {Object|undefined} circle
+ */
+
+function findCircle(curve) {
+  var midPoint = getCubicBezierPoint(curve, 1 / 2),
+    m1 = [midPoint[0] / 2, midPoint[1] / 2],
+    m2 = [(midPoint[0] + curve[4]) / 2, (midPoint[1] + curve[5]) / 2],
+    center = getIntersection([
+      m1[0],
+      m1[1],
+      m1[0] + m1[1],
+      m1[1] - m1[0],
+      m2[0],
+      m2[1],
+      m2[0] + (m2[1] - midPoint[1]),
+      m2[1] - (m2[0] - midPoint[0]),
+    ]),
+    radius = center && getDistance([0, 0], center),
+    tolerance = Math.min(arcThreshold * error, (arcTolerance * radius) / 100);
+
+  if (
+    center &&
+    radius < 1e15 &&
+    [1 / 4, 3 / 4].every(function (point) {
+      return (
+        Math.abs(
+          getDistance(getCubicBezierPoint(curve, point), center) - radius
+        ) <= tolerance
+      );
+    })
+  )
+    return { center: center, radius: radius };
+}
+
+/**
+ * Checks if a curve fits the given circle.
+ *
+ * @param {Object} circle
+ * @param {Array} curve
+ * @return {Boolean}
+ */
+
+function isArc(curve, circle) {
+  var tolerance = Math.min(
+    arcThreshold * error,
+    (arcTolerance * circle.radius) / 100
+  );
+
+  return [0, 1 / 4, 1 / 2, 3 / 4, 1].every(function (point) {
+    return (
+      Math.abs(
+        getDistance(getCubicBezierPoint(curve, point), circle.center) -
+          circle.radius
+      ) <= tolerance
+    );
+  });
+}
+
+/**
+ * Checks if a previous curve fits the given circle.
+ *
+ * @param {Object} circle
+ * @param {Array} curve
+ * @return {Boolean}
+ */
+
+function isArcPrev(curve, circle) {
+  return isArc(curve, {
+    center: [circle.center[0] + curve[4], circle.center[1] + curve[5]],
+    radius: circle.radius,
+  });
+}
+
+/**
+ * Finds angle of a curve fitting the given arc.
+
+ * @param {Array} curve
+ * @param {Object} relCircle
+ * @return {Number} angle
+ */
+
+function findArcAngle(curve, relCircle) {
+  var x1 = -relCircle.center[0],
+    y1 = -relCircle.center[1],
+    x2 = curve[4] - relCircle.center[0],
+    y2 = curve[5] - relCircle.center[1];
+
+  return Math.acos(
+    (x1 * x2 + y1 * y2) / Math.sqrt((x1 * x1 + y1 * y1) * (x2 * x2 + y2 * y2))
+  );
+}
+
+/**
+ * Converts given path data to string.
+ *
+ * @param {Object} params
+ * @param {Array} pathData
+ * @return {String}
+ */
+
+function data2Path(params, pathData) {
+  return pathData.reduce(function (pathString, item) {
+    var strData = '';
+    if (item.data) {
+      strData = cleanupOutData$1(roundData(item.data.slice()), params);
+    }
+    return pathString + item.instruction + strData;
+  }, '');
+}
+
+var convertTransform$2 = {};
+
+convertTransform$2.name = 'convertTransform';
+
+convertTransform$2.type = 'perItem';
+
+convertTransform$2.active = true;
+
+convertTransform$2.description = 'collapses multiple transformations and optimizes it';
+
+convertTransform$2.params = {
+  convertToShorts: true,
+  // degPrecision: 3, // transformPrecision (or matrix precision) - 2 by default
+  floatPrecision: 3,
+  transformPrecision: 5,
+  matrixToTransform: true,
+  shortTranslate: true,
+  shortScale: true,
+  shortRotate: true,
+  removeUseless: true,
+  collapseIntoOne: true,
+  leadingZero: true,
+  negativeExtraSpace: false,
+};
+
+var cleanupOutData = tools.cleanupOutData,
+  transform2js = _transforms.transform2js,
+  transformsMultiply = _transforms.transformsMultiply,
+  matrixToTransform = _transforms.matrixToTransform,
+  degRound,
+  floatRound,
+  transformRound;
+
+/**
+ * Convert matrices to the short aliases,
+ * convert long translate, scale or rotate transform notations to the shorts ones,
+ * convert transforms to the matrices and multiply them all into one,
+ * remove useless transforms.
+ *
+ * @see https://www.w3.org/TR/SVG11/coords.html#TransformMatrixDefined
+ *
+ * @param {Object} item current iteration item
+ * @param {Object} params plugin params
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+convertTransform$2.fn = function (item, params) {
+  if (item.type === 'element') {
+    // transform
+    if (item.attributes.transform != null) {
+      convertTransform$1(item, 'transform', params);
+    }
+
+    // gradientTransform
+    if (item.attributes.gradientTransform != null) {
+      convertTransform$1(item, 'gradientTransform', params);
+    }
+
+    // patternTransform
+    if (item.attributes.patternTransform != null) {
+      convertTransform$1(item, 'patternTransform', params);
+    }
+  }
+};
+
+/**
+ * Main function.
+ *
+ * @param {Object} item input item
+ * @param {String} attrName attribute name
+ * @param {Object} params plugin params
+ */
+function convertTransform$1(item, attrName, params) {
+  let data = transform2js(item.attributes[attrName]);
+  params = definePrecision(data, params);
+
+  if (params.collapseIntoOne && data.length > 1) {
+    data = [transformsMultiply(data)];
+  }
+
+  if (params.convertToShorts) {
+    data = convertToShorts(data, params);
+  } else {
+    data.forEach(roundTransform);
+  }
+
+  if (params.removeUseless) {
+    data = removeUseless(data);
+  }
+
+  if (data.length) {
+    item.attributes[attrName] = js2transform(data, params);
+  } else {
+    delete item.attributes[attrName];
+  }
+}
+
+/**
+ * Defines precision to work with certain parts.
+ * transformPrecision - for scale and four first matrix parameters (needs a better precision due to multiplying),
+ * floatPrecision - for translate including two last matrix and rotate parameters,
+ * degPrecision - for rotate and skew. By default it's equal to (rougly)
+ * transformPrecision - 2 or floatPrecision whichever is lower. Can be set in params.
+ *
+ * @param {Array} transforms input array
+ * @param {Object} params plugin params
+ * @return {Array} output array
+ */
+function definePrecision(data, params) {
+  var matrixData = data.reduce(getMatrixData, []),
+    significantDigits = params.transformPrecision;
+
+  // Clone params so it don't affect other elements transformations.
+  params = Object.assign({}, params);
+
+  // Limit transform precision with matrix one. Calculating with larger precision doesn't add any value.
+  if (matrixData.length) {
+    params.transformPrecision = Math.min(
+      params.transformPrecision,
+      Math.max.apply(Math, matrixData.map(floatDigits)) ||
+        params.transformPrecision
+    );
+
+    significantDigits = Math.max.apply(
+      Math,
+      matrixData.map(function (n) {
+        return String(n).replace(/\D+/g, '').length; // Number of digits in a number. 123.45 → 5
+      })
+    );
+  }
+  // No sense in angle precision more then number of significant digits in matrix.
+  if (!('degPrecision' in params)) {
+    params.degPrecision = Math.max(
+      0,
+      Math.min(params.floatPrecision, significantDigits - 2)
+    );
+  }
+
+  floatRound =
+    params.floatPrecision >= 1 && params.floatPrecision < 20
+      ? smartRound.bind(this, params.floatPrecision)
+      : round;
+  degRound =
+    params.degPrecision >= 1 && params.floatPrecision < 20
+      ? smartRound.bind(this, params.degPrecision)
+      : round;
+  transformRound =
+    params.transformPrecision >= 1 && params.floatPrecision < 20
+      ? smartRound.bind(this, params.transformPrecision)
+      : round;
+
+  return params;
+}
+
+/**
+ * Gathers four first matrix parameters.
+ *
+ * @param {Array} a array of data
+ * @param {Object} transform
+ * @return {Array} output array
+ */
+function getMatrixData(a, b) {
+  return b.name == 'matrix' ? a.concat(b.data.slice(0, 4)) : a;
+}
+
+/**
+ * Returns number of digits after the point. 0.125 → 3
+ */
+function floatDigits(n) {
+  return (n = String(n)).slice(n.indexOf('.')).length - 1;
+}
+
+/**
+ * Convert transforms to the shorthand alternatives.
+ *
+ * @param {Array} transforms input array
+ * @param {Object} params plugin params
+ * @return {Array} output array
+ */
+function convertToShorts(transforms, params) {
+  for (var i = 0; i < transforms.length; i++) {
+    var transform = transforms[i];
+
+    // convert matrix to the short aliases
+    if (params.matrixToTransform && transform.name === 'matrix') {
+      var decomposed = matrixToTransform(transform, params);
+      if (
+        decomposed != transform &&
+        js2transform(decomposed, params).length <=
+          js2transform([transform], params).length
+      ) {
+        transforms.splice.apply(transforms, [i, 1].concat(decomposed));
+      }
+      transform = transforms[i];
+    }
+
+    // fixed-point numbers
+    // 12.754997 → 12.755
+    roundTransform(transform);
+
+    // convert long translate transform notation to the shorts one
+    // translate(10 0) → translate(10)
+    if (
+      params.shortTranslate &&
+      transform.name === 'translate' &&
+      transform.data.length === 2 &&
+      !transform.data[1]
+    ) {
+      transform.data.pop();
+    }
+
+    // convert long scale transform notation to the shorts one
+    // scale(2 2) → scale(2)
+    if (
+      params.shortScale &&
+      transform.name === 'scale' &&
+      transform.data.length === 2 &&
+      transform.data[0] === transform.data[1]
+    ) {
+      transform.data.pop();
+    }
+
+    // convert long rotate transform notation to the short one
+    // translate(cx cy) rotate(a) translate(-cx -cy) → rotate(a cx cy)
+    if (
+      params.shortRotate &&
+      transforms[i - 2] &&
+      transforms[i - 2].name === 'translate' &&
+      transforms[i - 1].name === 'rotate' &&
+      transforms[i].name === 'translate' &&
+      transforms[i - 2].data[0] === -transforms[i].data[0] &&
+      transforms[i - 2].data[1] === -transforms[i].data[1]
+    ) {
+      transforms.splice(i - 2, 3, {
+        name: 'rotate',
+        data: [
+          transforms[i - 1].data[0],
+          transforms[i - 2].data[0],
+          transforms[i - 2].data[1],
+        ],
+      });
+
+      // splice compensation
+      i -= 2;
+    }
+  }
+
+  return transforms;
+}
+
+/**
+ * Remove useless transforms.
+ *
+ * @param {Array} transforms input array
+ * @return {Array} output array
+ */
+function removeUseless(transforms) {
+  return transforms.filter(function (transform) {
+    // translate(0), rotate(0[, cx, cy]), skewX(0), skewY(0)
+    if (
+      (['translate', 'rotate', 'skewX', 'skewY'].indexOf(transform.name) > -1 &&
+        (transform.data.length == 1 || transform.name == 'rotate') &&
+        !transform.data[0]) ||
+      // translate(0, 0)
+      (transform.name == 'translate' &&
+        !transform.data[0] &&
+        !transform.data[1]) ||
+      // scale(1)
+      (transform.name == 'scale' &&
+        transform.data[0] == 1 &&
+        (transform.data.length < 2 || transform.data[1] == 1)) ||
+      // matrix(1 0 0 1 0 0)
+      (transform.name == 'matrix' &&
+        transform.data[0] == 1 &&
+        transform.data[3] == 1 &&
+        !(
+          transform.data[1] ||
+          transform.data[2] ||
+          transform.data[4] ||
+          transform.data[5]
+        ))
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+/**
+ * Convert transforms JS representation to string.
+ *
+ * @param {Array} transformJS JS representation array
+ * @param {Object} params plugin params
+ * @return {String} output string
+ */
+function js2transform(transformJS, params) {
+  var transformString = '';
+
+  // collect output value string
+  transformJS.forEach(function (transform) {
+    roundTransform(transform);
+    transformString +=
+      (transformString && ' ') +
+      transform.name +
+      '(' +
+      cleanupOutData(transform.data, params) +
+      ')';
+  });
+
+  return transformString;
+}
+
+function roundTransform(transform) {
+  switch (transform.name) {
+    case 'translate':
+      transform.data = floatRound(transform.data);
+      break;
+    case 'rotate':
+      transform.data = degRound(transform.data.slice(0, 1)).concat(
+        floatRound(transform.data.slice(1))
+      );
+      break;
+    case 'skewX':
+    case 'skewY':
+      transform.data = degRound(transform.data);
+      break;
+    case 'scale':
+      transform.data = transformRound(transform.data);
+      break;
+    case 'matrix':
+      transform.data = transformRound(transform.data.slice(0, 4)).concat(
+        floatRound(transform.data.slice(4))
+      );
+      break;
+  }
+  return transform;
+}
+
+/**
+ * Rounds numbers in array.
+ *
+ * @param {Array} data input data array
+ * @return {Array} output data array
+ */
+function round(data) {
+  return data.map(Math.round);
+}
+
+/**
+ * Decrease accuracy of floating-point numbers
+ * in transforms keeping a specified number of decimals.
+ * Smart rounds values like 2.349 to 2.35.
+ *
+ * @param {Number} fixed number of decimals
+ * @param {Array} data input data array
+ * @return {Array} output data array
+ */
+function smartRound(precision, data) {
+  for (
+    var i = data.length,
+      tolerance = +Math.pow(0.1, precision).toFixed(precision);
+    i--;
+
+  ) {
+    if (data[i].toFixed(precision) != data[i]) {
+      var rounded = +data[i].toFixed(precision - 1);
+      data[i] =
+        +Math.abs(rounded - data[i]).toFixed(precision + 1) >= tolerance
+          ? +data[i].toFixed(precision)
+          : rounded;
+    }
+  }
+  return data;
+}
+
+var removeEmptyAttrs$1 = {};
+
+const { attrsGroups } = _collections;
+
+removeEmptyAttrs$1.name = 'removeEmptyAttrs';
+
+removeEmptyAttrs$1.type = 'perItem';
+
+removeEmptyAttrs$1.active = true;
+
+removeEmptyAttrs$1.description = 'removes empty attributes';
+
+/**
+ * Remove attributes with empty values.
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+removeEmptyAttrs$1.fn = function (item) {
+  if (item.type === 'element') {
+    for (const [name, value] of Object.entries(item.attributes)) {
+      if (
+        value === '' &&
+        // empty conditional processing attributes prevents elements from rendering
+        attrsGroups.conditionalProcessing.includes(name) === false
+      ) {
+        delete item.attributes[name];
+      }
+    }
+  }
+};
+
+var removeEmptyContainers$1 = {};
+
+const { elemsGroups } = _collections;
+
+removeEmptyContainers$1.name = 'removeEmptyContainers';
+
+removeEmptyContainers$1.type = 'perItemReverse';
+
+removeEmptyContainers$1.active = true;
+
+removeEmptyContainers$1.description = 'removes empty container elements';
+
+/**
+ * Remove empty containers.
+ *
+ * @see https://www.w3.org/TR/SVG11/intro.html#TermContainerElement
+ *
+ * @example
+ * <defs/>
+ *
+ * @example
+ * <g><marker><a/></marker></g>
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+removeEmptyContainers$1.fn = function (item) {
+  if (item.type === 'element') {
+    return (
+      item.children.length !== 0 ||
+      elemsGroups.container.includes(item.name) === false ||
+      item.name === 'svg' ||
+      // empty patterns may contain reusable configuration
+      (item.name === 'pattern' && Object.keys(item.attributes).length !== 0) ||
+      // The 'g' may not have content, but the filter may cause a rectangle
+      // to be created and filled with pattern.
+      (item.name === 'g' && item.attributes.filter != null) ||
+      // empty <mask> hides masked element
+      (item.name === 'mask' && item.attributes.id != null)
+    );
+  }
+  return true;
+};
+
+var mergePaths$1 = {};
+
+const { detachNodeFromParent: detachNodeFromParent$5 } = xast;
+const { collectStylesheet, computeStyle } = style;
+const { path2js: path2js$1, js2path, intersects: intersects$1 } = _path$1;
+
+mergePaths$1.name = 'mergePaths';
+mergePaths$1.type = 'visitor';
+mergePaths$1.active = true;
+mergePaths$1.description = 'merges multiple paths in one if possible';
+
+/**
+ * Merge multiple Paths into one.
+ *
+ * @param {Object} root
+ * @param {Object} params
+ *
+ * @author Kir Belevich, Lev Solntsev
+ */
+mergePaths$1.fn = (root, params) => {
+  const {
+    force = false,
+    floatPrecision,
+    noSpaceAfterFlags = false, // a20 60 45 0 1 30 20 → a20 60 45 0130 20
+  } = params;
+  const stylesheet = collectStylesheet(root);
+
+  return {
+    element: {
+      enter: (node) => {
+        let prevChild = null;
+
+        for (const child of node.children) {
+          // skip if previous element is not path or contains animation elements
+          if (
+            prevChild == null ||
+            prevChild.type !== 'element' ||
+            prevChild.name !== 'path' ||
+            prevChild.children.length !== 0 ||
+            prevChild.attributes.d == null
+          ) {
+            prevChild = child;
+            continue;
+          }
+
+          // skip if element is not path or contains animation elements
+          if (
+            child.type !== 'element' ||
+            child.name !== 'path' ||
+            child.children.length !== 0 ||
+            child.attributes.d == null
+          ) {
+            prevChild = child;
+            continue;
+          }
+
+          // preserve paths with markers
+          const computedStyle = computeStyle(stylesheet, child);
+          if (
+            computedStyle['marker-start'] ||
+            computedStyle['marker-mid'] ||
+            computedStyle['marker-end']
+          ) {
+            prevChild = child;
+            continue;
+          }
+
+          const prevChildAttrs = Object.keys(prevChild.attributes);
+          const childAttrs = Object.keys(child.attributes);
+          let attributesAreEqual = prevChildAttrs.length === childAttrs.length;
+          for (const name of childAttrs) {
+            if (name !== 'd') {
+              if (
+                prevChild.attributes[name] == null ||
+                prevChild.attributes[name] !== child.attributes[name]
+              ) {
+                attributesAreEqual = false;
+              }
+            }
+          }
+          const prevPathJS = path2js$1(prevChild);
+          const curPathJS = path2js$1(child);
+
+          if (
+            attributesAreEqual &&
+            (force || !intersects$1(prevPathJS, curPathJS))
+          ) {
+            js2path(prevChild, prevPathJS.concat(curPathJS), {
+              floatPrecision,
+              noSpaceAfterFlags,
+            });
+            detachNodeFromParent$5(child, node);
+            continue;
+          }
+
+          prevChild = child;
+        }
+      },
+    },
+  };
+};
+
+var removeUnusedNS$1 = {};
+
+const { traverse: traverse$1 } = xast;
+const { parseName: parseName$1 } = tools;
+
+removeUnusedNS$1.name = 'removeUnusedNS';
+
+removeUnusedNS$1.type = 'full';
+
+removeUnusedNS$1.active = true;
+
+removeUnusedNS$1.description = 'removes unused namespaces declaration';
+
+/**
+ * Remove unused namespaces declaration.
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+removeUnusedNS$1.fn = function (root) {
+  let svgElem;
+  const xmlnsCollection = [];
+
+  /**
+   * Remove namespace from collection.
+   *
+   * @param {String} ns namescape name
+   */
+  function removeNSfromCollection(ns) {
+    const pos = xmlnsCollection.indexOf(ns);
+
+    // if found - remove ns from the namespaces collection
+    if (pos > -1) {
+      xmlnsCollection.splice(pos, 1);
+    }
+  }
+
+  traverse$1(root, (node) => {
+    if (node.type === 'element') {
+      if (node.name === 'svg') {
+        for (const name of Object.keys(node.attributes)) {
+          const { prefix, local } = parseName$1(name);
+          // collect namespaces
+          if (prefix === 'xmlns' && local) {
+            xmlnsCollection.push(local);
+          }
+        }
+
+        // if svg element has ns-attr
+        if (xmlnsCollection.length) {
+          // save svg element
+          svgElem = node;
+        }
+      }
+
+      if (xmlnsCollection.length) {
+        const { prefix } = parseName$1(node.name);
+        // check node for the ns-attrs
+        if (prefix) {
+          removeNSfromCollection(prefix);
+        }
+
+        // check each attr for the ns-attrs
+        for (const name of Object.keys(node.attributes)) {
+          const { prefix } = parseName$1(name);
+          removeNSfromCollection(prefix);
+        }
+      }
+    }
+  });
+
+  // remove svg element ns-attributes if they are not used even once
+  if (xmlnsCollection.length) {
+    for (const name of xmlnsCollection) {
+      delete svgElem.attributes['xmlns:' + name];
+    }
+  }
+
+  return root;
+};
+
+var sortDefsChildren$1 = {};
+
+sortDefsChildren$1.name = 'sortDefsChildren';
+
+sortDefsChildren$1.type = 'perItem';
+
+sortDefsChildren$1.active = true;
+
+sortDefsChildren$1.description = 'Sorts children of <defs> to improve compression';
+
+/**
+ * Sorts children of defs in order to improve compression.
+ * Sorted first by frequency then by element name length then by element name (to ensure grouping).
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author David Leston
+ */
+sortDefsChildren$1.fn = function (item) {
+  if (item.isElem('defs')) {
+    var frequency = item.children.reduce(function (frequency, child) {
+      if (child.name in frequency) {
+        frequency[child.name]++;
+      } else {
+        frequency[child.name] = 1;
+      }
+      return frequency;
+    }, {});
+    item.children.sort(function (a, b) {
+      var frequencyComparison = frequency[b.name] - frequency[a.name];
+      if (frequencyComparison !== 0) {
+        return frequencyComparison;
+      }
+      var lengthComparison = b.name.length - a.name.length;
+      if (lengthComparison !== 0) {
+        return lengthComparison;
+      }
+      return a.name != b.name ? (a.name > b.name ? -1 : 1) : 0;
+    });
+    return true;
+  }
+};
+
+var removeTitle$1 = {};
+
+const { detachNodeFromParent: detachNodeFromParent$4 } = xast;
+
+removeTitle$1.name = 'removeTitle';
+removeTitle$1.type = 'visitor';
+removeTitle$1.active = true;
+removeTitle$1.description = 'removes <title>';
+
+/**
+ * Remove <title>.
+ *
+ * https://developer.mozilla.org/en-US/docs/Web/SVG/Element/title
+ *
+ * @author Igor Kalashnikov
+ */
+removeTitle$1.fn = () => {
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (node.name === 'title') {
+          detachNodeFromParent$4(node, parentNode);
+        }
+      },
+    },
+  };
+};
+
+var removeDesc$1 = {};
+
+const { detachNodeFromParent: detachNodeFromParent$3 } = xast;
+
+removeDesc$1.name = 'removeDesc';
+removeDesc$1.type = 'visitor';
+removeDesc$1.active = true;
+removeDesc$1.description = 'removes <desc>';
+
+const standardDescs = /^(Created with|Created using)/;
+
+/**
+ * Removes <desc>.
+ * Removes only standard editors content or empty elements 'cause it can be used for accessibility.
+ * Enable parameter 'removeAny' to remove any description.
+ *
+ * https://developer.mozilla.org/en-US/docs/Web/SVG/Element/desc
+ *
+ * @author Daniel Wabyick
+ */
+removeDesc$1.fn = (root, params) => {
+  const { removeAny = true } = params;
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (node.name === 'desc') {
+          if (
+            removeAny ||
+            node.children.length === 0 ||
+            (node.children[0].type === 'text' &&
+              standardDescs.test(node.children[0].value))
+          ) {
+            detachNodeFromParent$3(node, parentNode);
+          }
+        }
+      },
+    },
+  };
+};
+
+const { createPreset } = plugins;
+
+const removeDoctype = removeDoctype$1;
+const removeXMLProcInst = removeXMLProcInst$1;
+const removeComments = removeComments$1;
+const removeMetadata = removeMetadata$1;
+const removeEditorsNSData = removeEditorsNSData$1;
+const cleanupAttrs = cleanupAttrs$1;
+const mergeStyles = mergeStyles$1;
+const inlineStyles = inlineStyles$1;
+const minifyStyles = minifyStyles$1;
+const cleanupIDs = cleanupIDs$1;
+const removeUselessDefs = removeUselessDefs$1;
+const cleanupNumericValues = cleanupNumericValues$1;
+const convertColors = convertColors$1;
+const removeUnknownsAndDefaults = removeUnknownsAndDefaults$1;
+const removeNonInheritableGroupAttrs = removeNonInheritableGroupAttrs$1;
+const removeUselessStrokeAndFill = removeUselessStrokeAndFill$1;
+const removeViewBox = removeViewBox$1;
+const cleanupEnableBackground = cleanupEnableBackground$1;
+const removeHiddenElems = removeHiddenElems$1;
+const removeEmptyText = removeEmptyText$1;
+const convertShapeToPath = convertShapeToPath$1;
+const convertEllipseToCircle = convertEllipseToCircle$1;
+const moveElemsAttrsToGroup = moveElemsAttrsToGroup$1;
+const moveGroupAttrsToElems = moveGroupAttrsToElems$1;
+const collapseGroups = collapseGroups$1;
+const convertPathData = convertPathData$1;
+const convertTransform = convertTransform$2;
+const removeEmptyAttrs = removeEmptyAttrs$1;
+const removeEmptyContainers = removeEmptyContainers$1;
+const mergePaths = mergePaths$1;
+const removeUnusedNS = removeUnusedNS$1;
+const sortDefsChildren = sortDefsChildren$1;
+const removeTitle = removeTitle$1;
+const removeDesc = removeDesc$1;
+
+const presetDefault = createPreset({
+  name: 'presetDefault',
+  plugins: [
+    removeDoctype,
+    removeXMLProcInst,
+    removeComments,
+    removeMetadata,
+    removeEditorsNSData,
+    cleanupAttrs,
+    mergeStyles,
+    inlineStyles,
+    minifyStyles,
+    cleanupIDs,
+    removeUselessDefs,
+    cleanupNumericValues,
+    convertColors,
+    removeUnknownsAndDefaults,
+    removeNonInheritableGroupAttrs,
+    removeUselessStrokeAndFill,
+    removeViewBox,
+    cleanupEnableBackground,
+    removeHiddenElems,
+    removeEmptyText,
+    convertShapeToPath,
+    convertEllipseToCircle,
+    moveElemsAttrsToGroup,
+    moveGroupAttrsToElems,
+    collapseGroups,
+    convertPathData,
+    convertTransform,
+    removeEmptyAttrs,
+    removeEmptyContainers,
+    mergePaths,
+    removeUnusedNS,
+    sortDefsChildren,
+    removeTitle,
+    removeDesc,
+  ],
+});
+
+var presetDefault_1 = presetDefault;
+
+var addAttributesToSVGElement = {};
+
+const { closestByName } = xast;
+
+addAttributesToSVGElement.name = 'addAttributesToSVGElement';
+
+addAttributesToSVGElement.type = 'perItem';
+
+addAttributesToSVGElement.active = false;
+
+addAttributesToSVGElement.description = 'adds attributes to an outer <svg> element';
+
+var ENOCLS$1 = `Error in plugin "addAttributesToSVGElement": absent parameters.
+It should have a list of "attributes" or one "attribute".
+Config example:
+
+plugins: [
+  {
+    name: 'addAttributesToSVGElement',
+    params: {
+      attribute: "mySvg"
+    }
+  }
+]
+
+plugins: [
+  {
+    name: 'addAttributesToSVGElement',
+    params: {
+      attributes: ["mySvg", "size-big"]
+    }
+  }
+]
+
+plugins: [
+  {
+    name: 'addAttributesToSVGElement',
+    params: {
+      attributes: [
+        {
+          focusable: false
+        },
+        {
+          'data-image': icon
+        }
+      ]
+    }
+  }
+]
+`;
+
+/**
+ * Add attributes to an outer <svg> element. Example config:
+ *
+ * @author April Arcus
+ */
+addAttributesToSVGElement.fn = (node, params) => {
+  if (
+    node.type === 'element' &&
+    node.name === 'svg' &&
+    closestByName(node.parentNode, 'svg') == null
+  ) {
+    if (!params || !(Array.isArray(params.attributes) || params.attribute)) {
+      console.error(ENOCLS$1);
+      return;
+    }
+
+    const attributes = params.attributes || [params.attribute];
+
+    for (const attribute of attributes) {
+      if (typeof attribute === 'string') {
+        if (node.attributes[attribute] == null) {
+          node.attributes[attribute] = undefined;
+        }
+      }
+      if (typeof attribute === 'object') {
+        for (const key of Object.keys(attribute)) {
+          if (node.attributes[key] == null) {
+            node.attributes[key] = attribute[key];
+          }
+        }
+      }
+    }
+  }
+};
+
+var addClassesToSVGElement = {};
+
+addClassesToSVGElement.name = 'addClassesToSVGElement';
+
+addClassesToSVGElement.type = 'full';
+
+addClassesToSVGElement.active = false;
+
+addClassesToSVGElement.description = 'adds classnames to an outer <svg> element';
+
+var ENOCLS = `Error in plugin "addClassesToSVGElement": absent parameters.
+It should have a list of classes in "classNames" or one "className".
+Config example:
+
+plugins:
+- addClassesToSVGElement:
+    className: "mySvg"
+
+plugins:
+- addClassesToSVGElement:
+    classNames: ["mySvg", "size-big"]
+`;
+
+/**
+ * Add classnames to an outer <svg> element. Example config:
+ *
+ * plugins:
+ * - addClassesToSVGElement:
+ *     className: 'mySvg'
+ *
+ * plugins:
+ * - addClassesToSVGElement:
+ *     classNames: ['mySvg', 'size-big']
+ *
+ * @author April Arcus
+ */
+addClassesToSVGElement.fn = function (data, params) {
+  if (
+    !params ||
+    !(
+      (Array.isArray(params.classNames) && params.classNames.some(String)) ||
+      params.className
+    )
+  ) {
+    console.error(ENOCLS);
+    return data;
+  }
+
+  var classNames = params.classNames || [params.className],
+    svg = data.children[0];
+
+  if (svg.isElem('svg')) {
+    svg.class.add.apply(svg.class, classNames);
+  }
+
+  return data;
+};
+
+var cleanupListOfValues = {};
+
+const { removeLeadingZero } = tools;
+
+cleanupListOfValues.name = 'cleanupListOfValues';
+
+cleanupListOfValues.type = 'perItem';
+
+cleanupListOfValues.active = false;
+
+cleanupListOfValues.description = 'rounds list of values to the fixed precision';
+
+cleanupListOfValues.params = {
+  floatPrecision: 3,
+  leadingZero: true,
+  defaultPx: true,
+  convertToPx: true,
+};
+
+const regNumericValues = /^([-+]?\d*\.?\d+([eE][-+]?\d+)?)(px|pt|pc|mm|cm|m|in|ft|em|ex|%)?$/;
+const regSeparator = /\s+,?\s*|,\s*/;
+const absoluteLengths = {
+  // relative to px
+  cm: 96 / 2.54,
+  mm: 96 / 25.4,
+  in: 96,
+  pt: 4 / 3,
+  pc: 16,
+};
+
+/**
+ * Round list of values to the fixed precision.
+ *
+ * @example
+ * <svg viewBox="0 0 200.28423 200.28423" enable-background="new 0 0 200.28423 200.28423">
+ *         ⬇
+ * <svg viewBox="0 0 200.284 200.284" enable-background="new 0 0 200.284 200.284">
+ *
+ *
+ * <polygon points="208.250977 77.1308594 223.069336 ... "/>
+ *         ⬇
+ * <polygon points="208.251 77.131 223.069 ... "/>
+ *
+ *
+ * @param {Object} item current iteration item
+ * @param {Object} params plugin params
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author kiyopikko
+ */
+cleanupListOfValues.fn = function (item, params) {
+  if (item.type !== 'element') {
+    return;
+  }
+
+  if (item.attributes.points != null) {
+    item.attributes.points = roundValues(item.attributes.points);
+  }
+
+  if (item.attributes['enable-background'] != null) {
+    item.attributes['enable-background'] = roundValues(
+      item.attributes['enable-background']
+    );
+  }
+
+  if (item.attributes.viewBox != null) {
+    item.attributes.viewBox = roundValues(item.attributes.viewBox);
+  }
+
+  if (item.attributes['stroke-dasharray'] != null) {
+    item.attributes['stroke-dasharray'] = roundValues(
+      item.attributes['stroke-dasharray']
+    );
+  }
+
+  if (item.attributes.dx != null) {
+    item.attributes.dx = roundValues(item.attributes.dx);
+  }
+
+  if (item.attributes.dy != null) {
+    item.attributes.dy = roundValues(item.attributes.dy);
+  }
+
+  if (item.attributes.x != null) {
+    item.attributes.x = roundValues(item.attributes.x);
+  }
+
+  if (item.attributes.y != null) {
+    item.attributes.y = roundValues(item.attributes.y);
+  }
+
+  function roundValues(lists) {
+    var num,
+      units,
+      match,
+      matchNew,
+      listsArr = lists.split(regSeparator),
+      roundedList = [];
+
+    for (const elem of listsArr) {
+      match = elem.match(regNumericValues);
+      matchNew = elem.match(/new/);
+
+      // if attribute value matches regNumericValues
+      if (match) {
+        // round it to the fixed precision
+        (num = +(+match[1]).toFixed(params.floatPrecision)),
+          (units = match[3] || '');
+
+        // convert absolute values to pixels
+        if (params.convertToPx && units && units in absoluteLengths) {
+          var pxNum = +(absoluteLengths[units] * match[1]).toFixed(
+            params.floatPrecision
+          );
+
+          if (String(pxNum).length < match[0].length)
+            (num = pxNum), (units = 'px');
+        }
+
+        // and remove leading zero
+        if (params.leadingZero) {
+          num = removeLeadingZero(num);
+        }
+
+        // remove default 'px' units
+        if (params.defaultPx && units === 'px') {
+          units = '';
+        }
+
+        roundedList.push(num + units);
+      }
+      // if attribute value is "new"(only enable-background).
+      else if (matchNew) {
+        roundedList.push('new');
+      } else if (elem) {
+        roundedList.push(elem);
+      }
+    }
+
+    return roundedList.join(' ');
+  }
+};
+
+var convertStyleToAttrs = {};
+
+convertStyleToAttrs.name = 'convertStyleToAttrs';
+
+convertStyleToAttrs.type = 'perItem';
+
+convertStyleToAttrs.active = false;
+
+convertStyleToAttrs.description = 'converts style to attributes';
+
+convertStyleToAttrs.params = {
+  keepImportant: false,
+};
+
+var stylingProps = _collections.attrsGroups.presentation,
+  rEscape = '\\\\(?:[0-9a-f]{1,6}\\s?|\\r\\n|.)', // Like \" or \2051. Code points consume one space.
+  rAttr = '\\s*(' + g('[^:;\\\\]', rEscape) + '*?)\\s*', // attribute name like ‘fill’
+  rSingleQuotes = "'(?:[^'\\n\\r\\\\]|" + rEscape + ")*?(?:'|$)", // string in single quotes: 'smth'
+  rQuotes = '"(?:[^"\\n\\r\\\\]|' + rEscape + ')*?(?:"|$)', // string in double quotes: "smth"
+  rQuotedString = new RegExp('^' + g(rSingleQuotes, rQuotes) + '$'),
+  // Parentheses, E.g.: url(data:image/png;base64,iVBO...).
+  // ':' and ';' inside of it should be threated as is. (Just like in strings.)
+  rParenthesis =
+    '\\(' + g('[^\'"()\\\\]+', rEscape, rSingleQuotes, rQuotes) + '*?' + '\\)',
+  // The value. It can have strings and parentheses (see above). Fallbacks to anything in case of unexpected input.
+  rValue =
+    '\\s*(' +
+    g(
+      '[^!\'"();\\\\]+?',
+      rEscape,
+      rSingleQuotes,
+      rQuotes,
+      rParenthesis,
+      '[^;]*?'
+    ) +
+    '*?' +
+    ')',
+  // End of declaration. Spaces outside of capturing groups help to do natural trimming.
+  rDeclEnd = '\\s*(?:;\\s*|$)',
+  // Important rule
+  rImportant = '(\\s*!important(?![-(\\w]))?',
+  // Final RegExp to parse CSS declarations.
+  regDeclarationBlock = new RegExp(
+    rAttr + ':' + rValue + rImportant + rDeclEnd,
+    'ig'
+  ),
+  // Comments expression. Honors escape sequences and strings.
+  regStripComments = new RegExp(
+    g(rEscape, rSingleQuotes, rQuotes, '/\\*[^]*?\\*/'),
+    'ig'
+  );
+
+/**
+ * Convert style in attributes. Cleanups comments and illegal declarations (without colon) as a side effect.
+ *
+ * @example
+ * <g style="fill:#000; color: #fff;">
+ *             ⬇
+ * <g fill="#000" color="#fff">
+ *
+ * @example
+ * <g style="fill:#000; color: #fff; -webkit-blah: blah">
+ *             ⬇
+ * <g fill="#000" color="#fff" style="-webkit-blah: blah">
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+convertStyleToAttrs.fn = function (item, params) {
+  if (item.type === 'element' && item.attributes.style != null) {
+    // ['opacity: 1', 'color: #000']
+    let styles = [];
+    const newAttributes = {};
+
+    // Strip CSS comments preserving escape sequences and strings.
+    const styleValue = item.attributes.style.replace(
+      regStripComments,
+      (match) => {
+        return match[0] == '/'
+          ? ''
+          : match[0] == '\\' && /[-g-z]/i.test(match[1])
+          ? match[1]
+          : match;
+      }
+    );
+
+    regDeclarationBlock.lastIndex = 0;
+    // eslint-disable-next-line no-cond-assign
+    for (var rule; (rule = regDeclarationBlock.exec(styleValue)); ) {
+      if (!params.keepImportant || !rule[3]) {
+        styles.push([rule[1], rule[2]]);
+      }
+    }
+
+    if (styles.length) {
+      styles = styles.filter(function (style) {
+        if (style[0]) {
+          var prop = style[0].toLowerCase(),
+            val = style[1];
+
+          if (rQuotedString.test(val)) {
+            val = val.slice(1, -1);
+          }
+
+          if (stylingProps.includes(prop)) {
+            newAttributes[prop] = val;
+
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      Object.assign(item.attributes, newAttributes);
+
+      if (styles.length) {
+        item.attributes.style = styles
+          .map((declaration) => declaration.join(':'))
+          .join(';');
+      } else {
+        delete item.attributes.style;
+      }
+    }
+  }
+};
+
+function g() {
+  return '(?:' + Array.prototype.join.call(arguments, '|') + ')';
+}
+
 var prefixIds = {};
+
+prefixIds.name = 'prefixIds';
 
 prefixIds.type = 'perItem';
 
@@ -43888,8 +45398,8 @@ prefixIds.params = {
 prefixIds.description = 'prefix IDs';
 
 var csstree = lib$1,
-  collections$1 = _collections,
-  referencesProps = collections$1.referencesProps,
+  collections = _collections,
+  referencesProps = collections.referencesProps,
   rxId = /^#(.*)$/, // regular expression for matching an ID + extracing its name
   addPrefix = null;
 
@@ -44174,6 +45684,8 @@ prefixIds.fn = function (node, opts, extra) {
 
 var removeAttributesBySelector = {};
 
+removeAttributesBySelector.name = 'removeAttributesBySelector';
+
 removeAttributesBySelector.type = 'perItem';
 
 removeAttributesBySelector.active = false;
@@ -44250,6 +45762,8 @@ removeAttributesBySelector.fn = function (item, params) {
 var removeAttrs = {};
 
 var DEFAULT_SEPARATOR = ':';
+
+removeAttrs.name = 'removeAttrs';
 
 removeAttrs.type = 'perItem';
 
@@ -44394,71 +45908,9 @@ removeAttrs.fn = function (item, params) {
   }
 };
 
-var removeComments = {};
-
-removeComments.type = 'perItem';
-
-removeComments.active = true;
-
-removeComments.description = 'removes comments';
-
-/**
- * Remove comments.
- *
- * @example
- * <!-- Generator: Adobe Illustrator 15.0.0, SVG Export
- * Plug-In . SVG Version: 6.00 Build 0)  -->
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeComments.fn = function (item) {
-  if (item.type === 'comment' && item.value.charAt(0) !== '!') {
-    return false;
-  }
-};
-
-var removeDesc = {};
-
-removeDesc.type = 'perItem';
-
-removeDesc.active = true;
-
-removeDesc.params = {
-  removeAny: true,
-};
-
-removeDesc.description = 'removes <desc>';
-
-var standardDescs = /^(Created with|Created using)/;
-
-/**
- * Removes <desc>.
- * Removes only standard editors content or empty elements 'cause it can be used for accessibility.
- * Enable parameter 'removeAny' to remove any description.
- *
- * https://developer.mozilla.org/en-US/docs/Web/SVG/Element/desc
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Daniel Wabyick
- */
-removeDesc.fn = function (item, params) {
-  return (
-    !item.isElem('desc') ||
-    !(
-      params.removeAny ||
-      item.children.length === 0 ||
-      (item.children[0].type === 'text' &&
-        standardDescs.test(item.children[0].value))
-    )
-  );
-};
-
 var removeDimensions = {};
+
+removeDimensions.name = 'removeDimensions';
 
 removeDimensions.type = 'perItem';
 
@@ -44500,112 +45952,9 @@ removeDimensions.fn = function (item) {
   }
 };
 
-var removeDoctype = {};
-
-removeDoctype.type = 'perItem';
-
-removeDoctype.active = true;
-
-removeDoctype.description = 'removes doctype declaration';
-
-/**
- * Remove DOCTYPE declaration.
- *
- * "Unfortunately the SVG DTDs are a source of so many
- * issues that the SVG WG has decided not to write one
- * for the upcoming SVG 1.2 standard. In fact SVG WG
- * members are even telling people not to use a DOCTYPE
- * declaration in SVG 1.0 and 1.1 documents"
- * https://jwatt.org/svg/authoring/#doctype-declaration
- *
- * @example
- * <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- * q"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
- *
- * @example
- * <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
- * "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd" [
- *     <!-- an internal subset can be embedded here -->
- * ]>
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeDoctype.fn = function (item) {
-  if (item.type === 'doctype') {
-    return false;
-  }
-};
-
-var removeEditorsNSData = {};
-
-const { parseName: parseName$3 } = tools;
-const { editorNamespaces } = _collections;
-
-removeEditorsNSData.type = 'perItem';
-
-removeEditorsNSData.active = true;
-
-removeEditorsNSData.description = 'removes editors namespaces, elements and attributes';
-
-const prefixes = [];
-
-removeEditorsNSData.params = {
-  additionalNamespaces: [],
-};
-
-/**
- * Remove editors namespaces, elements and attributes.
- *
- * @example
- * <svg xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd">
- * <sodipodi:namedview/>
- * <path sodipodi:nodetypes="cccc"/>
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeEditorsNSData.fn = function (item, params) {
-  let namespaces = editorNamespaces;
-  if (Array.isArray(params.additionalNamespaces)) {
-    namespaces = [...editorNamespaces, ...params.additionalNamespaces];
-  }
-
-  if (item.type === 'element') {
-    if (item.isElem('svg')) {
-      for (const [name, value] of Object.entries(item.attributes)) {
-        const { prefix, local } = parseName$3(name);
-        if (prefix === 'xmlns' && namespaces.includes(value)) {
-          prefixes.push(local);
-
-          // <svg xmlns:sodipodi="">
-          delete item.attributes[name];
-        }
-      }
-    }
-
-    // <* sodipodi:*="">
-    for (const name of Object.keys(item.attributes)) {
-      const { prefix } = parseName$3(name);
-      if (prefixes.includes(prefix)) {
-        delete item.attributes[name];
-      }
-    }
-
-    // <sodipodi:*>
-    const { prefix } = parseName$3(item.name);
-    if (prefixes.includes(prefix)) {
-      return false;
-    }
-  }
-};
-
 var removeElementsByAttr = {};
+
+removeElementsByAttr.name = 'removeElementsByAttr';
 
 removeElementsByAttr.type = 'perItem';
 
@@ -44683,501 +46032,9 @@ removeElementsByAttr.fn = function (item, params) {
   }
 };
 
-var removeEmptyAttrs = {};
-
-const { attrsGroups: attrsGroups$2 } = _collections;
-
-removeEmptyAttrs.type = 'perItem';
-
-removeEmptyAttrs.active = true;
-
-removeEmptyAttrs.description = 'removes empty attributes';
-
-/**
- * Remove attributes with empty values.
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeEmptyAttrs.fn = function (item) {
-  if (item.type === 'element') {
-    for (const [name, value] of Object.entries(item.attributes)) {
-      if (
-        value === '' &&
-        // empty conditional processing attributes prevents elements from rendering
-        attrsGroups$2.conditionalProcessing.includes(name) === false
-      ) {
-        delete item.attributes[name];
-      }
-    }
-  }
-};
-
-var removeEmptyContainers = {};
-
-const { elemsGroups: elemsGroups$2 } = _collections;
-
-removeEmptyContainers.type = 'perItemReverse';
-
-removeEmptyContainers.active = true;
-
-removeEmptyContainers.description = 'removes empty container elements';
-
-/**
- * Remove empty containers.
- *
- * @see https://www.w3.org/TR/SVG11/intro.html#TermContainerElement
- *
- * @example
- * <defs/>
- *
- * @example
- * <g><marker><a/></marker></g>
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeEmptyContainers.fn = function (item) {
-  if (item.type === 'element') {
-    return (
-      item.children.length !== 0 ||
-      elemsGroups$2.container.includes(item.name) === false ||
-      item.name === 'svg' ||
-      // empty patterns may contain reusable configuration
-      (item.name === 'pattern' && Object.keys(item.attributes).length !== 0) ||
-      // The 'g' may not have content, but the filter may cause a rectangle
-      // to be created and filled with pattern.
-      (item.name === 'g' && item.attributes.filter != null) ||
-      // empty <mask> hides masked element
-      (item.name === 'mask' && item.attributes.id != null)
-    );
-  }
-  return true;
-};
-
-var removeEmptyText = {};
-
-removeEmptyText.type = 'perItem';
-
-removeEmptyText.active = true;
-
-removeEmptyText.description = 'removes empty <text> elements';
-
-removeEmptyText.params = {
-  text: true,
-  tspan: true,
-  tref: true,
-};
-
-/**
- * Remove empty Text elements.
- *
- * @see https://www.w3.org/TR/SVG11/text.html
- *
- * @example
- * Remove empty text element:
- * <text/>
- *
- * Remove empty tspan element:
- * <tspan/>
- *
- * Remove tref with empty xlink:href attribute:
- * <tref xlink:href=""/>
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeEmptyText.fn = function (item, params) {
-  if (item.type === 'element') {
-    // Remove empty text element
-    if (params.text && item.name === 'text' && item.children.length === 0) {
-      return false;
-    }
-
-    // Remove empty tspan element
-    if (params.tspan && item.name === 'tspan' && item.children.length === 0) {
-      return false;
-    }
-
-    // Remove tref with empty xlink:href attribute
-    if (
-      params.tref &&
-      item.name === 'tref' &&
-      item.attributes['xlink:href'] == null
-    ) {
-      return false;
-    }
-  }
-};
-
-var removeHiddenElems = {};
-
-const {
-  querySelector,
-  closestByName: closestByName$1,
-  detachNodeFromParent,
-} = xast;
-const { computeStyle } = style;
-const { parsePathData } = path;
-
-removeHiddenElems.type = 'visitor';
-removeHiddenElems.active = true;
-removeHiddenElems.description =
-  'removes hidden elements (zero sized, with absent attributes)';
-
-/**
- * Remove hidden elements with disabled rendering:
- * - display="none"
- * - opacity="0"
- * - circle with zero radius
- * - ellipse with zero x-axis or y-axis radius
- * - rectangle with zero width or height
- * - pattern with zero width or height
- * - image with zero width or height
- * - path with empty data
- * - polyline with empty points
- * - polygon with empty points
- *
- * @param {Object} root
- * @param {Object} params
- *
- * @author Kir Belevich
- */
-removeHiddenElems.fn = (root, params) => {
-  const {
-    isHidden = true,
-    displayNone = true,
-    opacity0 = true,
-    circleR0 = true,
-    ellipseRX0 = true,
-    ellipseRY0 = true,
-    rectWidth0 = true,
-    rectHeight0 = true,
-    patternWidth0 = true,
-    patternHeight0 = true,
-    imageWidth0 = true,
-    imageHeight0 = true,
-    pathEmptyD = true,
-    polylineEmptyPoints = true,
-    polygonEmptyPoints = true,
-  } = params;
-  return {
-    element: {
-      enter: (node) => {
-        // Removes hidden elements
-        // https://www.w3schools.com/cssref/pr_class_visibility.asp
-        const computedStyle = computeStyle(node);
-        if (
-          isHidden &&
-          computedStyle.visibility &&
-          computedStyle.visibility.type === 'static' &&
-          computedStyle.visibility.value === 'hidden' &&
-          // keep if any descendant enables visibility
-          querySelector(node, '[visibility=visible]') == null
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // display="none"
-        //
-        // https://www.w3.org/TR/SVG11/painting.html#DisplayProperty
-        // "A value of display: none indicates that the given element
-        // and its children shall not be rendered directly"
-        if (
-          displayNone &&
-          computedStyle.display &&
-          computedStyle.display.type === 'static' &&
-          computedStyle.display.value === 'none' &&
-          // markers with display: none still rendered
-          node.name !== 'marker'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // opacity="0"
-        //
-        // https://www.w3.org/TR/SVG11/masking.html#ObjectAndGroupOpacityProperties
-        if (
-          opacity0 &&
-          computedStyle.opacity &&
-          computedStyle.opacity.type === 'static' &&
-          computedStyle.opacity.value === '0' &&
-          // transparent element inside clipPath still affect clipped elements
-          closestByName$1(node, 'clipPath') == null
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Circles with zero radius
-        //
-        // https://www.w3.org/TR/SVG11/shapes.html#CircleElementRAttribute
-        // "A value of zero disables rendering of the element"
-        //
-        // <circle r="0">
-        if (
-          circleR0 &&
-          node.name === 'circle' &&
-          node.children.length === 0 &&
-          node.attributes.r === '0'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Ellipse with zero x-axis radius
-        //
-        // https://www.w3.org/TR/SVG11/shapes.html#EllipseElementRXAttribute
-        // "A value of zero disables rendering of the element"
-        //
-        // <ellipse rx="0">
-        if (
-          ellipseRX0 &&
-          node.name === 'ellipse' &&
-          node.children.length === 0 &&
-          node.attributes.rx === '0'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Ellipse with zero y-axis radius
-        //
-        // https://www.w3.org/TR/SVG11/shapes.html#EllipseElementRYAttribute
-        // "A value of zero disables rendering of the element"
-        //
-        // <ellipse ry="0">
-        if (
-          ellipseRY0 &&
-          node.name === 'ellipse' &&
-          node.children.length === 0 &&
-          node.attributes.ry === '0'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Rectangle with zero width
-        //
-        // https://www.w3.org/TR/SVG11/shapes.html#RectElementWidthAttribute
-        // "A value of zero disables rendering of the element"
-        //
-        // <rect width="0">
-        if (
-          rectWidth0 &&
-          node.name === 'rect' &&
-          node.children.length === 0 &&
-          node.attributes.width === '0'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Rectangle with zero height
-        //
-        // https://www.w3.org/TR/SVG11/shapes.html#RectElementHeightAttribute
-        // "A value of zero disables rendering of the element"
-        //
-        // <rect height="0">
-        if (
-          rectHeight0 &&
-          rectWidth0 &&
-          node.name === 'rect' &&
-          node.children.length === 0 &&
-          node.attributes.height === '0'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Pattern with zero width
-        //
-        // https://www.w3.org/TR/SVG11/pservers.html#PatternElementWidthAttribute
-        // "A value of zero disables rendering of the element (i.e., no paint is applied)"
-        //
-        // <pattern width="0">
-        if (
-          patternWidth0 &&
-          node.name === 'pattern' &&
-          node.attributes.width === '0'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Pattern with zero height
-        //
-        // https://www.w3.org/TR/SVG11/pservers.html#PatternElementHeightAttribute
-        // "A value of zero disables rendering of the element (i.e., no paint is applied)"
-        //
-        // <pattern height="0">
-        if (
-          patternHeight0 &&
-          node.name === 'pattern' &&
-          node.attributes.height === '0'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Image with zero width
-        //
-        // https://www.w3.org/TR/SVG11/struct.html#ImageElementWidthAttribute
-        // "A value of zero disables rendering of the element"
-        //
-        // <image width="0">
-        if (
-          imageWidth0 &&
-          node.name === 'image' &&
-          node.attributes.width === '0'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Image with zero height
-        //
-        // https://www.w3.org/TR/SVG11/struct.html#ImageElementHeightAttribute
-        // "A value of zero disables rendering of the element"
-        //
-        // <image height="0">
-        if (
-          imageHeight0 &&
-          node.name === 'image' &&
-          node.attributes.height === '0'
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Path with empty data
-        //
-        // https://www.w3.org/TR/SVG11/paths.html#DAttribute
-        //
-        // <path d=""/>
-        if (pathEmptyD && node.name === 'path') {
-          if (node.attributes.d == null) {
-            detachNodeFromParent(node);
-            return;
-          }
-          const pathData = parsePathData(node.attributes.d);
-          if (pathData.length === 0) {
-            detachNodeFromParent(node);
-            return;
-          }
-          // keep single point paths for markers
-          if (
-            pathData.length === 1 &&
-            computedStyle['marker-start'] == null &&
-            computedStyle['marker-end'] == null
-          ) {
-            detachNodeFromParent(node);
-            return;
-          }
-          return;
-        }
-
-        // Polyline with empty points
-        //
-        // https://www.w3.org/TR/SVG11/shapes.html#PolylineElementPointsAttribute
-        //
-        // <polyline points="">
-        if (
-          polylineEmptyPoints &&
-          node.name === 'polyline' &&
-          node.attributes.points == null
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-
-        // Polygon with empty points
-        //
-        // https://www.w3.org/TR/SVG11/shapes.html#PolygonElementPointsAttribute
-        //
-        // <polygon points="">
-        if (
-          polygonEmptyPoints &&
-          node.name === 'polygon' &&
-          node.attributes.points == null
-        ) {
-          detachNodeFromParent(node);
-          return;
-        }
-      },
-    },
-  };
-};
-
-var removeMetadata = {};
-
-removeMetadata.type = 'perItem';
-
-removeMetadata.active = true;
-
-removeMetadata.description = 'removes <metadata>';
-
-/**
- * Remove <metadata>.
- *
- * https://www.w3.org/TR/SVG11/metadata.html
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeMetadata.fn = function (item) {
-  return !item.isElem('metadata');
-};
-
-var removeNonInheritableGroupAttrs = {};
-
-removeNonInheritableGroupAttrs.type = 'perItem';
-
-removeNonInheritableGroupAttrs.active = true;
-
-removeNonInheritableGroupAttrs.description =
-  'removes non-inheritable group’s presentational attributes';
-
-const {
-  inheritableAttrs,
-  attrsGroups: attrsGroups$1,
-  presentationNonInheritableGroupAttrs,
-} = _collections;
-
-/**
- * Remove non-inheritable group's "presentation" attributes.
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeNonInheritableGroupAttrs.fn = function (item) {
-  if (item.type === 'element' && item.name === 'g') {
-    for (const name of Object.keys(item.attributes)) {
-      if (
-        attrsGroups$1.presentation.includes(name) === true &&
-        inheritableAttrs.includes(name) === false &&
-        presentationNonInheritableGroupAttrs.includes(name) === false
-      ) {
-        delete item.attributes[name];
-      }
-    }
-  }
-};
-
 var removeOffCanvasPaths = {};
+
+removeOffCanvasPaths.name = 'removeOffCanvasPaths';
 
 removeOffCanvasPaths.type = 'perItem';
 
@@ -45319,10 +46176,11 @@ function pathMovesWithinViewBox(path) {
 
 var removeRasterImages = {};
 
-removeRasterImages.type = 'perItem';
+const { detachNodeFromParent: detachNodeFromParent$2 } = xast;
 
+removeRasterImages.name = 'removeRasterImages';
+removeRasterImages.type = 'visitor';
 removeRasterImages.active = false;
-
 removeRasterImages.description = 'removes raster images (disabled by default)';
 
 /**
@@ -45330,28 +46188,31 @@ removeRasterImages.description = 'removes raster images (disabled by default)';
  *
  * @see https://bugs.webkit.org/show_bug.cgi?id=63548
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Kir Belevich
  */
-removeRasterImages.fn = function (item) {
-  if (
-    item.type === 'element' &&
-    item.name === 'image' &&
-    item.attributes['xlink:href'] != null &&
-    /(\.|image\/)(jpg|png|gif)/.test(item.attributes['xlink:href'])
-  ) {
-    return false;
-  }
+removeRasterImages.fn = () => {
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (
+          node.name === 'image' &&
+          node.attributes['xlink:href'] != null &&
+          /(\.|image\/)(jpg|png|gif)/.test(node.attributes['xlink:href'])
+        ) {
+          detachNodeFromParent$2(node, parentNode);
+        }
+      },
+    },
+  };
 };
 
 var removeScriptElement = {};
 
-removeScriptElement.type = 'perItem';
+const { detachNodeFromParent: detachNodeFromParent$1 } = xast;
 
+removeScriptElement.name = 'removeScriptElement';
+removeScriptElement.type = 'visitor';
 removeScriptElement.active = false;
-
 removeScriptElement.description = 'removes <script> elements (disabled by default)';
 
 /**
@@ -45359,21 +46220,28 @@ removeScriptElement.description = 'removes <script> elements (disabled by defaul
  *
  * https://www.w3.org/TR/SVG11/script.html
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
  *
  * @author Patrick Klingemann
  */
-removeScriptElement.fn = function (item) {
-  return !item.isElem('script');
+removeScriptElement.fn = () => {
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (node.name === 'script') {
+          detachNodeFromParent$1(node, parentNode);
+        }
+      },
+    },
+  };
 };
 
 var removeStyleElement = {};
 
-removeStyleElement.type = 'perItem';
+const { detachNodeFromParent } = xast;
 
+removeStyleElement.name = 'removeStyleElement';
+removeStyleElement.type = 'visitor';
 removeStyleElement.active = false;
-
 removeStyleElement.description = 'removes <style> element (disabled by default)';
 
 /**
@@ -45381,443 +46249,23 @@ removeStyleElement.description = 'removes <style> element (disabled by default)'
  *
  * https://www.w3.org/TR/SVG11/styling.html#StyleElement
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Betsy Dupuis
  */
-removeStyleElement.fn = function (item) {
-  return !item.isElem('style');
-};
-
-var removeTitle = {};
-
-removeTitle.type = 'perItem';
-
-removeTitle.active = true;
-
-removeTitle.description = 'removes <title>';
-
-/**
- * Remove <title>.
- *
- * https://developer.mozilla.org/en-US/docs/Web/SVG/Element/title
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Igor Kalashnikov
- */
-removeTitle.fn = function (item) {
-  return !item.isElem('title');
-};
-
-var removeUnknownsAndDefaults = {};
-
-const { parseName: parseName$2 } = tools;
-
-removeUnknownsAndDefaults.type = 'perItem';
-
-removeUnknownsAndDefaults.active = true;
-
-removeUnknownsAndDefaults.description =
-  'removes unknown elements content and attributes, removes attrs with default values';
-
-removeUnknownsAndDefaults.params = {
-  unknownContent: true,
-  unknownAttrs: true,
-  defaultAttrs: true,
-  uselessOverrides: true,
-  keepDataAttrs: true,
-  keepAriaAttrs: true,
-  keepRoleAttr: false,
-};
-
-var collections = _collections,
-  elems = collections.elems,
-  attrsGroups = collections.attrsGroups,
-  elemsGroups$1 = collections.elemsGroups,
-  attrsGroupsDefaults = collections.attrsGroupsDefaults,
-  attrsInheritable = collections.inheritableAttrs,
-  applyGroups = collections.presentationNonInheritableGroupAttrs;
-
-// collect and extend all references
-for (const elem of Object.values(elems)) {
-  if (elem.attrsGroups) {
-    elem.attrs = elem.attrs || [];
-
-    elem.attrsGroups.forEach(function (attrsGroupName) {
-      elem.attrs = elem.attrs.concat(attrsGroups[attrsGroupName]);
-
-      var groupDefaults = attrsGroupsDefaults[attrsGroupName];
-
-      if (groupDefaults) {
-        elem.defaults = elem.defaults || {};
-
-        for (const [attrName, attr] of Object.entries(groupDefaults)) {
-          elem.defaults[attrName] = attr;
+removeStyleElement.fn = () => {
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (node.name === 'style') {
+          detachNodeFromParent(node, parentNode);
         }
-      }
-    });
-  }
-
-  if (elem.contentGroups) {
-    elem.content = elem.content || [];
-
-    elem.contentGroups.forEach(function (contentGroupName) {
-      elem.content = elem.content.concat(elemsGroups$1[contentGroupName]);
-    });
-  }
-}
-
-/**
- * Remove unknown elements content and attributes,
- * remove attributes with default values.
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeUnknownsAndDefaults.fn = function (item, params) {
-  // elems w/o namespace prefix
-  if (item.type === 'element' && !parseName$2(item.name).prefix) {
-    var elem = item.name;
-
-    // remove unknown element's content
-    if (
-      params.unknownContent &&
-      elems[elem] && // make sure we know of this element before checking its children
-      elem !== 'foreignObject' // Don't check foreignObject
-    ) {
-      item.children.forEach(function (content, i) {
-        if (
-          content.type === 'element' &&
-          !parseName$2(content.name).prefix &&
-          ((elems[elem].content && // Do we have a record of its permitted content?
-            elems[elem].content.indexOf(content.name) === -1) ||
-            (!elems[elem].content && // we dont know about its permitted content
-              !elems[content.name])) // check that we know about the element at all
-        ) {
-          item.children.splice(i, 1);
-        }
-      });
-    }
-
-    // remove element's unknown attrs and attrs with default values
-    if (elems[elem] && elems[elem].attrs) {
-      for (const [name, value] of Object.entries(item.attributes)) {
-        const { prefix } = parseName$2(name);
-        if (
-          name !== 'xmlns' &&
-          (prefix === 'xml' || !prefix) &&
-          (!params.keepDataAttrs || name.indexOf('data-') != 0) &&
-          (!params.keepAriaAttrs || name.indexOf('aria-') != 0) &&
-          (!params.keepRoleAttr || name != 'role')
-        ) {
-          if (
-            // unknown attrs
-            (params.unknownAttrs && elems[elem].attrs.indexOf(name) === -1) ||
-            // attrs with default values
-            (params.defaultAttrs &&
-              item.attributes.id == null &&
-              elems[elem].defaults &&
-              elems[elem].defaults[name] === value &&
-              (attrsInheritable.includes(name) === false ||
-                !item.parentNode.computedAttr(name))) ||
-            // useless overrides
-            (params.uselessOverrides &&
-              item.attributes.id == null &&
-              applyGroups.includes(name) === false &&
-              attrsInheritable.includes(name) === true &&
-              item.parentNode.computedAttr(name, value))
-          ) {
-            delete item.attributes[name];
-          }
-        }
-      }
-    }
-  }
-};
-
-var removeUnusedNS = {};
-
-const { traverse: traverse$1 } = xast;
-const { parseName: parseName$1 } = tools;
-
-removeUnusedNS.type = 'full';
-
-removeUnusedNS.active = true;
-
-removeUnusedNS.description = 'removes unused namespaces declaration';
-
-/**
- * Remove unused namespaces declaration.
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeUnusedNS.fn = function (root) {
-  let svgElem;
-  const xmlnsCollection = [];
-
-  /**
-   * Remove namespace from collection.
-   *
-   * @param {String} ns namescape name
-   */
-  function removeNSfromCollection(ns) {
-    const pos = xmlnsCollection.indexOf(ns);
-
-    // if found - remove ns from the namespaces collection
-    if (pos > -1) {
-      xmlnsCollection.splice(pos, 1);
-    }
-  }
-
-  traverse$1(root, (node) => {
-    if (node.type === 'element') {
-      if (node.name === 'svg') {
-        for (const name of Object.keys(node.attributes)) {
-          const { prefix, local } = parseName$1(name);
-          // collect namespaces
-          if (prefix === 'xmlns' && local) {
-            xmlnsCollection.push(local);
-          }
-        }
-
-        // if svg element has ns-attr
-        if (xmlnsCollection.length) {
-          // save svg element
-          svgElem = node;
-        }
-      }
-
-      if (xmlnsCollection.length) {
-        const { prefix } = parseName$1(node.name);
-        // check node for the ns-attrs
-        if (prefix) {
-          removeNSfromCollection(prefix);
-        }
-
-        // check each attr for the ns-attrs
-        for (const name of Object.keys(node.attributes)) {
-          const { prefix } = parseName$1(name);
-          removeNSfromCollection(prefix);
-        }
-      }
-    }
-  });
-
-  // remove svg element ns-attributes if they are not used even once
-  if (xmlnsCollection.length) {
-    for (const name of xmlnsCollection) {
-      delete svgElem.attributes['xmlns:' + name];
-    }
-  }
-
-  return root;
-};
-
-var removeUselessDefs = {};
-
-const { elemsGroups } = _collections;
-
-removeUselessDefs.type = 'perItem';
-
-removeUselessDefs.active = true;
-
-removeUselessDefs.description = 'removes elements in <defs> without id';
-
-/**
- * Removes content of defs and properties that aren't rendered directly without ids.
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Lev Solntsev
- */
-removeUselessDefs.fn = function (item) {
-  if (item.type === 'element') {
-    if (item.name === 'defs') {
-      item.children = getUsefulItems(item, []);
-      if (item.children.length === 0) {
-        return false;
-      }
-    } else if (
-      elemsGroups.nonRendering.includes(item.name) &&
-      item.attributes.id == null
-    ) {
-      return false;
-    }
-  }
-};
-
-function getUsefulItems(item, usefulItems) {
-  for (const child of item.children) {
-    if (child.type === 'element') {
-      if (child.attributes.id != null || child.name === 'style') {
-        usefulItems.push(child);
-        child.parentNode = item;
-      } else {
-        child.children = getUsefulItems(child, usefulItems);
-      }
-    }
-  }
-
-  return usefulItems;
-}
-
-var removeUselessStrokeAndFill = {};
-
-removeUselessStrokeAndFill.type = 'perItem';
-
-removeUselessStrokeAndFill.active = true;
-
-removeUselessStrokeAndFill.description = 'removes useless stroke and fill attributes';
-
-removeUselessStrokeAndFill.params = {
-  stroke: true,
-  fill: true,
-  removeNone: false,
-  hasStyleOrScript: false,
-};
-
-var shape = _collections.elemsGroups.shape,
-  regStrokeProps = /^stroke/,
-  regFillProps = /^fill-/,
-  styleOrScript = ['style', 'script'];
-
-/**
- * Remove useless stroke and fill attrs.
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeUselessStrokeAndFill.fn = function (item, params) {
-  if (item.isElem(styleOrScript)) {
-    params.hasStyleOrScript = true;
-  }
-
-  if (
-    !params.hasStyleOrScript &&
-    item.isElem(shape) &&
-    !item.computedAttr('id')
-  ) {
-    var stroke = params.stroke && item.computedAttr('stroke'),
-      fill = params.fill && !item.computedAttr('fill', 'none');
-
-    // remove stroke*
-    if (
-      params.stroke &&
-      (!stroke ||
-        stroke == 'none' ||
-        item.computedAttr('stroke-opacity', '0') ||
-        item.computedAttr('stroke-width', '0'))
-    ) {
-      // stroke-width may affect the size of marker-end
-      if (
-        item.computedAttr('stroke-width', '0') === true ||
-        item.computedAttr('marker-end') == null
-      ) {
-        var parentStroke = item.parentNode.computedAttr('stroke'),
-          declineStroke = parentStroke && parentStroke != 'none';
-
-        for (const name of Object.keys(item.attributes)) {
-          if (regStrokeProps.test(name)) {
-            delete item.attributes[name];
-          }
-        }
-
-        if (declineStroke) {
-          item.attributes.stroke = 'none';
-        }
-      }
-    }
-
-    // remove fill*
-    if (params.fill && (!fill || item.computedAttr('fill-opacity', '0'))) {
-      for (const name of Object.keys(item.attributes)) {
-        if (regFillProps.test(name)) {
-          delete item.attributes[name];
-        }
-      }
-
-      if (fill) {
-        item.attributes.fill = 'none';
-      }
-    }
-
-    if (
-      params.removeNone &&
-      (!stroke || item.attributes.stroke == 'none') &&
-      (!fill || item.attributes.fill == 'none')
-    ) {
-      return false;
-    }
-  }
-};
-
-var removeViewBox = {};
-
-const { closestByName } = xast;
-
-removeViewBox.type = 'perItem';
-
-removeViewBox.active = true;
-
-removeViewBox.description = 'removes viewBox attribute when possible';
-
-const viewBoxElems = ['svg', 'pattern', 'symbol'];
-
-/**
- * Remove viewBox attr which coincides with a width/height box.
- *
- * @see https://www.w3.org/TR/SVG11/coords.html#ViewBoxAttribute
- *
- * @example
- * <svg width="100" height="50" viewBox="0 0 100 50">
- *             ⬇
- * <svg width="100" height="50">
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeViewBox.fn = function (item) {
-  if (
-    item.type === 'element' &&
-    viewBoxElems.includes(item.name) &&
-    item.attributes.viewBox != null &&
-    item.attributes.width != null &&
-    item.attributes.height != null
-  ) {
-    // TODO remove width/height for such case instead
-    if (item.name === 'svg' && closestByName(item.parentNode, 'svg')) {
-      return;
-    }
-
-    const nums = item.attributes.viewBox.split(/[ ,]+/g);
-
-    if (
-      nums[0] === '0' &&
-      nums[1] === '0' &&
-      item.attributes.width.replace(/px$/, '') === nums[2] && // could use parseFloat too
-      item.attributes.height.replace(/px$/, '') === nums[3]
-    ) {
-      delete item.attributes.viewBox;
-    }
-  }
+      },
+    },
+  };
 };
 
 var removeXMLNS = {};
+
+removeXMLNS.name = 'removeXMLNS';
 
 removeXMLNS.type = 'perItem';
 
@@ -45845,36 +46293,12 @@ removeXMLNS.fn = function (item) {
   }
 };
 
-var removeXMLProcInst = {};
-
-removeXMLProcInst.type = 'perItem';
-
-removeXMLProcInst.active = true;
-
-removeXMLProcInst.description = 'removes XML processing instructions';
-
-/**
- * Remove XML Processing Instruction.
- *
- * @example
- * <?xml version="1.0" encoding="utf-8"?>
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeXMLProcInst.fn = function (item) {
-  if (item.type === 'instruction' && item.name === 'xml') {
-    return false;
-  }
-  return true;
-};
-
 var reusePaths = {};
 
 const { traverse } = xast;
 const JSAPI$2 = jsAPI;
+
+reusePaths.name = 'reusePaths';
 
 reusePaths.type = 'full';
 
@@ -45968,6 +46392,8 @@ var sortAttrs = {};
 
 const { parseName } = tools;
 
+sortAttrs.name = 'sortAttrs';
+
 sortAttrs.type = 'perItem';
 
 sortAttrs.active = false;
@@ -46053,98 +46479,63 @@ sortAttrs.fn = function (item, params) {
   }
 };
 
-var sortDefsChildren = {};
+(function (exports) {
 
-sortDefsChildren.type = 'perItem';
+// builtin presets
+exports['preset-default'] = presetDefault_1;
 
-sortDefsChildren.active = true;
-
-sortDefsChildren.description = 'Sorts children of <defs> to improve compression';
-
-/**
- * Sorts children of defs in order to improve compression.
- * Sorted first by frequency then by element name length then by element name (to ensure grouping).
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author David Leston
- */
-sortDefsChildren.fn = function (item) {
-  if (item.isElem('defs')) {
-    var frequency = item.children.reduce(function (frequency, child) {
-      if (child.name in frequency) {
-        frequency[child.name]++;
-      } else {
-        frequency[child.name] = 1;
-      }
-      return frequency;
-    }, {});
-    item.children.sort(function (a, b) {
-      var frequencyComparison = frequency[b.name] - frequency[a.name];
-      if (frequencyComparison !== 0) {
-        return frequencyComparison;
-      }
-      var lengthComparison = b.name.length - a.name.length;
-      if (lengthComparison !== 0) {
-        return lengthComparison;
-      }
-      return a.name != b.name ? (a.name > b.name ? -1 : 1) : 0;
-    });
-    return true;
-  }
-};
-
-plugins$1.addAttributesToSVGElement = addAttributesToSVGElement;
-plugins$1.addClassesToSVGElement = addClassesToSVGElement;
-plugins$1.cleanupAttrs = cleanupAttrs;
-plugins$1.cleanupEnableBackground = cleanupEnableBackground;
-plugins$1.cleanupIDs = cleanupIDs;
-plugins$1.cleanupListOfValues = cleanupListOfValues;
-plugins$1.cleanupNumericValues = cleanupNumericValues;
-plugins$1.collapseGroups = collapseGroups;
-plugins$1.convertColors = convertColors;
-plugins$1.convertEllipseToCircle = convertEllipseToCircle;
-plugins$1.convertPathData = convertPathData;
-plugins$1.convertShapeToPath = convertShapeToPath;
-plugins$1.convertStyleToAttrs = convertStyleToAttrs;
-plugins$1.convertTransform = convertTransform$1;
-plugins$1.mergeStyles = mergeStyles;
-plugins$1.inlineStyles = inlineStyles;
-plugins$1.mergePaths = mergePaths;
-plugins$1.minifyStyles = minifyStyles;
-plugins$1.moveElemsAttrsToGroup = moveElemsAttrsToGroup;
-plugins$1.moveGroupAttrsToElems = moveGroupAttrsToElems;
-plugins$1.prefixIds = prefixIds;
-plugins$1.removeAttributesBySelector = removeAttributesBySelector;
-plugins$1.removeAttrs = removeAttrs;
-plugins$1.removeComments = removeComments;
-plugins$1.removeDesc = removeDesc;
-plugins$1.removeDimensions = removeDimensions;
-plugins$1.removeDoctype = removeDoctype;
-plugins$1.removeEditorsNSData = removeEditorsNSData;
-plugins$1.removeElementsByAttr = removeElementsByAttr;
-plugins$1.removeEmptyAttrs = removeEmptyAttrs;
-plugins$1.removeEmptyContainers = removeEmptyContainers;
-plugins$1.removeEmptyText = removeEmptyText;
-plugins$1.removeHiddenElems = removeHiddenElems;
-plugins$1.removeMetadata = removeMetadata;
-plugins$1.removeNonInheritableGroupAttrs = removeNonInheritableGroupAttrs;
-plugins$1.removeOffCanvasPaths = removeOffCanvasPaths;
-plugins$1.removeRasterImages = removeRasterImages;
-plugins$1.removeScriptElement = removeScriptElement;
-plugins$1.removeStyleElement = removeStyleElement;
-plugins$1.removeTitle = removeTitle;
-plugins$1.removeUnknownsAndDefaults = removeUnknownsAndDefaults;
-plugins$1.removeUnusedNS = removeUnusedNS;
-plugins$1.removeUselessDefs = removeUselessDefs;
-plugins$1.removeUselessStrokeAndFill = removeUselessStrokeAndFill;
-plugins$1.removeViewBox = removeViewBox;
-plugins$1.removeXMLNS = removeXMLNS;
-plugins$1.removeXMLProcInst = removeXMLProcInst;
-plugins$1.reusePaths = reusePaths;
-plugins$1.sortAttrs = sortAttrs;
-plugins$1.sortDefsChildren = sortDefsChildren;
+// builtin plugins
+exports.addAttributesToSVGElement = addAttributesToSVGElement;
+exports.addClassesToSVGElement = addClassesToSVGElement;
+exports.cleanupAttrs = cleanupAttrs$1;
+exports.cleanupEnableBackground = cleanupEnableBackground$1;
+exports.cleanupIDs = cleanupIDs$1;
+exports.cleanupListOfValues = cleanupListOfValues;
+exports.cleanupNumericValues = cleanupNumericValues$1;
+exports.collapseGroups = collapseGroups$1;
+exports.convertColors = convertColors$1;
+exports.convertEllipseToCircle = convertEllipseToCircle$1;
+exports.convertPathData = convertPathData$1;
+exports.convertShapeToPath = convertShapeToPath$1;
+exports.convertStyleToAttrs = convertStyleToAttrs;
+exports.convertTransform = convertTransform$2;
+exports.mergeStyles = mergeStyles$1;
+exports.inlineStyles = inlineStyles$1;
+exports.mergePaths = mergePaths$1;
+exports.minifyStyles = minifyStyles$1;
+exports.moveElemsAttrsToGroup = moveElemsAttrsToGroup$1;
+exports.moveGroupAttrsToElems = moveGroupAttrsToElems$1;
+exports.prefixIds = prefixIds;
+exports.removeAttributesBySelector = removeAttributesBySelector;
+exports.removeAttrs = removeAttrs;
+exports.removeComments = removeComments$1;
+exports.removeDesc = removeDesc$1;
+exports.removeDimensions = removeDimensions;
+exports.removeDoctype = removeDoctype$1;
+exports.removeEditorsNSData = removeEditorsNSData$1;
+exports.removeElementsByAttr = removeElementsByAttr;
+exports.removeEmptyAttrs = removeEmptyAttrs$1;
+exports.removeEmptyContainers = removeEmptyContainers$1;
+exports.removeEmptyText = removeEmptyText$1;
+exports.removeHiddenElems = removeHiddenElems$1;
+exports.removeMetadata = removeMetadata$1;
+exports.removeNonInheritableGroupAttrs = removeNonInheritableGroupAttrs$1;
+exports.removeOffCanvasPaths = removeOffCanvasPaths;
+exports.removeRasterImages = removeRasterImages;
+exports.removeScriptElement = removeScriptElement;
+exports.removeStyleElement = removeStyleElement;
+exports.removeTitle = removeTitle$1;
+exports.removeUnknownsAndDefaults = removeUnknownsAndDefaults$1;
+exports.removeUnusedNS = removeUnusedNS$1;
+exports.removeUselessDefs = removeUselessDefs$1;
+exports.removeUselessStrokeAndFill = removeUselessStrokeAndFill$1;
+exports.removeViewBox = removeViewBox$1;
+exports.removeXMLNS = removeXMLNS;
+exports.removeXMLProcInst = removeXMLProcInst$1;
+exports.reusePaths = reusePaths;
+exports.sortAttrs = sortAttrs;
+exports.sortDefsChildren = sortDefsChildren$1;
+}(plugins$1));
 
 const pluginsMap = plugins$1;
 
@@ -46204,12 +46595,30 @@ const defaultPlugins$1 = pluginsOrder.filter((name) => pluginsMap[name].active);
 var defaultPlugins_1 = config$1.defaultPlugins = defaultPlugins$1;
 
 const extendDefaultPlugins$2 = (plugins) => {
+  console.warn(
+    '\n"extendDefaultPlugins" utility is deprecated.\n' +
+      'Use "preset-default" plugin with overrides instead.\n' +
+      'For example:\n' +
+      `{\n` +
+      `  name: 'preset-default',\n` +
+      `  params: {\n` +
+      `    overrides: {\n` +
+      `      // customize plugin options\n` +
+      `      convertShapeToPath: {\n` +
+      `        convertArcs: true\n` +
+      `      },\n` +
+      `      // disable plugins\n` +
+      `      convertPathData: false\n` +
+      `    }\n` +
+      `  }\n` +
+      `}\n`
+  );
   const extendedPlugins = pluginsOrder.map((name) => ({
     name,
     active: pluginsMap[name].active,
   }));
   for (const plugin of plugins) {
-    const resolvedPlugin = resolvePluginConfig$1(plugin, {});
+    const resolvedPlugin = resolvePluginConfig$1(plugin);
     const index = pluginsOrder.indexOf(resolvedPlugin.name);
     if (index === -1) {
       extendedPlugins.push(plugin);
@@ -46221,11 +46630,8 @@ const extendDefaultPlugins$2 = (plugins) => {
 };
 var extendDefaultPlugins_1 = config$1.extendDefaultPlugins = extendDefaultPlugins$2;
 
-const resolvePluginConfig$1 = (plugin, config) => {
+const resolvePluginConfig$1 = (plugin) => {
   let configParams = {};
-  if ('floatPrecision' in config) {
-    configParams.floatPrecision = config.floatPrecision;
-  }
   if (typeof plugin === 'string') {
     // resolve builtin plugin specified as string
     const pluginConfig = pluginsMap[plugin];
@@ -48131,115 +48537,6 @@ JS2SVG.prototype.createText = function (node) {
   );
 };
 
-const { visit } = xast;
-
-/**
- * Plugins engine.
- *
- * @module plugins
- *
- * @param {Object} data input data
- * @param {Object} info extra information
- * @param {Array} plugins plugins object from config
- * @return {Object} output data
- */
-var plugins = function (data, info, plugins) {
-  // Try to group sequential elements of plugins array
-  // to optimize ast traversing
-  const groups = [];
-  let prev;
-  for (const plugin of plugins) {
-    if (prev && plugin.type == prev[0].type) {
-      prev.push(plugin);
-    } else {
-      prev = [plugin];
-      groups.push(prev);
-    }
-  }
-  for (const group of groups) {
-    switch (group[0].type) {
-      case 'perItem':
-        data = perItem(data, info, group);
-        break;
-      case 'perItemReverse':
-        data = perItem(data, info, group, true);
-        break;
-      case 'full':
-        data = full(data, info, group);
-        break;
-      case 'visitor':
-        for (const plugin of group) {
-          if (plugin.active) {
-            const visitor = plugin.fn(data, plugin.params, info);
-            visit(data, visitor);
-          }
-        }
-        break;
-    }
-  }
-  return data;
-};
-
-/**
- * Direct or reverse per-item loop.
- *
- * @param {Object} data input data
- * @param {Object} info extra information
- * @param {Array} plugins plugins list to process
- * @param {boolean} [reverse] reverse pass?
- * @return {Object} output data
- */
-function perItem(data, info, plugins, reverse) {
-  function monkeys(items) {
-    items.children = items.children.filter(function (item) {
-      // reverse pass
-      if (reverse && item.children) {
-        monkeys(item);
-      }
-
-      // main filter
-      var filter = true;
-
-      for (var i = 0; filter && i < plugins.length; i++) {
-        var plugin = plugins[i];
-
-        if (plugin.active && plugin.fn(item, plugin.params, info) === false) {
-          filter = false;
-        }
-      }
-
-      // direct pass
-      if (!reverse && item.children) {
-        monkeys(item);
-      }
-
-      return filter;
-    });
-
-    return items;
-  }
-
-  return monkeys(data);
-}
-
-/**
- * "Full" plugins.
- *
- * @param {Object} data input data
- * @param {Object} info extra information
- * @param {Array} plugins plugins list to process
- * @return {Object} output data
- */
-function full(data, info, plugins) {
-  plugins.forEach(function (plugin) {
-    if (plugin.active) {
-      data = plugin.fn(data, plugin.params, info);
-    }
-  });
-
-  return data;
-}
-
 const {
   defaultPlugins,
   resolvePluginConfig,
@@ -48247,7 +48544,7 @@ const {
 } = config$1;
 const svg2js = svg2js$1;
 const js2svg = js2svg$1;
-const invokePlugins = plugins;
+const { invokePlugins } = plugins;
 const JSAPI = jsAPI;
 const { encodeSVGDatauri } = tools;
 
@@ -48282,10 +48579,12 @@ const optimize$1 = (input, config) => {
         "Invalid plugins list. Provided 'plugins' in config should be an array."
       );
     }
-    const resolvedPlugins = plugins.map((plugin) =>
-      resolvePluginConfig(plugin, config)
-    );
-    svgjs = invokePlugins(svgjs, info, resolvedPlugins);
+    const resolvedPlugins = plugins.map(resolvePluginConfig);
+    const globalOverrides = {};
+    if (config.floatPrecision != null) {
+      globalOverrides.floatPrecision = config.floatPrecision;
+    }
+    svgjs = invokePlugins(svgjs, info, resolvedPlugins, null, globalOverrides);
     svgjs = js2svg(svgjs, config.js2svg);
     if (svgjs.error) {
       throw Error(svgjs.error);
