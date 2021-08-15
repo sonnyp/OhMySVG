@@ -15,8 +15,8 @@ if desktop_utils.found()
 endif
 
 appstream_file = i18n.merge_file(
-  input: 're.sonny.OhMySVG.appdata.xml',
-  output: 're.sonny.OhMySVG.appdata.xml',
+  input: 're.sonny.OhMySVG.metainfo.xml',
+  output: 're.sonny.OhMySVG.metainfo.xml',
   po_dir: '../po',
   install: true,
   install_dir: join_paths(get_option('datadir'), 'appdata')

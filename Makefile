@@ -24,7 +24,7 @@ bundle:
 
 test:
 	./node_modules/.bin/eslint --cache .
-	flatpak run org.freedesktop.appstream-glib validate data/re.sonny.OhMySVG.appdata.xml
+	flatpak run org.freedesktop.appstream-glib validate data/re.sonny.OhMySVG.metainfo.xml
 	desktop-file-validate --no-hints data/re.sonny.OhMySVG.desktop
 	gtk4-builder-tool validate src/*.ui
 	flatpak-builder --show-manifest re.sonny.OhMySVG.json
