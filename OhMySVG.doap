@@ -1,0 +1,24 @@
+<!-- -*- mode: xml -*- -->
+<Project
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+  xmlns:foaf="http://xmlns.com/foaf/0.1/"
+  xmlns:gnome="http://api.gnome.org/doap-extensions#"
+  xmlns="http://usefulinc.com/ns/doap#"
+>
+  <name>Commit</name>
+  <shortdesc> Reduce the size of SVGs</shortdesc>
+  <description
+  >Oh My SVG let you export unoptimized SVG files into smaller versions.</description>
+
+  <homepage rdf:resource="https://github.com/sonnyp/OhMySVG/" />
+  <bug-database rdf:resource="https://github.com/sonnyp/OhMySVG/issues" />
+  <programming-language>JavaScript</programming-language>
+
+  <maintainer>
+    <foaf:Person>
+      <foaf:name>Sonny Piers</foaf:name>
+      <foaf:mbox rdf:resource="mailto:sonny@fastmail.net" />
+    </foaf:Person>
+  </maintainer>
+</Project>
