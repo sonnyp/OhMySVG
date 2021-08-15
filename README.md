@@ -91,7 +91,7 @@ ninja -C build install
 Use [GNOME Builder](https://wiki.gnome.org/Apps/Builder) or
 
 ```sh
-flatpak-builder --user --force-clean --install-deps-from=flathub --install flatpak re.sonny.OhMySVG.yaml
+flatpak-builder --user --force-clean --install-deps-from=flathub --install flatpak re.sonny.OhMySVG.json
 ```
 
 </details>

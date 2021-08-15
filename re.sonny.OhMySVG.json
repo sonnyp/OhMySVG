@@ -1,0 +1,28 @@
+{
+  "app-id": "re.sonny.OhMySVG",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "40",
+  "sdk": "org.gnome.Sdk",
+  "command": "re.sonny.OhMySVG",
+  "finish-args": [
+    "--share=ipc",
+    "--device=dri",
+    "--socket=fallback-x11",
+    "--socket=wayland",
+    /* Required for FLATPAK_ID */
+    "--require-version=1.1.2"
+  ],
+  "modules": [
+    {
+      "name": "OhMySVG",
+      "buildsystem": "meson",
+      "builddir": true,
+      "sources": [
+        {
+          "type": "dir",
+          "path": "./"
+        }
+      ]
+    }
+  ]
+}

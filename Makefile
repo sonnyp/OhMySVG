@@ -15,11 +15,11 @@ run-host:
 	GSETTINGS_SCHEMA_DIR=./data ./install/bin/re.sonny.OhMySVG
 
 flatpak:
-	flatpak-builder --user --force-clean --install-deps-from=flathub --install flatpak re.sonny.OhMySVG.yaml
+	flatpak-builder --user --force-clean --install-deps-from=flathub --install flatpak re.sonny.OhMySVG.json
 	flatpak run --file-forwarding re.sonny.OhMySVG @@ ./src/car-lite.svg @@
 
 bundle:
-	flatpak-builder --user  --force-clean --repo=repo --install-deps-from=flathub flatpak re.sonny.OhMySVG.yaml
+	flatpak-builder --user  --force-clean --repo=repo --install-deps-from=flathub flatpak re.sonny.OhMySVG.json
 	flatpak build-bundle repo OhMySVG.flatpak re.sonny.OhMySVG --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
 
 test:
@@ -27,7 +27,7 @@ test:
 	flatpak run org.freedesktop.appstream-glib validate data/re.sonny.OhMySVG.appdata.xml
 	desktop-file-validate --no-hints data/re.sonny.OhMySVG.desktop
 	gtk4-builder-tool validate src/*.ui
-	flatpak-builder --show-manifest re.sonny.OhMySVG.yaml
+	flatpak-builder --show-manifest re.sonny.OhMySVG.json
 
 clean:
 	rm -rf build install .eslintcache
