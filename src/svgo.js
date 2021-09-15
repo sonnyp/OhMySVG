@@ -22,7 +22,7 @@ var _rollup_plugin_ignore_empty_module_placeholder$1 = /*#__PURE__*/Object.freez
 	'default': _rollup_plugin_ignore_empty_module_placeholder
 });
 
-var require$$1$3 = /*@__PURE__*/getAugmentedNamespace(_rollup_plugin_ignore_empty_module_placeholder$1);
+var require$$2$2 = /*@__PURE__*/getAugmentedNamespace(_rollup_plugin_ignore_empty_module_placeholder$1);
 
 var svgo = {};
 
@@ -8330,10 +8330,6 @@ Object.defineProperty(exports, "pseudos", { enumerable: true, get: function () {
 Object.defineProperty(exports, "aliases", { enumerable: true, get: function () { return pseudo_selectors_1.aliases; } });
 }(lib$9));
 
-/**
- * @param {any} node
- * @return {node is any}
- */
 const isTag = (node) => {
   return node.type === 'element';
 };
@@ -8453,6 +8449,13 @@ const svgoCssSelectAdapter$1 = {
 
 var cssSelectAdapter = svgoCssSelectAdapter$1;
 
+/**
+ * @typedef {import('./types').XastNode} XastNode
+ * @typedef {import('./types').XastChild} XastChild
+ * @typedef {import('./types').XastParent} XastParent
+ * @typedef {import('./types').Visitor} Visitor
+ */
+
 const { selectAll: selectAll$1, selectOne: selectOne$1, is: is$1 } = lib$9;
 const xastAdaptor = cssSelectAdapter;
 
@@ -8461,83 +8464,93 @@ const cssSelectOptions = {
   adapter: xastAdaptor,
 };
 
-const querySelectorAll$1 = (node, selector) => {
+/**
+ * @type {(node: XastNode, selector: string) => Array<XastChild>}
+ */
+const querySelectorAll$2 = (node, selector) => {
   return selectAll$1(selector, node, cssSelectOptions);
 };
-xast.querySelectorAll = querySelectorAll$1;
+xast.querySelectorAll = querySelectorAll$2;
 
+/**
+ * @type {(node: XastNode, selector: string) => null | XastChild}
+ */
 const querySelector$1 = (node, selector) => {
   return selectOne$1(selector, node, cssSelectOptions);
 };
 xast.querySelector = querySelector$1;
 
+/**
+ * @type {(node: XastChild, selector: string) => boolean}
+ */
 const matches$2 = (node, selector) => {
   return is$1(node, selector, cssSelectOptions);
 };
 xast.matches = matches$2;
 
-const closestByName$5 = (node, name) => {
+/**
+ * @type {(node: XastChild, name: string) => null | XastChild}
+ */
+const closestByName$3 = (node, name) => {
   let currentNode = node;
   while (currentNode) {
     if (currentNode.type === 'element' && currentNode.name === name) {
       return currentNode;
     }
+    // @ts-ignore parentNode is hidden from public usage
     currentNode = currentNode.parentNode;
   }
   return null;
 };
-xast.closestByName = closestByName$5;
+xast.closestByName = closestByName$3;
 
-const traverseBreak$1 = Symbol();
-xast.traverseBreak = traverseBreak$1;
+const visitSkip$4 = Symbol();
+xast.visitSkip = visitSkip$4;
 
-const traverse$5 = (node, fn) => {
-  if (fn(node) === traverseBreak$1) {
-    return traverseBreak$1;
-  }
-  if (node.type === 'root' || node.type === 'element') {
-    for (const child of node.children) {
-      if (traverse$5(child, fn) === traverseBreak$1) {
-        return traverseBreak$1;
-      }
-    }
-  }
-};
-xast.traverse = traverse$5;
-
-const visit$2 = (node, visitor, parentNode = null) => {
+/**
+ * @type {(node: XastNode, visitor: Visitor, parentNode?: any) => void}
+ */
+const visit$4 = (node, visitor, parentNode) => {
   const callbacks = visitor[node.type];
   if (callbacks && callbacks.enter) {
-    callbacks.enter(node, parentNode);
+    // @ts-ignore hard to infer
+    const symbol = callbacks.enter(node, parentNode);
+    if (symbol === visitSkip$4) {
+      return;
+    }
   }
   // visit root children
   if (node.type === 'root') {
     // copy children array to not loose cursor when children is spliced
     for (const child of node.children) {
-      visit$2(child, visitor, node);
+      visit$4(child, visitor, node);
     }
   }
   // visit element children if still attached to parent
   if (node.type === 'element') {
     if (parentNode.children.includes(node)) {
       for (const child of node.children) {
-        visit$2(child, visitor, node);
+        visit$4(child, visitor, node);
       }
     }
   }
   if (callbacks && callbacks.exit) {
+    // @ts-ignore hard to infer
     callbacks.exit(node, parentNode);
   }
 };
-xast.visit = visit$2;
+xast.visit = visit$4;
 
-const detachNodeFromParent$e = (node, parentNode) => {
+/**
+ * @type {(node: XastChild, parentNode: XastParent) => void}
+ */
+const detachNodeFromParent$k = (node, parentNode) => {
   // avoid splice to not break for loops
   parentNode.children = parentNode.children.filter((child) => child !== node);
 };
-xast.detachNodeFromParent = detachNodeFromParent$e;
+xast.detachNodeFromParent = detachNodeFromParent$k;
 
-const { visit: visit$1 } = xast;
+const { visit: visit$3 } = xast;
 
 /**
  * Plugins engine.
@@ -8571,7 +8584,9 @@ const invokePlugins$1 = (ast, info, plugins, overrides, globalOverrides) => {
     if (plugin.type === 'visitor') {
       if (plugin.active) {
         const visitor = plugin.fn(ast, params, info);
-        visit$1(ast, visitor);
+        if (visitor != null) {
+          visit$3(ast, visitor);
+        }
       }
     }
   }
@@ -8629,7 +8644,7 @@ plugins.createPreset = createPreset$1;
 
 var removeDoctype$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$d } = xast;
+const { detachNodeFromParent: detachNodeFromParent$j } = xast;
 
 removeDoctype$1.name = 'removeDoctype';
 removeDoctype$1.type = 'visitor';
@@ -8657,12 +8672,14 @@ removeDoctype$1.description = 'removes doctype declaration';
  * ]>
  *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 removeDoctype$1.fn = () => {
   return {
     doctype: {
       enter: (node, parentNode) => {
-        detachNodeFromParent$d(node, parentNode);
+        detachNodeFromParent$j(node, parentNode);
       },
     },
   };
@@ -8670,7 +8687,7 @@ removeDoctype$1.fn = () => {
 
 var removeXMLProcInst$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$c } = xast;
+const { detachNodeFromParent: detachNodeFromParent$i } = xast;
 
 removeXMLProcInst$1.name = 'removeXMLProcInst';
 removeXMLProcInst$1.type = 'visitor';
@@ -8684,13 +8701,15 @@ removeXMLProcInst$1.description = 'removes XML processing instructions';
  * <?xml version="1.0" encoding="utf-8"?>
  *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 removeXMLProcInst$1.fn = () => {
   return {
     instruction: {
       enter: (node, parentNode) => {
         if (node.name === 'xml') {
-          detachNodeFromParent$c(node, parentNode);
+          detachNodeFromParent$i(node, parentNode);
         }
       },
     },
@@ -8699,7 +8718,7 @@ removeXMLProcInst$1.fn = () => {
 
 var removeComments$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$b } = xast;
+const { detachNodeFromParent: detachNodeFromParent$h } = xast;
 
 removeComments$1.name = 'removeComments';
 removeComments$1.type = 'visitor';
@@ -8714,13 +8733,15 @@ removeComments$1.description = 'removes comments';
  * Plug-In . SVG Version: 6.00 Build 0)  -->
  *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 removeComments$1.fn = () => {
   return {
     comment: {
       enter: (node, parentNode) => {
         if (node.value.charAt(0) !== '!') {
-          detachNodeFromParent$b(node, parentNode);
+          detachNodeFromParent$h(node, parentNode);
         }
       },
     },
@@ -8729,7 +8750,7 @@ removeComments$1.fn = () => {
 
 var removeMetadata$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$a } = xast;
+const { detachNodeFromParent: detachNodeFromParent$g } = xast;
 
 removeMetadata$1.name = 'removeMetadata';
 removeMetadata$1.type = 'visitor';
@@ -8742,13 +8763,15 @@ removeMetadata$1.description = 'removes <metadata>';
  * https://www.w3.org/TR/SVG11/metadata.html
  *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 removeMetadata$1.fn = () => {
   return {
     element: {
       enter: (node, parentNode) => {
         if (node.name === 'metadata') {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$g(node, parentNode);
         }
       },
     },
@@ -8757,169 +8780,15 @@ removeMetadata$1.fn = () => {
 
 var removeEditorsNSData$1 = {};
 
-var tools = {};
-
-/**
- * Encode plain SVG data string into Data URI string.
- *
- * @param {string} str input string
- * @param {string} type Data URI type
- * @return {string} output string
- */
-tools.encodeSVGDatauri = function (str, type) {
-  var prefix = 'data:image/svg+xml';
-  if (!type || type === 'base64') {
-    // base64
-    prefix += ';base64,';
-    str = prefix + Buffer.from(str).toString('base64');
-  } else if (type === 'enc') {
-    // URI encoded
-    str = prefix + ',' + encodeURIComponent(str);
-  } else if (type === 'unenc') {
-    // unencoded
-    str = prefix + ',' + str;
-  }
-  return str;
-};
-
-/**
- * Decode SVG Data URI string into plain SVG string.
- *
- * @param {string} str input string
- * @return {string} output string
- */
-tools.decodeSVGDatauri = function (str) {
-  var regexp = /data:image\/svg\+xml(;charset=[^;,]*)?(;base64)?,(.*)/;
-  var match = regexp.exec(str);
-
-  // plain string
-  if (!match) return str;
-
-  var data = match[3];
-
-  if (match[2]) {
-    // base64
-    str = Buffer.from(data, 'base64').toString('utf8');
-  } else if (data.charAt(0) === '%') {
-    // URI encoded
-    str = decodeURIComponent(data);
-  } else if (data.charAt(0) === '<') {
-    // unencoded
-    str = data;
-  }
-  return str;
-};
-
-/**
- * Convert a row of numbers to an optimized string view.
- *
- * @example
- * [0, -1, .5, .5] → "0-1 .5.5"
- *
- * @param {number[]} data
- * @param {Object} params
- * @param {string} [command] path data instruction
- * @return {string}
- */
-tools.cleanupOutData = function (data, params, command) {
-  var str = '',
-    delimiter,
-    prev;
-
-  data.forEach(function (item, i) {
-    // space delimiter by default
-    delimiter = ' ';
-
-    // no extra space in front of first number
-    if (i == 0) delimiter = '';
-
-    // no extra space after 'arcto' command flags(large-arc and sweep flags)
-    // a20 60 45 0 1 30 20 → a20 60 45 0130 20
-    if (params.noSpaceAfterFlags && (command == 'A' || command == 'a')) {
-      var pos = i % 7;
-      if (pos == 4 || pos == 5) delimiter = '';
-    }
-
-    // remove floating-point numbers leading zeros
-    // 0.5 → .5
-    // -0.5 → -.5
-    const itemStr = params.leadingZero
-      ? removeLeadingZero$3(item)
-      : item.toString();
-
-    // no extra space in front of negative number or
-    // in front of a floating number if a previous number is floating too
-    if (
-      params.negativeExtraSpace &&
-      delimiter != '' &&
-      (item < 0 || (itemStr.charAt(0) === '.' && prev % 1 !== 0))
-    ) {
-      delimiter = '';
-    }
-    // save prev item value
-    prev = item;
-    str += delimiter + itemStr;
-  });
-  return str;
-};
-
-/**
- * Remove floating-point numbers leading zero.
- *
- * @example
- * 0.5 → .5
- *
- * @example
- * -0.5 → -.5
- *
- * @param {number} num input number
- *
- * @return {string} output number as string
- */
-var removeLeadingZero$3 = function (num) {
-  var strNum = num.toString();
-
-  if (0 < num && num < 1 && strNum.charAt(0) === '0') {
-    strNum = strNum.slice(1);
-  } else if (-1 < num && num < 0 && strNum.charAt(1) === '0') {
-    strNum = strNum.charAt(0) + strNum.slice(2);
-  }
-  return strNum;
-};
-tools.removeLeadingZero = removeLeadingZero$3;
-
-const parseName$6 = (name) => {
-  if (name == null) {
-    return {
-      prefix: '',
-      local: '',
-    };
-  }
-  if (name === 'xmlns') {
-    return {
-      prefix: 'xmlns',
-      local: '',
-    };
-  }
-  const chunks = name.split(':');
-  if (chunks.length === 1) {
-    return {
-      prefix: '',
-      local: chunks[0],
-    };
-  }
-  return {
-    prefix: chunks[0],
-    local: chunks[1],
-  };
-};
-tools.parseName = parseName$6;
-
 var _collections = {};
 
 (function (exports) {
 
 // https://www.w3.org/TR/SVG11/intro.html#Definitions
+
+/**
+ * @type {Record<string, Array<string>>}
+ */
 exports.elemsGroups = {
   animation: [
     'animate',
@@ -9007,6 +8876,9 @@ exports.textElems = exports.elemsGroups.textContent.concat('title');
 exports.pathElems = ['path', 'glyph', 'missing-glyph'];
 
 // https://www.w3.org/TR/SVG11/intro.html#Definitions
+/**
+ * @type {Record<string, Array<string>>}
+ */
 exports.attrsGroups = {
   animationAddition: ['additive', 'accumulate'],
   animationAttributeTarget: ['attributeType', 'attributeName'],
@@ -9107,6 +8979,7 @@ exports.attrsGroups = {
     'text-overflow',
     'text-rendering',
     'transform',
+    'transform-origin',
     'unicode-bidi',
     'vector-effect',
     'visibility',
@@ -9142,6 +9015,9 @@ exports.attrsGroups = {
   ],
 };
 
+/**
+ * @type {Record<string, Record<string, string>>}
+ */
 exports.attrsGroupsDefaults = {
   core: { 'xml:space': 'default' },
   presentation: {
@@ -9207,6 +9083,15 @@ exports.attrsGroupsDefaults = {
 };
 
 // https://www.w3.org/TR/SVG11/eltindex.html
+/**
+ * @type {Record<string, {
+ *   attrsGroups: Array<string>,
+ *   attrs?: Array<string>,
+ *   defaults?: Record<string, string>,
+ *   contentGroups?: Array<string>,
+ *   content?: Array<string>,
+ * }>}
+ */
 exports.elems = {
   a: {
     attrsGroups: [
@@ -9877,8 +9762,8 @@ exports.elems = {
       'height',
     ],
     defaults: {
-      x: 0,
-      y: 0,
+      x: '0',
+      y: '0',
     },
   },
   g: {
@@ -10567,8 +10452,8 @@ exports.elems = {
       'refY',
     ],
     defaults: {
-      refX: 0,
-      refY: 0,
+      refX: '0',
+      refY: '0',
     },
     contentGroups: [
       'animation',
@@ -10854,10 +10739,13 @@ exports.presentationNonInheritableGroupAttrs = [
   'text-decoration',
   'transform',
   'unicode-bidi',
-  'visibility',
 ];
 
-// https://www.w3.org/TR/SVG11/single-page.html#types-ColorKeywords
+/**
+ * https://www.w3.org/TR/SVG11/single-page.html#types-ColorKeywords
+ *
+ * @type {Record<string, string>}
+ */
 exports.colorsNames = {
   aliceblue: '#f0f8ff',
   antiquewhite: '#faebd7',
@@ -11009,6 +10897,9 @@ exports.colorsNames = {
   yellowgreen: '#9acd32',
 };
 
+/**
+ * @type {Record<string, string>}
+ */
 exports.colorsShortNames = {
   '#f0ffff': 'azure',
   '#f5f5dc': 'beige',
@@ -11055,22 +10946,13 @@ exports.colorsProps = [
 ];
 }(_collections));
 
-const { parseName: parseName$5 } = tools;
+const { detachNodeFromParent: detachNodeFromParent$f } = xast;
 const { editorNamespaces } = _collections;
 
+removeEditorsNSData$1.type = 'visitor';
 removeEditorsNSData$1.name = 'removeEditorsNSData';
-
-removeEditorsNSData$1.type = 'perItem';
-
 removeEditorsNSData$1.active = true;
-
 removeEditorsNSData$1.description = 'removes editors namespaces, elements and attributes';
-
-const prefixes = [];
-
-removeEditorsNSData$1.params = {
-  additionalNamespaces: [],
-};
 
 /**
  * Remove editors namespaces, elements and attributes.
@@ -11080,45 +10962,55 @@ removeEditorsNSData$1.params = {
  * <sodipodi:namedview/>
  * <path sodipodi:nodetypes="cccc"/>
  *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   additionalNamespaces?: Array<string>
+ * }>}
  */
-removeEditorsNSData$1.fn = function (item, params) {
+removeEditorsNSData$1.fn = (_root, params) => {
   let namespaces = editorNamespaces;
   if (Array.isArray(params.additionalNamespaces)) {
     namespaces = [...editorNamespaces, ...params.additionalNamespaces];
   }
-
-  if (item.type === 'element') {
-    if (item.isElem('svg')) {
-      for (const [name, value] of Object.entries(item.attributes)) {
-        const { prefix, local } = parseName$5(name);
-        if (prefix === 'xmlns' && namespaces.includes(value)) {
-          prefixes.push(local);
-
-          // <svg xmlns:sodipodi="">
-          delete item.attributes[name];
+  /**
+   * @type {Array<string>}
+   */
+  const prefixes = [];
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        // collect namespace aliases from svg element
+        if (node.name === 'svg') {
+          for (const [name, value] of Object.entries(node.attributes)) {
+            if (name.startsWith('xmlns:') && namespaces.includes(value)) {
+              prefixes.push(name.slice('xmlns:'.length));
+              // <svg xmlns:sodipodi="">
+              delete node.attributes[name];
+            }
+          }
         }
-      }
-    }
-
-    // <* sodipodi:*="">
-    for (const name of Object.keys(item.attributes)) {
-      const { prefix } = parseName$5(name);
-      if (prefixes.includes(prefix)) {
-        delete item.attributes[name];
-      }
-    }
-
-    // <sodipodi:*>
-    const { prefix } = parseName$5(item.name);
-    if (prefixes.includes(prefix)) {
-      return false;
-    }
-  }
+        // remove editor attributes, for example
+        // <* sodipodi:*="">
+        for (const name of Object.keys(node.attributes)) {
+          if (name.includes(':')) {
+            const [prefix] = name.split(':');
+            if (prefixes.includes(prefix)) {
+              delete node.attributes[name];
+            }
+          }
+        }
+        // remove editor elements, for example
+        // <sodipodi:*>
+        if (node.name.includes(':')) {
+          const [prefix] = node.name.split(':');
+          if (prefixes.includes(prefix)) {
+            detachNodeFromParent$f(node, parentNode);
+          }
+        }
+      },
+    },
+  };
 };
 
 var cleanupAttrs$1 = {};
@@ -11137,6 +11029,12 @@ const regSpaces = /\s{2,}/g;
  * Cleanup attributes values from newlines, trailing and repeating spaces.
  *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   newlines?: boolean,
+ *   trim?: boolean,
+ *   spaces?: boolean
+ * }>}
  */
 cleanupAttrs$1.fn = (root, params) => {
   const { newlines = true, trim = true, spaces = true } = params;
@@ -19569,7 +19467,7 @@ var clone$2 = function clone(node) {
 };
 
 const hasOwnProperty$5 = Object.prototype.hasOwnProperty;
-const shape$2 = {
+const shape$1 = {
     generic: true,
     types: appendOrAssign,
     atrules: {
@@ -19707,7 +19605,7 @@ function mix$1(dest, src, shape) {
     return dest;
 }
 
-var mix_1 = (dest, src) => mix$1(dest, src, shape$2);
+var mix_1 = (dest, src) => mix$1(dest, src, shape$1);
 
 var List$7 = List_1;
 var SyntaxError$1 = _SyntaxError$1;
@@ -29595,7 +29493,7 @@ var quote = {
 var shadow = {
 	syntax: "inset? && <length>{2,4} && <color>?"
 };
-var shape$1 = {
+var shape = {
 	syntax: "rect(<top>, <right>, <bottom>, <left>)"
 };
 var size = {
@@ -30219,7 +30117,7 @@ var require$$2$1 = {
 	"shadow-t": {
 	syntax: "[ <length>{2,3} && <color>? ]"
 },
-	shape: shape$1,
+	shape: shape,
 	"shape-box": {
 	syntax: "<box> | margin-box"
 },
@@ -35009,10 +34907,38 @@ CSSStyleDeclaration$1.prototype.setProperty = function (
 var cssStyleDeclaration = CSSStyleDeclaration$1;
 
 const { selectAll, selectOne, is } = lib$9;
-const { parseName: parseName$4 } = tools;
 const svgoCssSelectAdapter = cssSelectAdapter;
 const CSSClassList = cssClassList;
 const CSSStyleDeclaration = cssStyleDeclaration;
+
+/**
+ * @type {(name: string) => { prefix: string, local: string }}
+ */
+const parseName = (name) => {
+  if (name == null) {
+    return {
+      prefix: '',
+      local: '',
+    };
+  }
+  if (name === 'xmlns') {
+    return {
+      prefix: 'xmlns',
+      local: '',
+    };
+  }
+  const chunks = name.split(':');
+  if (chunks.length === 1) {
+    return {
+      prefix: '',
+      local: chunks[0],
+    };
+  }
+  return {
+    prefix: chunks[0],
+    local: chunks[1],
+  };
+};
 
 var cssSelectOpts = {
   xmlMode: true,
@@ -35040,7 +34966,7 @@ const attrsHandler = {
   },
 };
 
-var JSAPI$5 = function (data, parentNode) {
+var JSAPI$4 = function (data, parentNode) {
   Object.assign(this, data);
   if (this.type === 'element') {
     if (this.attributes == null) {
@@ -35082,17 +35008,17 @@ var JSAPI$5 = function (data, parentNode) {
     });
   }
 };
-var jsAPI = JSAPI$5;
+var jsAPI = JSAPI$4;
 
 /**
  * Perform a deep clone of this node.
  *
  * @return {Object} element
  */
-JSAPI$5.prototype.clone = function () {
+JSAPI$4.prototype.clone = function () {
   const { children, ...nodeData } = this;
   // Deep-clone node data.
-  const clonedNode = new JSAPI$5(JSON.parse(JSON.stringify(nodeData)), null);
+  const clonedNode = new JSAPI$4(JSON.parse(JSON.stringify(nodeData)), null);
   if (children) {
     clonedNode.children = children.map((child) => {
       const clonedChild = child.clone();
@@ -35110,7 +35036,7 @@ JSAPI$5.prototype.clone = function () {
  * @param {String|Array} [param] element name or names arrays
  * @return {Boolean}
  */
-JSAPI$5.prototype.isElem = function (param) {
+JSAPI$4.prototype.isElem = function (param) {
   if (this.type !== 'element') {
     return false;
   }
@@ -35129,7 +35055,7 @@ JSAPI$5.prototype.isElem = function (param) {
  * @param {String} name new element name
  * @return {Object} element
  */
-JSAPI$5.prototype.renameElem = function (name) {
+JSAPI$4.prototype.renameElem = function (name) {
   if (name && typeof name === 'string') this.name = name;
 
   return this;
@@ -35140,7 +35066,7 @@ JSAPI$5.prototype.renameElem = function (name) {
  *
  * @return {Boolean}
  */
-JSAPI$5.prototype.isEmpty = function () {
+JSAPI$4.prototype.isEmpty = function () {
   return !this.children || !this.children.length;
 };
 
@@ -35150,7 +35076,7 @@ JSAPI$5.prototype.isEmpty = function () {
  *
  * @return {?Object}
  */
-JSAPI$5.prototype.closestElem = function (elemName) {
+JSAPI$4.prototype.closestElem = function (elemName) {
   var elem = this;
 
   while ((elem = elem.parentNode) && !elem.isElem(elemName));
@@ -35166,7 +35092,7 @@ JSAPI$5.prototype.closestElem = function (elemName) {
  * @param {Array|Object} [insertion] Elements to add to the children.
  * @return {Array} Removed elements.
  */
-JSAPI$5.prototype.spliceContent = function (start, n, insertion) {
+JSAPI$4.prototype.spliceContent = function (start, n, insertion) {
   if (arguments.length < 2) return [];
 
   if (!Array.isArray(insertion))
@@ -35190,7 +35116,7 @@ JSAPI$5.prototype.spliceContent = function (start, n, insertion) {
  * @param {String} [val] attribute value (will be toString()'ed)
  * @return {Boolean}
  */
-JSAPI$5.prototype.hasAttr = function (name, val) {
+JSAPI$4.prototype.hasAttr = function (name, val) {
   if (this.type !== 'element') {
     return false;
   }
@@ -35218,7 +35144,7 @@ JSAPI$5.prototype.hasAttr = function (name, val) {
  * @param {Number|String|RegExp|Function} [val] attribute value (will be toString()'ed or executed, otherwise ignored)
  * @return {Boolean}
  */
-JSAPI$5.prototype.hasAttrLocal = function (localName, val) {
+JSAPI$4.prototype.hasAttrLocal = function (localName, val) {
   if (!this.attrs || !Object.keys(this.attrs).length) return false;
 
   if (!arguments.length) return !!this.attrs;
@@ -35242,22 +35168,22 @@ JSAPI$5.prototype.hasAttrLocal = function (localName, val) {
   return this.someAttr(callback);
 
   function nameTest(attr) {
-    const { local } = parseName$4(attr.name);
+    const { local } = parseName(attr.name);
     return local === localName;
   }
 
   function stringValueTest(attr) {
-    const { local } = parseName$4(attr.name);
+    const { local } = parseName(attr.name);
     return local === localName && val == attr.value;
   }
 
   function regexpValueTest(attr) {
-    const { local } = parseName$4(attr.name);
+    const { local } = parseName(attr.name);
     return local === localName && val.test(attr.value);
   }
 
   function funcValueTest(attr) {
-    const { local } = parseName$4(attr.name);
+    const { local } = parseName(attr.name);
     return local === localName && val(attr.value);
   }
 };
@@ -35270,7 +35196,7 @@ JSAPI$5.prototype.hasAttrLocal = function (localName, val) {
  * @param {String} [val] attribute value (will be toString()'ed)
  * @return {Object|Undefined}
  */
-JSAPI$5.prototype.attr = function (name, val) {
+JSAPI$4.prototype.attr = function (name, val) {
   if (this.hasAttr(name, val)) {
     return this.attrs[name];
   }
@@ -35282,7 +35208,7 @@ JSAPI$5.prototype.attr = function (name, val) {
  * @param {String} name attribute name
  * @return {Object|Undefined}
  */
-JSAPI$5.prototype.computedAttr = function (name, val) {
+JSAPI$4.prototype.computedAttr = function (name, val) {
   if (!arguments.length) return;
 
   for (
@@ -35305,7 +35231,7 @@ JSAPI$5.prototype.computedAttr = function (name, val) {
  * @param {String} [val] attribute value
  * @return {Boolean}
  */
-JSAPI$5.prototype.removeAttr = function (name, val) {
+JSAPI$4.prototype.removeAttr = function (name, val) {
   if (this.type !== 'element') {
     return false;
   }
@@ -35331,7 +35257,7 @@ JSAPI$5.prototype.removeAttr = function (name, val) {
  * @param {Object} [attr={}] attribute object
  * @return {Object|Boolean} created attribute or false if no attr was passed in
  */
-JSAPI$5.prototype.addAttr = function (attr) {
+JSAPI$4.prototype.addAttr = function (attr) {
   attr = attr || {};
 
   if (attr.name === undefined) return false;
@@ -35358,7 +35284,7 @@ JSAPI$5.prototype.addAttr = function (attr) {
  * @param {Object} [context] callback context
  * @return {Boolean} false if there are no any attributes
  */
-JSAPI$5.prototype.eachAttr = function (callback, context) {
+JSAPI$4.prototype.eachAttr = function (callback, context) {
   if (this.type !== 'element') {
     return false;
   }
@@ -35378,7 +35304,7 @@ JSAPI$5.prototype.eachAttr = function (callback, context) {
  * @param {Object} [context] callback context
  * @return {Boolean} false if there are no any attributes
  */
-JSAPI$5.prototype.someAttr = function (callback, context) {
+JSAPI$4.prototype.someAttr = function (callback, context) {
   if (this.type !== 'element') {
     return false;
   }
@@ -35396,7 +35322,7 @@ JSAPI$5.prototype.someAttr = function (callback, context) {
  * @param {String} selectors CSS selector(s) string
  * @return {Array} null if no elements matched
  */
-JSAPI$5.prototype.querySelectorAll = function (selectors) {
+JSAPI$4.prototype.querySelectorAll = function (selectors) {
   var matchedEls = selectAll(selectors, this, cssSelectOpts);
 
   return matchedEls.length > 0 ? matchedEls : null;
@@ -35408,7 +35334,7 @@ JSAPI$5.prototype.querySelectorAll = function (selectors) {
  * @param {String} selectors CSS selector(s) string
  * @return {Array} null if no element matched
  */
-JSAPI$5.prototype.querySelector = function (selectors) {
+JSAPI$4.prototype.querySelector = function (selectors) {
   return selectOne(selectors, this, cssSelectOpts);
 };
 
@@ -35418,12 +35344,12 @@ JSAPI$5.prototype.querySelector = function (selectors) {
  * @param {String} selector CSS selector string
  * @return {Boolean} true if element would be selected by selector string, false if it does not
  */
-JSAPI$5.prototype.matches = function (selector) {
+JSAPI$4.prototype.matches = function (selector) {
   return is(this, selector, cssSelectOpts);
 };
 
-const { closestByName: closestByName$4, detachNodeFromParent: detachNodeFromParent$9 } = xast;
-const JSAPI$4 = jsAPI;
+const { closestByName: closestByName$2, detachNodeFromParent: detachNodeFromParent$e } = xast;
+const JSAPI$3 = jsAPI;
 
 mergeStyles$1.name = 'mergeStyles';
 mergeStyles$1.type = 'visitor';
@@ -35456,7 +35382,7 @@ mergeStyles$1.fn = () => {
     }
 
     // skip <foreignObject> content
-    if (closestByName$4(node, 'foreignObject')) {
+    if (closestByName$2(node, 'foreignObject')) {
       return;
     }
 
@@ -35474,7 +35400,7 @@ mergeStyles$1.fn = () => {
 
     // remove empty style elements
     if (css.trim().length === 0) {
-      detachNodeFromParent$9(node, parentNode);
+      detachNodeFromParent$e(node, parentNode);
       return;
     }
 
@@ -35490,9 +35416,9 @@ mergeStyles$1.fn = () => {
     if (firstStyleElement == null) {
       firstStyleElement = node;
     } else {
-      detachNodeFromParent$9(node, parentNode);
+      detachNodeFromParent$e(node, parentNode);
       firstStyleElement.children = [
-        new JSAPI$4(
+        new JSAPI$3(
           { type: styleContentType, value: collectedStyles },
           firstStyleElement
         ),
@@ -35510,7 +35436,7 @@ mergeStyles$1.fn = () => {
 var inlineStyles$1 = {};
 
 const csstree$3 = lib$1;
-const { querySelectorAll, closestByName: closestByName$3 } = xast;
+const { querySelectorAll: querySelectorAll$1, closestByName: closestByName$1 } = xast;
 const cssTools = cssTools$1;
 
 inlineStyles$1.name = 'inlineStyles';
@@ -35554,7 +35480,7 @@ inlineStyles$1.description = 'inline styles (additional options)';
  */
 inlineStyles$1.fn = function (root, opts) {
   // collect <style/>s
-  var styleEls = querySelectorAll(root, 'style');
+  var styleEls = querySelectorAll$1(root, 'style');
 
   //no <styles/>s, nothing to do
   if (styleEls.length === 0) {
@@ -35576,7 +35502,7 @@ inlineStyles$1.fn = function (root, opts) {
     // skip empty <style/>s or <foreignObject> content.
     if (
       styleEl.children.length === 0 ||
-      closestByName$3(styleEl, 'foreignObject')
+      closestByName$1(styleEl, 'foreignObject')
     ) {
       continue;
     }
@@ -35623,7 +35549,7 @@ inlineStyles$1.fn = function (root, opts) {
       selectedEls = null;
 
     try {
-      selectedEls = querySelectorAll(root, selectorStr);
+      selectedEls = querySelectorAll$1(root, selectorStr);
     } catch (selectError) {
       // console.warn('Warning: Syntax error when trying to select \n\n' + selectorStr + '\n\n, skipped. Error details: ' + selectError);
       continue;
@@ -35657,32 +35583,51 @@ inlineStyles$1.fn = function (root, opts) {
       if (selector.rule === null) {
         continue;
       }
-
+      const styleDeclarationList = csstree$3.parse(
+        selectedEl.attributes.style == null ? '' : selectedEl.attributes.style,
+        {
+          context: 'declarationList',
+          parseValue: false,
+        }
+      );
+      const styleDeclarationItems = new Map();
+      csstree$3.walk(styleDeclarationList, {
+        visit: 'Declaration',
+        enter(node, item) {
+          styleDeclarationItems.set(node.property, item);
+        },
+      });
       // merge declarations
       csstree$3.walk(selector.rule, {
         visit: 'Declaration',
-        enter: function (styleCsstreeDeclaration) {
+        enter(ruleDeclaration) {
           // existing inline styles have higher priority
           // no inline styles, external styles,                                    external styles used
           // inline styles,    external styles same   priority as inline styles,   inline   styles used
           // inline styles,    external styles higher priority than inline styles, external styles used
-          var styleDeclaration = cssTools.csstreeToStyleDeclaration(
-            styleCsstreeDeclaration
+          const matchedItem = styleDeclarationItems.get(
+            ruleDeclaration.property
           );
-          if (
-            selectedEl.style.getPropertyValue(styleDeclaration.name) !== null &&
-            selectedEl.style.getPropertyPriority(styleDeclaration.name) >=
-              styleDeclaration.priority
+          const ruleDeclarationItem =
+            styleDeclarationList.children.createItem(ruleDeclaration);
+          if (matchedItem == null) {
+            styleDeclarationList.children.append(ruleDeclarationItem);
+          } else if (
+            matchedItem.data.important !== true &&
+            ruleDeclaration.important === true
           ) {
-            return;
+            styleDeclarationList.children.replace(
+              matchedItem,
+              ruleDeclarationItem
+            );
+            styleDeclarationItems.set(
+              ruleDeclaration.property,
+              ruleDeclarationItem
+            );
           }
-          selectedEl.style.setProperty(
-            styleDeclaration.name,
-            styleDeclaration.value,
-            styleDeclaration.priority
-          );
         },
       });
+      selectedEl.attributes.style = csstree$3.generate(styleDeclarationList);
     }
 
     if (
@@ -35716,13 +35661,19 @@ inlineStyles$1.fn = function (root, opts) {
 
     for (selectedEl of selector.selectedEls) {
       // class
-      var firstSubSelector = selector.item.data.children.first();
+      const classList = new Set(
+        selectedEl.attributes.class == null
+          ? null
+          : selectedEl.attributes.class.split(' ')
+      );
+      const firstSubSelector = selector.item.data.children.first();
       if (firstSubSelector.type === 'ClassSelector') {
-        selectedEl.class.remove(firstSubSelector.name);
+        classList.delete(firstSubSelector.name);
       }
-      // clean up now empty class attributes
-      if (typeof selectedEl.class.item(0) === 'undefined') {
+      if (classList.size === 0) {
         delete selectedEl.attributes.class;
+      } else {
+        selectedEl.attributes.class = Array.from(classList).join(' ');
       }
 
       // ID
@@ -39151,414 +39102,253 @@ var lib = {
     }, csstree$2)
 };
 
+/**
+ * @typedef {import('../lib/types').XastElement} XastElement
+ */
+
 const csso = lib;
-const { traverse: traverse$4 } = xast;
 
+minifyStyles$1.type = 'visitor';
 minifyStyles$1.name = 'minifyStyles';
-
-minifyStyles$1.type = 'full';
-
 minifyStyles$1.active = true;
-
 minifyStyles$1.description =
   'minifies styles and removes unused styles based on usage data';
-
-minifyStyles$1.params = {
-  // ... CSSO options goes here
-
-  // additional
-  usage: {
-    force: false, // force to use usage data even if it unsafe (document contains <script> or on* attributes)
-    ids: true,
-    classes: true,
-    tags: true,
-  },
-};
 
 /**
  * Minifies styles (<style> element + style attribute) using CSSO
  *
  * @author strarsis <strarsis@gmail.com>
+ *
+ * @type {import('../lib/types').Plugin<csso.MinifyOptions & Omit<csso.CompressOptions, 'usage'> & {
+ *   usage?: boolean | {
+ *     force?: boolean,
+ *     ids?: boolean,
+ *     classes?: boolean,
+ *     tags?: boolean
+ *   }
+ * }>}
  */
-minifyStyles$1.fn = function (ast, options) {
-  options = options || {};
+minifyStyles$1.fn = (_root, { usage, ...params }) => {
+  let enableTagsUsage = true;
+  let enableIdsUsage = true;
+  let enableClassesUsage = true;
+  // force to use usage data even if it unsafe (document contains <script> or on* attributes)
+  let forceUsageDeoptimized = false;
+  if (typeof usage === 'boolean') {
+    enableTagsUsage = usage;
+    enableIdsUsage = usage;
+    enableClassesUsage = usage;
+  } else if (usage) {
+    enableTagsUsage = usage.tags == null ? true : usage.tags;
+    enableIdsUsage = usage.ids == null ? true : usage.ids;
+    enableClassesUsage = usage.classes == null ? true : usage.classes;
+    forceUsageDeoptimized = usage.force == null ? false : usage.force;
+  }
+  /**
+   * @type {Array<XastElement>}
+   */
+  const styleElements = [];
+  /**
+   * @type {Array<XastElement>}
+   */
+  const elementsWithStyleAttributes = [];
+  let deoptimized = false;
+  /**
+   * @type {Set<string>}
+   */
+  const tagsUsage = new Set();
+  /**
+   * @type {Set<string>}
+   */
+  const idsUsage = new Set();
+  /**
+   * @type {Set<string>}
+   */
+  const classesUsage = new Set();
 
-  var minifyOptionsForStylesheet = cloneObject(options);
-  var minifyOptionsForAttribute = cloneObject(options);
-  var elems = findStyleElems(ast);
-
-  minifyOptionsForStylesheet.usage = collectUsageData(ast, options);
-  minifyOptionsForAttribute.usage = null;
-
-  elems.forEach(function (elem) {
-    if (elem.isElem('style')) {
-      if (
-        elem.children[0].type === 'text' ||
-        elem.children[0].type === 'cdata'
-      ) {
-        const styleCss = elem.children[0].value;
-        const minified = csso.minify(styleCss, minifyOptionsForStylesheet).css;
-        // preserve cdata if necessary
-        // TODO split cdata -> text optimisation into separate plugin
-        if (styleCss.indexOf('>') >= 0 || styleCss.indexOf('<') >= 0) {
-          elem.children[0].type = 'cdata';
-          elem.children[0].value = minified;
-        } else {
-          elem.children[0].type = 'text';
-          elem.children[0].value = minified;
+  return {
+    element: {
+      enter: (node) => {
+        // detect deoptimisations
+        if (node.name === 'script') {
+          deoptimized = true;
         }
-      }
-    } else {
-      // style attribute
-      var elemStyle = elem.attributes.style;
+        for (const name of Object.keys(node.attributes)) {
+          if (name.startsWith('on')) {
+            deoptimized = true;
+          }
+        }
+        // collect tags, ids and classes usage
+        tagsUsage.add(node.name);
+        if (node.attributes.id != null) {
+          idsUsage.add(node.attributes.id);
+        }
+        if (node.attributes.class != null) {
+          for (const className of node.attributes.class.split(/\s+/)) {
+            classesUsage.add(className);
+          }
+        }
+        // collect style elements or elements with style attribute
+        if (node.name === 'style' && node.children.length !== 0) {
+          styleElements.push(node);
+        } else if (node.attributes.style != null) {
+          elementsWithStyleAttributes.push(node);
+        }
+      },
+    },
 
-      elem.attributes.style = csso.minifyBlock(
-        elemStyle,
-        minifyOptionsForAttribute
-      ).css;
-    }
-  });
-
-  return ast;
-};
-
-function cloneObject(obj) {
-  return { ...obj };
-}
-
-function findStyleElems(ast) {
-  const nodesWithStyles = [];
-  traverse$4(ast, (node) => {
-    if (node.type === 'element') {
-      if (node.name === 'style' && node.children.length !== 0) {
-        nodesWithStyles.push(node);
-      } else if (node.attributes.style != null) {
-        nodesWithStyles.push(node);
-      }
-    }
-  });
-  return nodesWithStyles;
-}
-
-function shouldFilter(options, name) {
-  if ('usage' in options === false) {
-    return true;
-  }
-
-  if (options.usage && name in options.usage === false) {
-    return true;
-  }
-
-  return Boolean(options.usage && options.usage[name]);
-}
-
-function collectUsageData(ast, options) {
-  let safe = true;
-  const usageData = {};
-  let hasData = false;
-  const rawData = {
-    ids: Object.create(null),
-    classes: Object.create(null),
-    tags: Object.create(null),
+    root: {
+      exit: () => {
+        /**
+         * @type {csso.Usage}
+         */
+        const cssoUsage = {};
+        if (deoptimized === false || forceUsageDeoptimized === true) {
+          if (enableTagsUsage && tagsUsage.size !== 0) {
+            cssoUsage.tags = Array.from(tagsUsage);
+          }
+          if (enableIdsUsage && idsUsage.size !== 0) {
+            cssoUsage.ids = Array.from(idsUsage);
+          }
+          if (enableClassesUsage && classesUsage.size !== 0) {
+            cssoUsage.classes = Array.from(classesUsage);
+          }
+        }
+        // minify style elements
+        for (const node of styleElements) {
+          if (
+            node.children[0].type === 'text' ||
+            node.children[0].type === 'cdata'
+          ) {
+            const cssText = node.children[0].value;
+            const minified = csso.minify(cssText, {
+              ...params,
+              usage: cssoUsage,
+            }).css;
+            // preserve cdata if necessary
+            // TODO split cdata -> text optimisation into separate plugin
+            if (cssText.indexOf('>') >= 0 || cssText.indexOf('<') >= 0) {
+              node.children[0].type = 'cdata';
+              node.children[0].value = minified;
+            } else {
+              node.children[0].type = 'text';
+              node.children[0].value = minified;
+            }
+          }
+        }
+        // minify style attributes
+        for (const node of elementsWithStyleAttributes) {
+          // style attribute
+          const elemStyle = node.attributes.style;
+          node.attributes.style = csso.minifyBlock(elemStyle, {
+            ...params,
+          }).css;
+        }
+      },
+    },
   };
-
-  traverse$4(ast, (node) => {
-    if (node.type === 'element') {
-      if (node.name === 'script') {
-        safe = false;
-      }
-
-      rawData.tags[node.name] = true;
-
-      if (node.attributes.id != null) {
-        rawData.ids[node.attributes.id] = true;
-      }
-
-      if (node.attributes.class != null) {
-        node.attributes.class
-          .replace(/^\s+|\s+$/g, '')
-          .split(/\s+/)
-          .forEach((className) => {
-            rawData.classes[className] = true;
-          });
-      }
-
-      if (Object.keys(node.attributes).some((name) => /^on/i.test(name))) {
-        safe = false;
-      }
-    }
-  });
-
-  if (!safe && options.usage && options.usage.force) {
-    safe = true;
-  }
-
-  for (const [key, data] of Object.entries(rawData)) {
-    if (shouldFilter(options, key)) {
-      usageData[key] = Object.keys(data);
-      hasData = true;
-    }
-  }
-
-  return safe && hasData ? usageData : null;
-}
+};
 
 var cleanupIDs$1 = {};
 
-const { traverse: traverse$3, traverseBreak } = xast;
-const { parseName: parseName$3 } = tools;
+/**
+ * @typedef {import('../lib/types').XastElement} XastElement
+ */
 
+const { visitSkip: visitSkip$3 } = xast;
+const { referencesProps: referencesProps$3 } = _collections;
+
+cleanupIDs$1.type = 'visitor';
 cleanupIDs$1.name = 'cleanupIDs';
-
-cleanupIDs$1.type = 'full';
-
 cleanupIDs$1.active = true;
-
 cleanupIDs$1.description = 'removes unused IDs and minifies used';
 
-cleanupIDs$1.params = {
-  remove: true,
-  minify: true,
-  prefix: '',
-  preserve: [],
-  preservePrefixes: [],
-  force: false,
-};
-
-var referencesProps$3 = new Set(_collections.referencesProps),
-  regReferencesUrl = /\burl\(("|')?#(.+?)\1\)/,
-  regReferencesHref = /^#(.+?)$/,
-  regReferencesBegin = /(\w+)\./,
-  styleOrScript$1 = ['style', 'script'],
-  generateIDchars = [
-    'a',
-    'b',
-    'c',
-    'd',
-    'e',
-    'f',
-    'g',
-    'h',
-    'i',
-    'j',
-    'k',
-    'l',
-    'm',
-    'n',
-    'o',
-    'p',
-    'q',
-    'r',
-    's',
-    't',
-    'u',
-    'v',
-    'w',
-    'x',
-    'y',
-    'z',
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-    'G',
-    'H',
-    'I',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'U',
-    'V',
-    'W',
-    'X',
-    'Y',
-    'Z',
-  ],
-  maxIDindex = generateIDchars.length - 1;
-
-/**
- * Remove unused and minify used IDs
- * (only if there are no any <style> or <script>).
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- *
- * @author Kir Belevich
- */
-cleanupIDs$1.fn = function (root, params) {
-  var currentID,
-    currentIDstring,
-    IDs = new Map(),
-    referencesIDs = new Map(),
-    hasStyleOrScript = false,
-    preserveIDs = new Set(
-      Array.isArray(params.preserve)
-        ? params.preserve
-        : params.preserve
-        ? [params.preserve]
-        : []
-    ),
-    preserveIDPrefixes = new Set(
-      Array.isArray(params.preservePrefixes)
-        ? params.preservePrefixes
-        : params.preservePrefixes
-        ? [params.preservePrefixes]
-        : []
-    ),
-    idValuePrefix = '#',
-    idValuePostfix = '.';
-
-  traverse$3(root, (node) => {
-    if (hasStyleOrScript === true) {
-      return traverseBreak;
-    }
-
-    // quit if <style> or <script> present ('force' param prevents quitting)
-    if (!params.force) {
-      if (node.isElem(styleOrScript$1) && node.children.length !== 0) {
-        hasStyleOrScript = true;
-        return;
-      }
-
-      // Don't remove IDs if the whole SVG consists only of defs.
-      if (node.type === 'element' && node.name === 'svg') {
-        let hasDefsOnly = true;
-        for (const child of node.children) {
-          if (child.type !== 'element' || child.name !== 'defs') {
-            hasDefsOnly = false;
-            break;
-          }
-        }
-        if (hasDefsOnly) {
-          return traverseBreak;
-        }
-      }
-    }
-
-    // …and don't remove any ID if yes
-    if (node.type === 'element') {
-      for (const [name, value] of Object.entries(node.attributes)) {
-        let key;
-        let match;
-
-        // save IDs
-        if (name === 'id') {
-          key = value;
-          if (IDs.has(key)) {
-            delete node.attributes.id; // remove repeated id
-          } else {
-            IDs.set(key, node);
-          }
-        } else {
-          // save references
-          const { local } = parseName$3(name);
-          if (
-            referencesProps$3.has(name) &&
-            (match = value.match(regReferencesUrl))
-          ) {
-            key = match[2]; // url() reference
-          } else if (
-            (local === 'href' && (match = value.match(regReferencesHref))) ||
-            (name === 'begin' && (match = value.match(regReferencesBegin)))
-          ) {
-            key = match[1]; // href reference
-          }
-          if (key) {
-            const refs = referencesIDs.get(key) || [];
-            refs.push({ element: node, name, value });
-            referencesIDs.set(key, refs);
-          }
-        }
-      }
-    }
-  });
-
-  if (hasStyleOrScript) {
-    return root;
-  }
-
-  const idPreserved = (id) =>
-    preserveIDs.has(id) || idMatchesPrefix(preserveIDPrefixes, id);
-
-  for (const [key, refs] of referencesIDs) {
-    if (IDs.has(key)) {
-      // replace referenced IDs with the minified ones
-      if (params.minify && !idPreserved(key)) {
-        do {
-          currentIDstring = getIDstring(
-            (currentID = generateID(currentID)),
-            params
-          );
-        } while (idPreserved(currentIDstring));
-
-        IDs.get(key).attributes.id = currentIDstring;
-
-        for (const { element, name, value } of refs) {
-          element.attributes[name] = value.includes(idValuePrefix)
-            ? value.replace(
-                idValuePrefix + key,
-                idValuePrefix + currentIDstring
-              )
-            : value.replace(
-                key + idValuePostfix,
-                currentIDstring + idValuePostfix
-              );
-        }
-      }
-      // don't remove referenced IDs
-      IDs.delete(key);
-    }
-  }
-  // remove non-referenced IDs attributes from elements
-  if (params.remove) {
-    for (var keyElem of IDs) {
-      if (!idPreserved(keyElem[0])) {
-        delete keyElem[1].attributes.id;
-      }
-    }
-  }
-  return root;
-};
+const regReferencesUrl = /\burl\(("|')?#(.+?)\1\)/;
+const regReferencesHref = /^#(.+?)$/;
+const regReferencesBegin = /(\w+)\./;
+const generateIDchars = [
+  'a',
+  'b',
+  'c',
+  'd',
+  'e',
+  'f',
+  'g',
+  'h',
+  'i',
+  'j',
+  'k',
+  'l',
+  'm',
+  'n',
+  'o',
+  'p',
+  'q',
+  'r',
+  's',
+  't',
+  'u',
+  'v',
+  'w',
+  'x',
+  'y',
+  'z',
+  'A',
+  'B',
+  'C',
+  'D',
+  'E',
+  'F',
+  'G',
+  'H',
+  'I',
+  'J',
+  'K',
+  'L',
+  'M',
+  'N',
+  'O',
+  'P',
+  'Q',
+  'R',
+  'S',
+  'T',
+  'U',
+  'V',
+  'W',
+  'X',
+  'Y',
+  'Z',
+];
+const maxIDindex = generateIDchars.length - 1;
 
 /**
  * Check if an ID starts with any one of a list of strings.
  *
- * @param {Array} of prefix strings
- * @param {String} current ID
- * @return {Boolean} if currentID starts with one of the strings in prefixArray
+ * @type {(string: string, prefixes: Array<string>) => boolean}
  */
-function idMatchesPrefix(prefixArray, currentID) {
-  if (!currentID) return false;
-
-  for (var prefix of prefixArray) if (currentID.startsWith(prefix)) return true;
+const hasStringPrefix = (string, prefixes) => {
+  for (const prefix of prefixes) {
+    if (string.startsWith(prefix)) {
+      return true;
+    }
+  }
   return false;
-}
+};
 
 /**
  * Generate unique minimal ID.
  *
- * @param {Array} [currentID] current ID
- * @return {Array} generated ID array
+ * @type {(currentID: null | Array<number>) => Array<number>}
  */
-function generateID(currentID) {
-  if (!currentID) return [0];
-
-  currentID[currentID.length - 1]++;
-
-  for (var i = currentID.length - 1; i > 0; i--) {
+const generateID = (currentID) => {
+  if (currentID == null) {
+    return [0];
+  }
+  currentID[currentID.length - 1] += 1;
+  for (let i = currentID.length - 1; i > 0; i--) {
     if (currentID[i] > maxIDindex) {
       currentID[i] = 0;
-
       if (currentID[i - 1] !== undefined) {
         currentID[i - 1]++;
       }
@@ -39569,191 +39359,554 @@ function generateID(currentID) {
     currentID.unshift(0);
   }
   return currentID;
-}
+};
 
 /**
  * Get string from generated ID array.
  *
- * @param {Array} arr input ID array
- * @return {String} output ID string
+ * @type {(arr: Array<number>, prefix: string) => string}
  */
-function getIDstring(arr, params) {
-  var str = params.prefix;
-  return str + arr.map((i) => generateIDchars[i]).join('');
-}
+const getIDstring = (arr, prefix) => {
+  return prefix + arr.map((i) => generateIDchars[i]).join('');
+};
+
+/**
+ * Remove unused and minify used IDs
+ * (only if there are no any <style> or <script>).
+ *
+ * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   remove?: boolean,
+ *   minify?: boolean,
+ *   prefix?: string,
+ *   preserve?: Array<string>,
+ *   preservePrefixes?: Array<string>,
+ *   force?: boolean,
+ * }>}
+ */
+cleanupIDs$1.fn = (_root, params) => {
+  const {
+    remove = true,
+    minify = true,
+    prefix = '',
+    preserve = [],
+    preservePrefixes = [],
+    force = false,
+  } = params;
+  const preserveIDs = new Set(
+    Array.isArray(preserve) ? preserve : preserve ? [preserve] : []
+  );
+  const preserveIDPrefixes = Array.isArray(preservePrefixes)
+    ? preservePrefixes
+    : preservePrefixes
+    ? [preservePrefixes]
+    : [];
+  /**
+   * @type {Map<string, XastElement>}
+   */
+  const nodeById = new Map();
+  /**
+   * @type {Map<string, Array<{element: XastElement, name: string, value: string }>>}
+   */
+  const referencesById = new Map();
+  let deoptimized = false;
+
+  return {
+    element: {
+      enter: (node) => {
+        if (force == false) {
+          // deoptimize if style or script elements are present
+          if (
+            (node.name === 'style' || node.name === 'script') &&
+            node.children.length !== 0
+          ) {
+            deoptimized = true;
+            return;
+          }
+
+          // avoid removing IDs if the whole SVG consists only of defs
+          if (node.name === 'svg') {
+            let hasDefsOnly = true;
+            for (const child of node.children) {
+              if (child.type !== 'element' || child.name !== 'defs') {
+                hasDefsOnly = false;
+                break;
+              }
+            }
+            if (hasDefsOnly) {
+              return visitSkip$3;
+            }
+          }
+        }
+
+        for (const [name, value] of Object.entries(node.attributes)) {
+          if (name === 'id') {
+            // collect all ids
+            const id = value;
+            if (nodeById.has(id)) {
+              delete node.attributes.id; // remove repeated id
+            } else {
+              nodeById.set(id, node);
+            }
+          } else {
+            // collect all references
+            /**
+             * @type {null | string}
+             */
+            let id = null;
+            if (referencesProps$3.includes(name)) {
+              const match = value.match(regReferencesUrl);
+              if (match != null) {
+                id = match[2]; // url() reference
+              }
+            }
+            if (name === 'href' || name.endsWith(':href')) {
+              const match = value.match(regReferencesHref);
+              if (match != null) {
+                id = match[1]; // href reference
+              }
+            }
+            if (name === 'begin') {
+              const match = value.match(regReferencesBegin);
+              if (match != null) {
+                id = match[1]; // href reference
+              }
+            }
+            if (id != null) {
+              let refs = referencesById.get(id);
+              if (refs == null) {
+                refs = [];
+                referencesById.set(id, refs);
+              }
+              refs.push({ element: node, name, value });
+            }
+          }
+        }
+      },
+    },
+
+    root: {
+      exit: () => {
+        if (deoptimized) {
+          return;
+        }
+        /**
+         * @type {(id: string) => boolean}
+         **/
+        const isIdPreserved = (id) =>
+          preserveIDs.has(id) || hasStringPrefix(id, preserveIDPrefixes);
+        /**
+         * @type {null | Array<number>}
+         */
+        let currentID = null;
+        for (const [id, refs] of referencesById) {
+          const node = nodeById.get(id);
+          if (node != null) {
+            // replace referenced IDs with the minified ones
+            if (minify && isIdPreserved(id) === false) {
+              /**
+               * @type {null | string}
+               */
+              let currentIDString = null;
+              do {
+                currentID = generateID(currentID);
+                currentIDString = getIDstring(currentID, prefix);
+              } while (isIdPreserved(currentIDString));
+              node.attributes.id = currentIDString;
+              for (const { element, name, value } of refs) {
+                if (value.includes('#')) {
+                  // replace id in href and url()
+                  element.attributes[name] = value.replace(
+                    `#${id}`,
+                    `#${currentIDString}`
+                  );
+                } else {
+                  // replace id in begin attribute
+                  element.attributes[name] = value.replace(
+                    `${id}.`,
+                    `${currentIDString}.`
+                  );
+                }
+              }
+            }
+            // keep referenced node
+            nodeById.delete(id);
+          }
+        }
+        // remove non-referenced IDs attributes from elements
+        if (remove) {
+          for (const [id, node] of nodeById) {
+            if (isIdPreserved(id) === false) {
+              delete node.attributes.id;
+            }
+          }
+        }
+      },
+    },
+  };
+};
 
 var removeUselessDefs$1 = {};
 
-const { elemsGroups: elemsGroups$3 } = _collections;
+/**
+ * @typedef {import('../lib/types').XastElement} XastElement
+ */
 
+const { detachNodeFromParent: detachNodeFromParent$d } = xast;
+const { elemsGroups: elemsGroups$4 } = _collections;
+
+removeUselessDefs$1.type = 'visitor';
 removeUselessDefs$1.name = 'removeUselessDefs';
-
-removeUselessDefs$1.type = 'perItem';
-
 removeUselessDefs$1.active = true;
-
 removeUselessDefs$1.description = 'removes elements in <defs> without id';
 
 /**
  * Removes content of defs and properties that aren't rendered directly without ids.
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Lev Solntsev
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
-removeUselessDefs$1.fn = function (item) {
-  if (item.type === 'element') {
-    if (item.name === 'defs') {
-      item.children = getUsefulItems(item, []);
-      if (item.children.length === 0) {
-        return false;
+removeUselessDefs$1.fn = () => {
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (node.name === 'defs') {
+          /**
+           * @type {Array<XastElement>}
+           */
+          const usefulNodes = [];
+          collectUsefulNodes(node, usefulNodes);
+          if (usefulNodes.length === 0) {
+            detachNodeFromParent$d(node, parentNode);
+          }
+          // TODO remove in SVGO 3
+          for (const usefulNode of usefulNodes) {
+            // @ts-ignore parentNode is legacy
+            usefulNode.parentNode = node;
+          }
+          node.children = usefulNodes;
+        } else if (
+          elemsGroups$4.nonRendering.includes(node.name) &&
+          node.attributes.id == null
+        ) {
+          detachNodeFromParent$d(node, parentNode);
+        }
+      },
+    },
+  };
+};
+
+/**
+ * @type {(node: XastElement, usefulNodes: Array<XastElement>) => void}
+ */
+const collectUsefulNodes = (node, usefulNodes) => {
+  for (const child of node.children) {
+    if (child.type === 'element') {
+      if (child.attributes.id != null || child.name === 'style') {
+        usefulNodes.push(child);
+      } else {
+        collectUsefulNodes(child, usefulNodes);
       }
-    } else if (
-      elemsGroups$3.nonRendering.includes(item.name) &&
-      item.attributes.id == null
-    ) {
-      return false;
     }
   }
 };
-
-function getUsefulItems(item, usefulItems) {
-  for (const child of item.children) {
-    if (child.type === 'element') {
-      if (child.attributes.id != null || child.name === 'style') {
-        usefulItems.push(child);
-        child.parentNode = item;
-      } else {
-        child.children = getUsefulItems(child, usefulItems);
-      }
-    }
-  }
-
-  return usefulItems;
-}
 
 var cleanupNumericValues$1 = {};
 
+var tools = {};
+
+/**
+ * @typedef {import('../types').PathDataCommand} PathDataCommand
+ */
+
+/**
+ * Encode plain SVG data string into Data URI string.
+ *
+ * @type {(str: string, type?: 'base64' | 'enc' | 'unenc') => string}
+ */
+tools.encodeSVGDatauri = (str, type) => {
+  var prefix = 'data:image/svg+xml';
+  if (!type || type === 'base64') {
+    // base64
+    prefix += ';base64,';
+    str = prefix + Buffer.from(str).toString('base64');
+  } else if (type === 'enc') {
+    // URI encoded
+    str = prefix + ',' + encodeURIComponent(str);
+  } else if (type === 'unenc') {
+    // unencoded
+    str = prefix + ',' + str;
+  }
+  return str;
+};
+
+/**
+ * Decode SVG Data URI string into plain SVG string.
+ *
+ * @type {(str: string) => string}
+ */
+tools.decodeSVGDatauri = (str) => {
+  var regexp = /data:image\/svg\+xml(;charset=[^;,]*)?(;base64)?,(.*)/;
+  var match = regexp.exec(str);
+
+  // plain string
+  if (!match) return str;
+
+  var data = match[3];
+
+  if (match[2]) {
+    // base64
+    str = Buffer.from(data, 'base64').toString('utf8');
+  } else if (data.charAt(0) === '%') {
+    // URI encoded
+    str = decodeURIComponent(data);
+  } else if (data.charAt(0) === '<') {
+    // unencoded
+    str = data;
+  }
+  return str;
+};
+
+/**
+ * @typedef {{
+ *   noSpaceAfterFlags?: boolean,
+ *   leadingZero?: boolean,
+ *   negativeExtraSpace?: boolean
+ * }} CleanupOutDataParams
+ */
+
+/**
+ * Convert a row of numbers to an optimized string view.
+ *
+ * @example
+ * [0, -1, .5, .5] → "0-1 .5.5"
+ *
+ * @type {(data: Array<number>, params: CleanupOutDataParams, command?: PathDataCommand) => string}
+ */
+tools.cleanupOutData = (data, params, command) => {
+  let str = '';
+  let delimiter;
+  /**
+   * @type {number}
+   */
+  let prev;
+
+  data.forEach((item, i) => {
+    // space delimiter by default
+    delimiter = ' ';
+
+    // no extra space in front of first number
+    if (i == 0) delimiter = '';
+
+    // no extra space after 'arcto' command flags(large-arc and sweep flags)
+    // a20 60 45 0 1 30 20 → a20 60 45 0130 20
+    if (params.noSpaceAfterFlags && (command == 'A' || command == 'a')) {
+      var pos = i % 7;
+      if (pos == 4 || pos == 5) delimiter = '';
+    }
+
+    // remove floating-point numbers leading zeros
+    // 0.5 → .5
+    // -0.5 → -.5
+    const itemStr = params.leadingZero
+      ? removeLeadingZero$3(item)
+      : item.toString();
+
+    // no extra space in front of negative number or
+    // in front of a floating number if a previous number is floating too
+    if (
+      params.negativeExtraSpace &&
+      delimiter != '' &&
+      (item < 0 || (itemStr.charAt(0) === '.' && prev % 1 !== 0))
+    ) {
+      delimiter = '';
+    }
+    // save prev item value
+    prev = item;
+    str += delimiter + itemStr;
+  });
+  return str;
+};
+
+/**
+ * Remove floating-point numbers leading zero.
+ *
+ * @example
+ * 0.5 → .5
+ *
+ * @example
+ * -0.5 → -.5
+ *
+ * @type {(num: number) => string}
+ */
+const removeLeadingZero$3 = (num) => {
+  var strNum = num.toString();
+
+  if (0 < num && num < 1 && strNum.charAt(0) === '0') {
+    strNum = strNum.slice(1);
+  } else if (-1 < num && num < 0 && strNum.charAt(1) === '0') {
+    strNum = strNum.charAt(0) + strNum.slice(2);
+  }
+  return strNum;
+};
+tools.removeLeadingZero = removeLeadingZero$3;
+
+const { removeLeadingZero: removeLeadingZero$2 } = tools;
+
 cleanupNumericValues$1.name = 'cleanupNumericValues';
-
-cleanupNumericValues$1.type = 'perItem';
-
+cleanupNumericValues$1.type = 'visitor';
 cleanupNumericValues$1.active = true;
-
 cleanupNumericValues$1.description =
   'rounds numeric values to the fixed precision, removes default ‘px’ units';
 
-cleanupNumericValues$1.params = {
-  floatPrecision: 3,
-  leadingZero: true,
-  defaultPx: true,
-  convertToPx: true,
-};
+const regNumericValues$3 =
+  /^([-+]?\d*\.?\d+([eE][-+]?\d+)?)(px|pt|pc|mm|cm|m|in|ft|em|ex|%)?$/;
 
-var regNumericValues$3 = /^([-+]?\d*\.?\d+([eE][-+]?\d+)?)(px|pt|pc|mm|cm|m|in|ft|em|ex|%)?$/,
-  removeLeadingZero$2 = tools.removeLeadingZero,
-  absoluteLengths$1 = {
-    // relative to px
-    cm: 96 / 2.54,
-    mm: 96 / 25.4,
-    in: 96,
-    pt: 4 / 3,
-    pc: 16,
-  };
+const absoluteLengths$1 = {
+  // relative to px
+  cm: 96 / 2.54,
+  mm: 96 / 25.4,
+  in: 96,
+  pt: 4 / 3,
+  pc: 16,
+  px: 1,
+};
 
 /**
  * Round numeric values to the fixed precision,
  * remove default 'px' units.
  *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   floatPrecision?: number,
+ *   leadingZero?: boolean,
+ *   defaultPx?: boolean,
+ *   convertToPx?: boolean
+ * }>}
  */
-cleanupNumericValues$1.fn = function (item, params) {
-  if (item.type === 'element') {
-    var floatPrecision = params.floatPrecision;
+cleanupNumericValues$1.fn = (_root, params) => {
+  const {
+    floatPrecision = 3,
+    leadingZero = true,
+    defaultPx = true,
+    convertToPx = true,
+  } = params;
 
-    if (item.attributes.viewBox != null) {
-      var nums = item.attributes.viewBox.split(/\s,?\s*|,\s*/g);
-      item.attributes.viewBox = nums
-        .map(function (value) {
-          var num = +value;
-          return isNaN(num) ? value : +num.toFixed(floatPrecision);
-        })
-        .join(' ');
-    }
+  return {
+    element: {
+      enter: (node) => {
+        if (node.attributes.viewBox != null) {
+          const nums = node.attributes.viewBox.split(/\s,?\s*|,\s*/g);
+          node.attributes.viewBox = nums
+            .map((value) => {
+              const num = Number(value);
+              return Number.isNaN(num)
+                ? value
+                : Number(num.toFixed(floatPrecision));
+            })
+            .join(' ');
+        }
 
-    for (const [name, value] of Object.entries(item.attributes)) {
-      // The `version` attribute is a text string and cannot be rounded
-      if (name === 'version') {
-        continue;
-      }
+        for (const [name, value] of Object.entries(node.attributes)) {
+          // The `version` attribute is a text string and cannot be rounded
+          if (name === 'version') {
+            continue;
+          }
 
-      var match = value.match(regNumericValues$3);
+          const match = value.match(regNumericValues$3);
 
-      // if attribute value matches regNumericValues
-      if (match) {
-        // round it to the fixed precision
-        var num = +(+match[1]).toFixed(floatPrecision),
-          units = match[3] || '';
+          // if attribute value matches regNumericValues
+          if (match) {
+            // round it to the fixed precision
+            let num = Number(Number(match[1]).toFixed(floatPrecision));
+            /**
+             * @type {any}
+             */
+            let matchedUnit = match[3] || '';
+            /**
+             * @type{'' | keyof typeof absoluteLengths}
+             */
+            let units = matchedUnit;
 
-        // convert absolute values to pixels
-        if (params.convertToPx && units && units in absoluteLengths$1) {
-          var pxNum = +(absoluteLengths$1[units] * match[1]).toFixed(
-            floatPrecision
-          );
+            // convert absolute values to pixels
+            if (convertToPx && units !== '' && units in absoluteLengths$1) {
+              const pxNum = Number(
+                (absoluteLengths$1[units] * Number(match[1])).toFixed(
+                  floatPrecision
+                )
+              );
+              if (pxNum.toString().length < match[0].length) {
+                num = pxNum;
+                units = 'px';
+              }
+            }
 
-          if (String(pxNum).length < match[0].length) {
-            num = pxNum;
-            units = 'px';
+            // and remove leading zero
+            let str;
+            if (leadingZero) {
+              str = removeLeadingZero$2(num);
+            } else {
+              str = num.toString();
+            }
+
+            // remove default 'px' units
+            if (defaultPx && units === 'px') {
+              units = '';
+            }
+
+            node.attributes[name] = str + units;
           }
         }
-
-        // and remove leading zero
-        if (params.leadingZero) {
-          num = removeLeadingZero$2(num);
-        }
-
-        // remove default 'px' units
-        if (params.defaultPx && units === 'px') {
-          units = '';
-        }
-
-        item.attributes[name] = num + units;
-      }
-    }
-  }
+      },
+    },
+  };
 };
 
 var convertColors$1 = {};
 
+const collections = _collections;
+
+convertColors$1.type = 'visitor';
 convertColors$1.name = 'convertColors';
-
-convertColors$1.type = 'perItem';
-
 convertColors$1.active = true;
-
 convertColors$1.description = 'converts colors: rgb() to #rrggbb and #rrggbb to #rgb';
 
-convertColors$1.params = {
-  currentColor: false,
-  names2hex: true,
-  rgb2hex: true,
-  shorthex: true,
-  shortname: true,
-};
+const rNumber = '([+-]?(?:\\d*\\.\\d+|\\d+\\.?)%?)';
+const rComma = '\\s*,\\s*';
+const regRGB = new RegExp(
+  '^rgb\\(\\s*' + rNumber + rComma + rNumber + rComma + rNumber + '\\s*\\)$'
+);
+const regHEX = /^#(([a-fA-F0-9])\2){3}$/;
 
-var collections$2 = _collections,
-  rNumber = '([+-]?(?:\\d*\\.\\d+|\\d+\\.?)%?)',
-  rComma = '\\s*,\\s*',
-  regRGB = new RegExp(
-    '^rgb\\(\\s*' + rNumber + rComma + rNumber + rComma + rNumber + '\\s*\\)$'
-  ),
-  regHEX = /^#(([a-fA-F0-9])\2){3}$/,
-  none = /\bnone\b/i;
+/**
+ * Convert [r, g, b] to #rrggbb.
+ *
+ * @see https://gist.github.com/983535
+ *
+ * @example
+ * rgb2hex([255, 255, 255]) // '#ffffff'
+ *
+ * @author Jed Schmidt
+ *
+ * @type {(rgb: Array<number>) => string}
+ */
+const convertRgbToHex = ([r, g, b]) => {
+  // combine the octets into a 32-bit integer as: [1][r][g][b]
+  const hexNumber =
+    // operator precedence is (+) > (<<) > (|)
+    ((((256 + // [1][0]
+      r) << // [1][r]
+      8) | // [1][r][0]
+      g) << // [1][r][g]
+      8) | // [1][r][g][0]
+    b;
+  // serialize [1][r][g][b] to a hex string, and
+  // remove the 1 to get the number with 0s intact
+  return '#' + hexNumber.toString(16).slice(1).toUpperCase();
+};
 
 /**
  * Convert different colors formats in element attributes to hex.
@@ -39775,504 +39928,135 @@ var collections$2 = _collections,
  * Convert hex to short name
  * #000080 ➡ navy
  *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   currentColor?: boolean | string | RegExp,
+ *   names2hex?: boolean,
+ *   rgb2hex?: boolean,
+ *   shorthex?: boolean,
+ *   shortname?: boolean,
+ * }>}
  */
-convertColors$1.fn = function (item, params) {
-  if (item.type === 'element') {
-    for (const [name, value] of Object.entries(item.attributes)) {
-      if (collections$2.colorsProps.includes(name)) {
-        let val = value;
-        let match;
+convertColors$1.fn = (_root, params) => {
+  const {
+    currentColor = false,
+    names2hex = true,
+    rgb2hex = true,
+    shorthex = true,
+    shortname = true,
+  } = params;
 
-        // Convert colors to currentColor
-        if (params.currentColor) {
-          if (typeof params.currentColor === 'string') {
-            match = val === params.currentColor;
-          } else if (params.currentColor.exec) {
-            match = params.currentColor.exec(val);
-          } else {
-            match = !val.match(none);
+  return {
+    element: {
+      enter: (node) => {
+        for (const [name, value] of Object.entries(node.attributes)) {
+          if (collections.colorsProps.includes(name)) {
+            let val = value;
+
+            // convert colors to currentColor
+            if (currentColor) {
+              let matched;
+              if (typeof currentColor === 'string') {
+                matched = val === currentColor;
+              } else if (currentColor instanceof RegExp) {
+                matched = currentColor.exec(val) != null;
+              } else {
+                matched = val !== 'none';
+              }
+              if (matched) {
+                val = 'currentColor';
+              }
+            }
+
+            // convert color name keyword to long hex
+            if (names2hex) {
+              const colorName = val.toLowerCase();
+              if (collections.colorsNames[colorName] != null) {
+                val = collections.colorsNames[colorName];
+              }
+            }
+
+            // convert rgb() to long hex
+            if (rgb2hex) {
+              let match = val.match(regRGB);
+              if (match != null) {
+                let nums = match.slice(1, 4).map((m) => {
+                  let n;
+                  if (m.indexOf('%') > -1) {
+                    n = Math.round(parseFloat(m) * 2.55);
+                  } else {
+                    n = Number(m);
+                  }
+                  return Math.max(0, Math.min(n, 255));
+                });
+                val = convertRgbToHex(nums);
+              }
+            }
+
+            // convert long hex to short hex
+            if (shorthex) {
+              let match = val.match(regHEX);
+              if (match != null) {
+                val = '#' + match[0][1] + match[0][3] + match[0][5];
+              }
+            }
+
+            // convert hex to short name
+            if (shortname) {
+              const colorName = val.toLowerCase();
+              if (collections.colorsShortNames[colorName] != null) {
+                val = collections.colorsShortNames[colorName];
+              }
+            }
+
+            node.attributes[name] = val;
           }
-          if (match) {
-            val = 'currentColor';
-          }
         }
-
-        // Convert color name keyword to long hex
-        if (params.names2hex && val.toLowerCase() in collections$2.colorsNames) {
-          val = collections$2.colorsNames[val.toLowerCase()];
-        }
-
-        // Convert rgb() to long hex
-        if (params.rgb2hex && (match = val.match(regRGB))) {
-          match = match.slice(1, 4).map(function (m) {
-            if (m.indexOf('%') > -1) m = Math.round(parseFloat(m) * 2.55);
-
-            return Math.max(0, Math.min(m, 255));
-          });
-
-          val = rgb2hex(match);
-        }
-
-        // Convert long hex to short hex
-        if (params.shorthex && (match = val.match(regHEX))) {
-          val = '#' + match[0][1] + match[0][3] + match[0][5];
-        }
-
-        // Convert hex to short name
-        if (params.shortname) {
-          var lowerVal = val.toLowerCase();
-          if (lowerVal in collections$2.colorsShortNames) {
-            val = collections$2.colorsShortNames[lowerVal];
-          }
-        }
-
-        item.attributes[name] = val;
-      }
-    }
-  }
+      },
+    },
+  };
 };
-
-/**
- * Convert [r, g, b] to #rrggbb.
- *
- * @see https://gist.github.com/983535
- *
- * @example
- * rgb2hex([255, 255, 255]) // '#ffffff'
- *
- * @param {Array} rgb [r, g, b]
- * @return {String} #rrggbb
- *
- * @author Jed Schmidt
- */
-function rgb2hex(rgb) {
-  return (
-    '#' +
-    ('00000' + ((rgb[0] << 16) | (rgb[1] << 8) | rgb[2]).toString(16))
-      .slice(-6)
-      .toUpperCase()
-  );
-}
 
 var removeUnknownsAndDefaults$1 = {};
 
-const { parseName: parseName$2 } = tools;
-
-removeUnknownsAndDefaults$1.name = 'removeUnknownsAndDefaults';
-
-removeUnknownsAndDefaults$1.type = 'perItem';
-
-removeUnknownsAndDefaults$1.active = true;
-
-removeUnknownsAndDefaults$1.description =
-  'removes unknown elements content and attributes, removes attrs with default values';
-
-removeUnknownsAndDefaults$1.params = {
-  unknownContent: true,
-  unknownAttrs: true,
-  defaultAttrs: true,
-  uselessOverrides: true,
-  keepDataAttrs: true,
-  keepAriaAttrs: true,
-  keepRoleAttr: false,
-};
-
-var collections$1 = _collections,
-  elems = collections$1.elems,
-  attrsGroups$3 = collections$1.attrsGroups,
-  elemsGroups$2 = collections$1.elemsGroups,
-  attrsGroupsDefaults$1 = collections$1.attrsGroupsDefaults,
-  attrsInheritable = collections$1.inheritableAttrs,
-  applyGroups = collections$1.presentationNonInheritableGroupAttrs;
-
-// collect and extend all references
-for (const elem of Object.values(elems)) {
-  if (elem.attrsGroups) {
-    elem.attrs = elem.attrs || [];
-
-    elem.attrsGroups.forEach(function (attrsGroupName) {
-      elem.attrs = elem.attrs.concat(attrsGroups$3[attrsGroupName]);
-
-      var groupDefaults = attrsGroupsDefaults$1[attrsGroupName];
-
-      if (groupDefaults) {
-        elem.defaults = elem.defaults || {};
-
-        for (const [attrName, attr] of Object.entries(groupDefaults)) {
-          elem.defaults[attrName] = attr;
-        }
-      }
-    });
-  }
-
-  if (elem.contentGroups) {
-    elem.content = elem.content || [];
-
-    elem.contentGroups.forEach(function (contentGroupName) {
-      elem.content = elem.content.concat(elemsGroups$2[contentGroupName]);
-    });
-  }
-}
-
-/**
- * Remove unknown elements content and attributes,
- * remove attributes with default values.
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeUnknownsAndDefaults$1.fn = function (item, params) {
-  // elems w/o namespace prefix
-  if (item.type === 'element' && !parseName$2(item.name).prefix) {
-    var elem = item.name;
-
-    // remove unknown element's content
-    if (
-      params.unknownContent &&
-      elems[elem] && // make sure we know of this element before checking its children
-      elem !== 'foreignObject' // Don't check foreignObject
-    ) {
-      item.children.forEach(function (content, i) {
-        if (
-          content.type === 'element' &&
-          !parseName$2(content.name).prefix &&
-          ((elems[elem].content && // Do we have a record of its permitted content?
-            elems[elem].content.indexOf(content.name) === -1) ||
-            (!elems[elem].content && // we dont know about its permitted content
-              !elems[content.name])) // check that we know about the element at all
-        ) {
-          item.children.splice(i, 1);
-        }
-      });
-    }
-
-    // remove element's unknown attrs and attrs with default values
-    if (elems[elem] && elems[elem].attrs) {
-      for (const [name, value] of Object.entries(item.attributes)) {
-        const { prefix } = parseName$2(name);
-        if (
-          name !== 'xmlns' &&
-          (prefix === 'xml' || !prefix) &&
-          (!params.keepDataAttrs || name.indexOf('data-') != 0) &&
-          (!params.keepAriaAttrs || name.indexOf('aria-') != 0) &&
-          (!params.keepRoleAttr || name != 'role')
-        ) {
-          if (
-            // unknown attrs
-            (params.unknownAttrs && elems[elem].attrs.indexOf(name) === -1) ||
-            // attrs with default values
-            (params.defaultAttrs &&
-              item.attributes.id == null &&
-              elems[elem].defaults &&
-              elems[elem].defaults[name] === value &&
-              (attrsInheritable.includes(name) === false ||
-                !item.parentNode.computedAttr(name))) ||
-            // useless overrides
-            (params.uselessOverrides &&
-              item.attributes.id == null &&
-              applyGroups.includes(name) === false &&
-              attrsInheritable.includes(name) === true &&
-              item.parentNode.computedAttr(name, value))
-          ) {
-            delete item.attributes[name];
-          }
-        }
-      }
-    }
-  }
-};
-
-var removeNonInheritableGroupAttrs$1 = {};
-
-removeNonInheritableGroupAttrs$1.name = 'removeNonInheritableGroupAttrs';
-
-removeNonInheritableGroupAttrs$1.type = 'perItem';
-
-removeNonInheritableGroupAttrs$1.active = true;
-
-removeNonInheritableGroupAttrs$1.description =
-  'removes non-inheritable group’s presentational attributes';
-
-const {
-  inheritableAttrs: inheritableAttrs$3,
-  attrsGroups: attrsGroups$2,
-  presentationNonInheritableGroupAttrs: presentationNonInheritableGroupAttrs$1,
-} = _collections;
-
-/**
- * Remove non-inheritable group's "presentation" attributes.
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeNonInheritableGroupAttrs$1.fn = function (item) {
-  if (item.type === 'element' && item.name === 'g') {
-    for (const name of Object.keys(item.attributes)) {
-      if (
-        attrsGroups$2.presentation.includes(name) === true &&
-        inheritableAttrs$3.includes(name) === false &&
-        presentationNonInheritableGroupAttrs$1.includes(name) === false
-      ) {
-        delete item.attributes[name];
-      }
-    }
-  }
-};
-
-var removeUselessStrokeAndFill$1 = {};
-
-removeUselessStrokeAndFill$1.name = 'removeUselessStrokeAndFill';
-
-removeUselessStrokeAndFill$1.type = 'perItem';
-
-removeUselessStrokeAndFill$1.active = true;
-
-removeUselessStrokeAndFill$1.description = 'removes useless stroke and fill attributes';
-
-removeUselessStrokeAndFill$1.params = {
-  stroke: true,
-  fill: true,
-  removeNone: false,
-  hasStyleOrScript: false,
-};
-
-var shape = _collections.elemsGroups.shape,
-  regStrokeProps = /^stroke/,
-  regFillProps = /^fill-/,
-  styleOrScript = ['style', 'script'];
-
-/**
- * Remove useless stroke and fill attrs.
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeUselessStrokeAndFill$1.fn = function (item, params) {
-  if (item.isElem(styleOrScript)) {
-    params.hasStyleOrScript = true;
-  }
-
-  if (
-    !params.hasStyleOrScript &&
-    item.isElem(shape) &&
-    !item.computedAttr('id')
-  ) {
-    var stroke = params.stroke && item.computedAttr('stroke'),
-      fill = params.fill && !item.computedAttr('fill', 'none');
-
-    // remove stroke*
-    if (
-      params.stroke &&
-      (!stroke ||
-        stroke == 'none' ||
-        item.computedAttr('stroke-opacity', '0') ||
-        item.computedAttr('stroke-width', '0'))
-    ) {
-      // stroke-width may affect the size of marker-end
-      if (
-        item.computedAttr('stroke-width', '0') === true ||
-        item.computedAttr('marker-end') == null
-      ) {
-        var parentStroke = item.parentNode.computedAttr('stroke'),
-          declineStroke = parentStroke && parentStroke != 'none';
-
-        for (const name of Object.keys(item.attributes)) {
-          if (regStrokeProps.test(name)) {
-            delete item.attributes[name];
-          }
-        }
-
-        if (declineStroke) {
-          item.attributes.stroke = 'none';
-        }
-      }
-    }
-
-    // remove fill*
-    if (params.fill && (!fill || item.computedAttr('fill-opacity', '0'))) {
-      for (const name of Object.keys(item.attributes)) {
-        if (regFillProps.test(name)) {
-          delete item.attributes[name];
-        }
-      }
-
-      if (fill) {
-        item.attributes.fill = 'none';
-      }
-    }
-
-    if (
-      params.removeNone &&
-      (!stroke || item.attributes.stroke == 'none') &&
-      (!fill || item.attributes.fill == 'none')
-    ) {
-      return false;
-    }
-  }
-};
-
-var removeViewBox$1 = {};
-
-const { closestByName: closestByName$2 } = xast;
-
-removeViewBox$1.name = 'removeViewBox';
-
-removeViewBox$1.type = 'perItem';
-
-removeViewBox$1.active = true;
-
-removeViewBox$1.description = 'removes viewBox attribute when possible';
-
-const viewBoxElems = ['svg', 'pattern', 'symbol'];
-
-/**
- * Remove viewBox attr which coincides with a width/height box.
- *
- * @see https://www.w3.org/TR/SVG11/coords.html#ViewBoxAttribute
- *
- * @example
- * <svg width="100" height="50" viewBox="0 0 100 50">
- *             ⬇
- * <svg width="100" height="50">
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-removeViewBox$1.fn = function (item) {
-  if (
-    item.type === 'element' &&
-    viewBoxElems.includes(item.name) &&
-    item.attributes.viewBox != null &&
-    item.attributes.width != null &&
-    item.attributes.height != null
-  ) {
-    // TODO remove width/height for such case instead
-    if (item.name === 'svg' && closestByName$2(item.parentNode, 'svg')) {
-      return;
-    }
-
-    const nums = item.attributes.viewBox.split(/[ ,]+/g);
-
-    if (
-      nums[0] === '0' &&
-      nums[1] === '0' &&
-      item.attributes.width.replace(/px$/, '') === nums[2] && // could use parseFloat too
-      item.attributes.height.replace(/px$/, '') === nums[3]
-    ) {
-      delete item.attributes.viewBox;
-    }
-  }
-};
-
-var cleanupEnableBackground$1 = {};
-
-const { traverse: traverse$2 } = xast;
-
-cleanupEnableBackground$1.name = 'cleanupEnableBackground';
-
-cleanupEnableBackground$1.type = 'full';
-
-cleanupEnableBackground$1.active = true;
-
-cleanupEnableBackground$1.description =
-  'remove or cleanup enable-background attribute when possible';
-
-/**
- * Remove or cleanup enable-background attr which coincides with a width/height box.
- *
- * @see https://www.w3.org/TR/SVG11/filters.html#EnableBackgroundProperty
- *
- * @example
- * <svg width="100" height="50" enable-background="new 0 0 100 50">
- *             ⬇
- * <svg width="100" height="50">
- *
- * @param {Object} root current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
- * @author Kir Belevich
- */
-cleanupEnableBackground$1.fn = function (root) {
-  const regEnableBackground = /^new\s0\s0\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)$/;
-  let hasFilter = false;
-  const elems = ['svg', 'mask', 'pattern'];
-
-  traverse$2(root, (node) => {
-    if (node.type === 'element') {
-      if (
-        elems.includes(node.name) &&
-        node.attributes['enable-background'] != null &&
-        node.attributes.width != null &&
-        node.attributes.height != null
-      ) {
-        const match = node.attributes['enable-background'].match(
-          regEnableBackground
-        );
-
-        if (match) {
-          if (
-            node.attributes.width === match[1] &&
-            node.attributes.height === match[3]
-          ) {
-            if (node.name === 'svg') {
-              delete node.attributes['enable-background'];
-            } else {
-              node.attributes['enable-background'] = 'new';
-            }
-          }
-        }
-      }
-      if (node.name === 'filter') {
-        hasFilter = true;
-      }
-    }
-  });
-
-  if (hasFilter === false) {
-    traverse$2(root, (node) => {
-      if (node.type === 'element') {
-        //we don't need 'enable-background' if we have no filters
-        delete node.attributes['enable-background'];
-      }
-    });
-  }
-
-  return root;
-};
-
-var removeHiddenElems$1 = {};
-
 var style = {};
+
+/**
+ * @typedef {import('css-tree').Rule} CsstreeRule
+ * @typedef {import('./types').Specificity} Specificity
+ * @typedef {import('./types').StylesheetRule} StylesheetRule
+ * @typedef {import('./types').StylesheetDeclaration} StylesheetDeclaration
+ * @typedef {import('./types').ComputedStyles} ComputedStyles
+ * @typedef {import('./types').XastRoot} XastRoot
+ * @typedef {import('./types').XastElement} XastElement
+ * @typedef {import('./types').XastParent} XastParent
+ * @typedef {import('./types').XastChild} XastChild
+ */
 
 const stable = stable$2.exports;
 const csstree$1 = lib$1;
+// @ts-ignore not defined in @types/csso
 const specificity = specificity$3;
-const { visit, matches } = xast;
-const { compareSpecificity } = cssTools$1;
+const { visit: visit$2, matches } = xast;
 const {
-  attrsGroups: attrsGroups$1,
-  inheritableAttrs: inheritableAttrs$2,
-  presentationNonInheritableGroupAttrs,
+  attrsGroups: attrsGroups$3,
+  inheritableAttrs: inheritableAttrs$3,
+  presentationNonInheritableGroupAttrs: presentationNonInheritableGroupAttrs$2,
 } = _collections;
 
+// @ts-ignore not defined in @types/csstree
+const csstreeWalkSkip = csstree$1.walk.skip;
+
+/**
+ * @type {(ruleNode: CsstreeRule, dynamic: boolean) => StylesheetRule}
+ */
 const parseRule = (ruleNode, dynamic) => {
   let selectors;
   let selectorsSpecificity;
+  /**
+   * @type {Array<StylesheetDeclaration>}
+   */
   const declarations = [];
   csstree$1.walk(ruleNode, (cssNode) => {
     if (cssNode.type === 'SelectorList') {
@@ -40286,17 +40070,20 @@ const parseRule = (ruleNode, dynamic) => {
         }
       });
       selectors = csstree$1.generate(newSelectorsNode);
-      return csstree$1.walk.skip;
+      return csstreeWalkSkip;
     }
     if (cssNode.type === 'Declaration') {
       declarations.push({
         name: cssNode.property,
         value: csstree$1.generate(cssNode.value),
-        important: cssNode.important,
+        important: cssNode.important === true,
       });
-      return csstree$1.walk.skip;
+      return csstreeWalkSkip;
     }
   });
+  if (selectors == null || selectorsSpecificity == null) {
+    throw Error('assert');
+  }
   return {
     dynamic,
     selectors,
@@ -40305,37 +40092,76 @@ const parseRule = (ruleNode, dynamic) => {
   };
 };
 
+/**
+ * @type {(css: string, dynamic: boolean) => Array<StylesheetRule>}
+ */
 const parseStylesheet = (css, dynamic) => {
+  /**
+   * @type {Array<StylesheetRule>}
+   */
   const rules = [];
-  const ast = csstree$1.parse(css);
+  const ast = csstree$1.parse(css, {
+    parseValue: false,
+    parseAtrulePrelude: false,
+  });
   csstree$1.walk(ast, (cssNode) => {
     if (cssNode.type === 'Rule') {
       rules.push(parseRule(cssNode, dynamic || false));
-      return csstree$1.walk.skip;
+      return csstreeWalkSkip;
     }
     if (cssNode.type === 'Atrule') {
       if (cssNode.name === 'keyframes') {
-        return csstree$1.walk.skip;
+        return csstreeWalkSkip;
       }
       csstree$1.walk(cssNode, (ruleNode) => {
         if (ruleNode.type === 'Rule') {
           rules.push(parseRule(ruleNode, dynamic || true));
-          return csstree$1.walk.skip;
+          return csstreeWalkSkip;
         }
       });
-      return csstree$1.walk.skip;
+      return csstreeWalkSkip;
     }
   });
   return rules;
 };
 
+/**
+ * @type {(css: string) => Array<StylesheetDeclaration>}
+ */
+const parseStyleDeclarations = (css) => {
+  /**
+   * @type {Array<StylesheetDeclaration>}
+   */
+  const declarations = [];
+  const ast = csstree$1.parse(css, {
+    context: 'declarationList',
+    parseValue: false,
+  });
+  csstree$1.walk(ast, (cssNode) => {
+    if (cssNode.type === 'Declaration') {
+      declarations.push({
+        name: cssNode.property,
+        value: csstree$1.generate(cssNode.value),
+        important: cssNode.important === true,
+      });
+    }
+  });
+  return declarations;
+};
+
+/**
+ * @type {(stylesheet: Array<StylesheetRule>, node: XastElement) => ComputedStyles}
+ */
 const computeOwnStyle = (stylesheet, node) => {
+  /**
+   * @type {ComputedStyles}
+   */
   const computedStyle = {};
   const importantStyles = new Map();
 
   // collect attributes
   for (const [name, value] of Object.entries(node.attributes)) {
-    if (attrsGroups$1.presentation.includes(name)) {
+    if (attrsGroups$3.presentation.includes(name)) {
       computedStyle[name] = { type: 'static', inherited: false, value };
       importantStyles.set(name, false);
     }
@@ -40366,9 +40192,12 @@ const computeOwnStyle = (stylesheet, node) => {
   }
 
   // collect inline styles
-  for (const [name, { value, priority }] of node.style.properties) {
+  const styleDeclarations =
+    node.attributes.style == null
+      ? []
+      : parseStyleDeclarations(node.attributes.style);
+  for (const { name, value, important } of styleDeclarations) {
     const computed = computedStyle[name];
-    const important = priority === 'important';
     if (computed && computed.type === 'dynamic') {
       continue;
     }
@@ -40385,10 +40214,34 @@ const computeOwnStyle = (stylesheet, node) => {
   return computedStyle;
 };
 
-const collectStylesheet$3 = (root) => {
+/**
+ * Compares two selector specificities.
+ * extracted from https://github.com/keeganstreet/specificity/blob/master/specificity.js#L211
+ *
+ * @type {(a: Specificity, b: Specificity) => number}
+ */
+const compareSpecificity = (a, b) => {
+  for (var i = 0; i < 4; i += 1) {
+    if (a[i] < b[i]) {
+      return -1;
+    } else if (a[i] > b[i]) {
+      return 1;
+    }
+  }
+
+  return 0;
+};
+
+/**
+ * @type {(root: XastRoot) => Array<StylesheetRule>}
+ */
+const collectStylesheet$5 = (root) => {
+  /**
+   * @type {Array<StylesheetRule>}
+   */
   const stylesheet = [];
   // find and parse all styles
-  visit(root, {
+  visit$2(root, {
     element: {
       enter: (node) => {
         if (node.name === 'style') {
@@ -40416,32 +40269,573 @@ const collectStylesheet$3 = (root) => {
   );
   return stylesheet;
 };
-style.collectStylesheet = collectStylesheet$3;
+style.collectStylesheet = collectStylesheet$5;
 
-const computeStyle$3 = (stylesheet, node) => {
+/**
+ * @type {(stylesheet: Array<StylesheetRule>, node: XastElement) => ComputedStyles}
+ */
+const computeStyle$5 = (stylesheet, node) => {
   // collect inherited styles
   const computedStyles = computeOwnStyle(stylesheet, node);
   let parent = node;
+  // @ts-ignore parentNode is forbidden in public usage
   while (parent.parentNode && parent.parentNode.type !== 'root') {
+    // @ts-ignore parentNode is forbidden in public usage
     const inheritedStyles = computeOwnStyle(stylesheet, parent.parentNode);
     for (const [name, computed] of Object.entries(inheritedStyles)) {
       if (
         computedStyles[name] == null &&
         // ignore not inheritable styles
-        inheritableAttrs$2.includes(name) === true &&
-        presentationNonInheritableGroupAttrs.includes(name) === false
+        inheritableAttrs$3.includes(name) === true &&
+        presentationNonInheritableGroupAttrs$2.includes(name) === false
       ) {
         computedStyles[name] = { ...computed, inherited: true };
       }
     }
+    // @ts-ignore parentNode is forbidden in public usage
     parent = parent.parentNode;
   }
-
   return computedStyles;
 };
-style.computeStyle = computeStyle$3;
+style.computeStyle = computeStyle$5;
+
+const { visitSkip: visitSkip$2, detachNodeFromParent: detachNodeFromParent$c } = xast;
+const { collectStylesheet: collectStylesheet$4, computeStyle: computeStyle$4 } = style;
+const {
+  elems,
+  attrsGroups: attrsGroups$2,
+  elemsGroups: elemsGroups$3,
+  attrsGroupsDefaults: attrsGroupsDefaults$1,
+  presentationNonInheritableGroupAttrs: presentationNonInheritableGroupAttrs$1,
+} = _collections;
+
+removeUnknownsAndDefaults$1.type = 'visitor';
+removeUnknownsAndDefaults$1.name = 'removeUnknownsAndDefaults';
+removeUnknownsAndDefaults$1.active = true;
+removeUnknownsAndDefaults$1.description =
+  'removes unknown elements content and attributes, removes attrs with default values';
+
+// resolve all groups references
+
+/**
+ * @type {Map<string, Set<string>>}
+ */
+const allowedChildrenPerElement = new Map();
+/**
+ * @type {Map<string, Set<string>>}
+ */
+const allowedAttributesPerElement = new Map();
+/**
+ * @type {Map<string, Map<string, string>>}
+ */
+const attributesDefaultsPerElement = new Map();
+
+for (const [name, config] of Object.entries(elems)) {
+  /**
+   * @type {Set<string>}
+   */
+  const allowedChildren = new Set();
+  if (config.content) {
+    for (const elementName of config.content) {
+      allowedChildren.add(elementName);
+    }
+  }
+  if (config.contentGroups) {
+    for (const contentGroupName of config.contentGroups) {
+      const elemsGroup = elemsGroups$3[contentGroupName];
+      if (elemsGroup) {
+        for (const elementName of elemsGroup) {
+          allowedChildren.add(elementName);
+        }
+      }
+    }
+  }
+  /**
+   * @type {Set<string>}
+   */
+  const allowedAttributes = new Set();
+  if (config.attrs) {
+    for (const attrName of config.attrs) {
+      allowedAttributes.add(attrName);
+    }
+  }
+  /**
+   * @type {Map<string, string>}
+   */
+  const attributesDefaults = new Map();
+  if (config.defaults) {
+    for (const [attrName, defaultValue] of Object.entries(config.defaults)) {
+      attributesDefaults.set(attrName, defaultValue);
+    }
+  }
+  for (const attrsGroupName of config.attrsGroups) {
+    const attrsGroup = attrsGroups$2[attrsGroupName];
+    if (attrsGroup) {
+      for (const attrName of attrsGroup) {
+        allowedAttributes.add(attrName);
+      }
+    }
+    const groupDefaults = attrsGroupsDefaults$1[attrsGroupName];
+    if (groupDefaults) {
+      for (const [attrName, defaultValue] of Object.entries(groupDefaults)) {
+        attributesDefaults.set(attrName, defaultValue);
+      }
+    }
+  }
+  allowedChildrenPerElement.set(name, allowedChildren);
+  allowedAttributesPerElement.set(name, allowedAttributes);
+  attributesDefaultsPerElement.set(name, attributesDefaults);
+}
+
+/**
+ * Remove unknown elements content and attributes,
+ * remove attributes with default values.
+ *
+ * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   unknownContent?: boolean,
+ *   unknownAttrs?: boolean,
+ *   defaultAttrs?: boolean,
+ *   uselessOverrides?: boolean,
+ *   keepDataAttrs?: boolean,
+ *   keepAriaAttrs?: boolean,
+ *   keepRoleAttr?: boolean,
+ * }>}
+ */
+removeUnknownsAndDefaults$1.fn = (root, params) => {
+  const {
+    unknownContent = true,
+    unknownAttrs = true,
+    defaultAttrs = true,
+    uselessOverrides = true,
+    keepDataAttrs = true,
+    keepAriaAttrs = true,
+    keepRoleAttr = false,
+  } = params;
+  const stylesheet = collectStylesheet$4(root);
+
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        // skip namespaced elements
+        if (node.name.includes(':')) {
+          return;
+        }
+        // skip visiting foreignObject subtree
+        if (node.name === 'foreignObject') {
+          return visitSkip$2;
+        }
+
+        // remove unknown element's content
+        if (unknownContent && parentNode.type === 'element') {
+          const allowedChildren = allowedChildrenPerElement.get(
+            parentNode.name
+          );
+          if (allowedChildren == null || allowedChildren.size === 0) {
+            // remove unknown elements
+            if (allowedChildrenPerElement.get(node.name) == null) {
+              detachNodeFromParent$c(node, parentNode);
+              return;
+            }
+          } else {
+            // remove not allowed children
+            if (allowedChildren.has(node.name) === false) {
+              detachNodeFromParent$c(node, parentNode);
+              return;
+            }
+          }
+        }
+
+        const allowedAttributes = allowedAttributesPerElement.get(node.name);
+        const attributesDefaults = attributesDefaultsPerElement.get(node.name);
+        const computedParentStyle =
+          parentNode.type === 'element'
+            ? computeStyle$4(stylesheet, parentNode)
+            : null;
+
+        // remove element's unknown attrs and attrs with default values
+        for (const [name, value] of Object.entries(node.attributes)) {
+          if (keepDataAttrs && name.startsWith('data-')) {
+            continue;
+          }
+          if (keepAriaAttrs && name.startsWith('aria-')) {
+            continue;
+          }
+          if (keepRoleAttr && name === 'role') {
+            continue;
+          }
+          // skip xmlns attribute
+          if (name === 'xmlns') {
+            continue;
+          }
+          // skip namespaced attributes except xml:* and xlink:*
+          if (name.includes(':')) {
+            const [prefix] = name.split(':');
+            if (prefix !== 'xml' && prefix !== 'xlink') {
+              continue;
+            }
+          }
+
+          if (
+            unknownAttrs &&
+            allowedAttributes &&
+            allowedAttributes.has(name) === false
+          ) {
+            delete node.attributes[name];
+          }
+          if (
+            defaultAttrs &&
+            node.attributes.id == null &&
+            attributesDefaults &&
+            attributesDefaults.get(name) === value
+          ) {
+            // keep defaults if parent has own or inherited style
+            if (
+              computedParentStyle == null ||
+              computedParentStyle[name] == null
+            ) {
+              delete node.attributes[name];
+            }
+          }
+          if (uselessOverrides && node.attributes.id == null) {
+            const style =
+              computedParentStyle == null ? null : computedParentStyle[name];
+            if (
+              presentationNonInheritableGroupAttrs$1.includes(name) === false &&
+              style != null &&
+              style.type === 'static' &&
+              style.value === value
+            ) {
+              delete node.attributes[name];
+            }
+          }
+        }
+      },
+    },
+  };
+};
+
+var removeNonInheritableGroupAttrs$1 = {};
+
+removeNonInheritableGroupAttrs$1.name = 'removeNonInheritableGroupAttrs';
+
+removeNonInheritableGroupAttrs$1.type = 'perItem';
+
+removeNonInheritableGroupAttrs$1.active = true;
+
+removeNonInheritableGroupAttrs$1.description =
+  'removes non-inheritable group’s presentational attributes';
+
+const {
+  inheritableAttrs: inheritableAttrs$2,
+  attrsGroups: attrsGroups$1,
+  presentationNonInheritableGroupAttrs,
+} = _collections;
+
+/**
+ * Remove non-inheritable group's "presentation" attributes.
+ *
+ * @param {Object} item current iteration item
+ * @return {Boolean} if false, item will be filtered out
+ *
+ * @author Kir Belevich
+ */
+removeNonInheritableGroupAttrs$1.fn = function (item) {
+  if (item.type === 'element' && item.name === 'g') {
+    for (const name of Object.keys(item.attributes)) {
+      if (
+        attrsGroups$1.presentation.includes(name) === true &&
+        inheritableAttrs$2.includes(name) === false &&
+        presentationNonInheritableGroupAttrs.includes(name) === false
+      ) {
+        delete item.attributes[name];
+      }
+    }
+  }
+};
+
+var removeUselessStrokeAndFill$1 = {};
+
+const { visit: visit$1, visitSkip: visitSkip$1, detachNodeFromParent: detachNodeFromParent$b } = xast;
+const { collectStylesheet: collectStylesheet$3, computeStyle: computeStyle$3 } = style;
+const { elemsGroups: elemsGroups$2 } = _collections;
+
+removeUselessStrokeAndFill$1.type = 'visitor';
+removeUselessStrokeAndFill$1.name = 'removeUselessStrokeAndFill';
+removeUselessStrokeAndFill$1.active = true;
+removeUselessStrokeAndFill$1.description = 'removes useless stroke and fill attributes';
+
+/**
+ * Remove useless stroke and fill attrs.
+ *
+ * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *  stroke?: boolean,
+ *  fill?: boolean,
+ *  removeNone?: boolean
+ * }>}
+ */
+removeUselessStrokeAndFill$1.fn = (root, params) => {
+  const {
+    stroke: removeStroke = true,
+    fill: removeFill = true,
+    removeNone = false,
+  } = params;
+
+  // style and script elements deoptimise this plugin
+  let hasStyleOrScript = false;
+  visit$1(root, {
+    element: {
+      enter: (node) => {
+        if (node.name === 'style' || node.name === 'script') {
+          hasStyleOrScript = true;
+        }
+      },
+    },
+  });
+  if (hasStyleOrScript) {
+    return null;
+  }
+
+  const stylesheet = collectStylesheet$3(root);
+
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        // id attribute deoptimise the whole subtree
+        if (node.attributes.id != null) {
+          return visitSkip$1;
+        }
+        if (elemsGroups$2.shape.includes(node.name) == false) {
+          return;
+        }
+        const computedStyle = computeStyle$3(stylesheet, node);
+        const stroke = computedStyle.stroke;
+        const strokeOpacity = computedStyle['stroke-opacity'];
+        const strokeWidth = computedStyle['stroke-width'];
+        const markerEnd = computedStyle['marker-end'];
+        const fill = computedStyle.fill;
+        const fillOpacity = computedStyle['fill-opacity'];
+        const computedParentStyle =
+          parentNode.type === 'element'
+            ? computeStyle$3(stylesheet, parentNode)
+            : null;
+        const parentStroke =
+          computedParentStyle == null ? null : computedParentStyle.stroke;
+
+        // remove stroke*
+        if (removeStroke) {
+          if (
+            stroke == null ||
+            (stroke.type === 'static' && stroke.value == 'none') ||
+            (strokeOpacity != null &&
+              strokeOpacity.type === 'static' &&
+              strokeOpacity.value === '0') ||
+            (strokeWidth != null &&
+              strokeWidth.type === 'static' &&
+              strokeWidth.value === '0')
+          ) {
+            // stroke-width may affect the size of marker-end
+            // marker is not visible when stroke-width is 0
+            if (
+              (strokeWidth != null &&
+                strokeWidth.type === 'static' &&
+                strokeWidth.value === '0') ||
+              markerEnd == null
+            ) {
+              for (const name of Object.keys(node.attributes)) {
+                if (name.startsWith('stroke')) {
+                  delete node.attributes[name];
+                }
+              }
+              // set explicit none to not inherit from parent
+              if (
+                parentStroke != null &&
+                parentStroke.type === 'static' &&
+                parentStroke.value !== 'none'
+              ) {
+                node.attributes.stroke = 'none';
+              }
+            }
+          }
+        }
+
+        // remove fill*
+        if (removeFill) {
+          if (
+            (fill != null && fill.type === 'static' && fill.value === 'none') ||
+            (fillOpacity != null &&
+              fillOpacity.type === 'static' &&
+              fillOpacity.value === '0')
+          ) {
+            for (const name of Object.keys(node.attributes)) {
+              if (name.startsWith('fill-')) {
+                delete node.attributes[name];
+              }
+            }
+            if (
+              fill == null ||
+              (fill.type === 'static' && fill.value !== 'none')
+            ) {
+              node.attributes.fill = 'none';
+            }
+          }
+        }
+
+        if (removeNone) {
+          if (
+            (stroke == null || node.attributes.stroke === 'none') &&
+            ((fill != null &&
+              fill.type === 'static' &&
+              fill.value === 'none') ||
+              node.attributes.fill === 'none')
+          ) {
+            detachNodeFromParent$b(node, parentNode);
+          }
+        }
+      },
+    },
+  };
+};
+
+var removeViewBox$1 = {};
+
+removeViewBox$1.type = 'visitor';
+removeViewBox$1.name = 'removeViewBox';
+removeViewBox$1.active = true;
+removeViewBox$1.description = 'removes viewBox attribute when possible';
+
+const viewBoxElems = ['svg', 'pattern', 'symbol'];
+
+/**
+ * Remove viewBox attr which coincides with a width/height box.
+ *
+ * @see https://www.w3.org/TR/SVG11/coords.html#ViewBoxAttribute
+ *
+ * @example
+ * <svg width="100" height="50" viewBox="0 0 100 50">
+ *             ⬇
+ * <svg width="100" height="50">
+ *
+ * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
+ */
+removeViewBox$1.fn = () => {
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (
+          viewBoxElems.includes(node.name) &&
+          node.attributes.viewBox != null &&
+          node.attributes.width != null &&
+          node.attributes.height != null
+        ) {
+          // TODO remove width/height for such case instead
+          if (node.name === 'svg' && parentNode.type !== 'root') {
+            return;
+          }
+          const nums = node.attributes.viewBox.split(/[ ,]+/g);
+          if (
+            nums[0] === '0' &&
+            nums[1] === '0' &&
+            node.attributes.width.replace(/px$/, '') === nums[2] && // could use parseFloat too
+            node.attributes.height.replace(/px$/, '') === nums[3]
+          ) {
+            delete node.attributes.viewBox;
+          }
+        }
+      },
+    },
+  };
+};
+
+var cleanupEnableBackground$1 = {};
+
+const { visit } = xast;
+
+cleanupEnableBackground$1.type = 'visitor';
+cleanupEnableBackground$1.name = 'cleanupEnableBackground';
+cleanupEnableBackground$1.active = true;
+cleanupEnableBackground$1.description =
+  'remove or cleanup enable-background attribute when possible';
+
+/**
+ * Remove or cleanup enable-background attr which coincides with a width/height box.
+ *
+ * @see https://www.w3.org/TR/SVG11/filters.html#EnableBackgroundProperty
+ *
+ * @example
+ * <svg width="100" height="50" enable-background="new 0 0 100 50">
+ *             ⬇
+ * <svg width="100" height="50">
+ *
+ * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
+ */
+cleanupEnableBackground$1.fn = (root) => {
+  const regEnableBackground =
+    /^new\s0\s0\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)$/;
+
+  let hasFilter = false;
+  visit(root, {
+    element: {
+      enter: (node) => {
+        if (node.name === 'filter') {
+          hasFilter = true;
+        }
+      },
+    },
+  });
+
+  return {
+    element: {
+      enter: (node) => {
+        if (node.attributes['enable-background'] == null) {
+          return;
+        }
+        if (hasFilter) {
+          if (
+            (node.name === 'svg' ||
+              node.name === 'mask' ||
+              node.name === 'pattern') &&
+            node.attributes.width != null &&
+            node.attributes.height != null
+          ) {
+            const match =
+              node.attributes['enable-background'].match(regEnableBackground);
+            if (
+              match != null &&
+              node.attributes.width === match[1] &&
+              node.attributes.height === match[3]
+            ) {
+              if (node.name === 'svg') {
+                delete node.attributes['enable-background'];
+              } else {
+                node.attributes['enable-background'] = 'new';
+              }
+            }
+          }
+        } else {
+          //we don't need 'enable-background' if we have no filters
+          delete node.attributes['enable-background'];
+        }
+      },
+    },
+  };
+};
+
+var removeHiddenElems$1 = {};
 
 var path = {};
+
+/**
+ * @typedef {import('./types').PathDataItem} PathDataItem
+ * @typedef {import('./types').PathDataCommand} PathDataCommand
+ */
 
 // Based on https://www.w3.org/TR/SVG11/paths.html#PathDataBNF
 
@@ -40469,14 +40863,14 @@ const argsCountPerCommand = {
 };
 
 /**
- * @param {string} c
+ * @type {(c: string) => c is PathDataCommand}
  */
 const isCommand = (c) => {
   return c in argsCountPerCommand;
 };
 
 /**
- * @param {string} c
+ * @type {(c: string) => boolean}
  */
 const isWsp = (c) => {
   const codePoint = c.codePointAt(0);
@@ -40489,7 +40883,7 @@ const isWsp = (c) => {
 };
 
 /**
- * @param {string} c
+ * @type {(c: string) => boolean}
  */
 const isDigit = (c) => {
   const codePoint = c.codePointAt(0);
@@ -40504,9 +40898,7 @@ const isDigit = (c) => {
  */
 
 /**
- * @param {string} string
- * @param {number} cursor
- * @return {[number, number | null]}
+ * @type {(string: string, cursor: number) => [number, number | null]}
  */
 const readNumber = (string, cursor) => {
   let i = cursor;
@@ -40573,10 +40965,16 @@ const readNumber = (string, cursor) => {
 };
 
 /**
- * @param {string} string
+ * @type {(string: string) => Array<PathDataItem>}
  */
-const parsePathData$2 = (string) => {
+const parsePathData$3 = (string) => {
+  /**
+   * @type {Array<PathDataItem>}
+   */
   const pathData = [];
+  /**
+   * @type {null | PathDataCommand}
+   */
   let command = null;
   let args = /** @type {number[]} */ ([]);
   let argsCount = 0;
@@ -40672,18 +41070,12 @@ const parsePathData$2 = (string) => {
   }
   return pathData;
 };
-path.parsePathData = parsePathData$2;
+path.parsePathData = parsePathData$3;
 
 /**
- * @typedef {{
- *   number: number;
- *   precision?: number;
- * }} StringifyNumberOptions
+ * @type {(number: number, precision?: number) => string}
  */
-/**
- * @param {StringifyNumberOptions} param
- */
-const stringifyNumber = ({ number, precision }) => {
+const stringifyNumber = (number, precision) => {
   if (precision != null) {
     const ratio = 10 ** precision;
     number = Math.round(number * ratio) / ratio;
@@ -40693,31 +41085,22 @@ const stringifyNumber = ({ number, precision }) => {
 };
 
 /**
- * @typedef {{
- *   command: string;
- *   args: number[];
- *   precision?: number;
- *   disableSpaceAfterFlags?: boolean;
- * }} StringifyArgsOptions
- */
-/**
- *
  * Elliptical arc large-arc and sweep flags are rendered with spaces
  * because many non-browser environments are not able to parse such paths
  *
- * @param {StringifyArgsOptions} param
+ * @type {(
+ *   command: string,
+ *   args: number[],
+ *   precision?: number,
+ *   disableSpaceAfterFlags?: boolean
+ * ) => string}
  */
-const stringifyArgs = ({
-  command,
-  args,
-  precision,
-  disableSpaceAfterFlags,
-}) => {
+const stringifyArgs = (command, args, precision, disableSpaceAfterFlags) => {
   let result = '';
   let prev = '';
   for (let i = 0; i < args.length; i += 1) {
     const number = args[i];
-    const numberString = stringifyNumber({ number, precision });
+    const numberString = stringifyNumber(number, precision);
     if (
       disableSpaceAfterFlags &&
       (command === 'A' || command === 'a') &&
@@ -40741,21 +41124,15 @@ const stringifyArgs = ({
 };
 
 /**
- *
  * @typedef {{
- *   command: string;
- *   args: number[];
- * }} Command
- */
-/**
- * @typedef {{
- *   pathData: Command[];
+ *   pathData: Array<PathDataItem>;
  *   precision?: number;
  *   disableSpaceAfterFlags?: boolean;
  * }} StringifyPathDataOptions
  */
+
 /**
- * @param {StringifyPathDataOptions} param
+ * @type {(options: StringifyPathDataOptions) => string}
  */
 const stringifyPathData$2 = ({ pathData, precision, disableSpaceAfterFlags }) => {
   // combine sequence of the same commands
@@ -40765,6 +41142,9 @@ const stringifyPathData$2 = ({ pathData, precision, disableSpaceAfterFlags }) =>
     if (i === 0) {
       combined.push({ command, args });
     } else {
+      /**
+       * @type {PathDataItem}
+       */
       const last = combined[combined.length - 1];
       // match leading moveto with following lineto
       if (i === 1) {
@@ -40792,8 +41172,7 @@ const stringifyPathData$2 = ({ pathData, precision, disableSpaceAfterFlags }) =>
   let result = '';
   for (const { command, args } of combined) {
     result +=
-      command +
-      stringifyArgs({ command, args, precision, disableSpaceAfterFlags });
+      command + stringifyArgs(command, args, precision, disableSpaceAfterFlags);
   }
   return result;
 };
@@ -40801,11 +41180,11 @@ path.stringifyPathData = stringifyPathData$2;
 
 const {
   querySelector,
-  closestByName: closestByName$1,
-  detachNodeFromParent: detachNodeFromParent$8,
+  closestByName,
+  detachNodeFromParent: detachNodeFromParent$a,
 } = xast;
 const { collectStylesheet: collectStylesheet$2, computeStyle: computeStyle$2 } = style;
-const { parsePathData: parsePathData$1 } = path;
+const { parsePathData: parsePathData$2 } = path;
 
 removeHiddenElems$1.name = 'removeHiddenElems';
 removeHiddenElems$1.type = 'visitor';
@@ -40826,10 +41205,25 @@ removeHiddenElems$1.description =
  * - polyline with empty points
  * - polygon with empty points
  *
- * @param {Object} root
- * @param {Object} params
- *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   isHidden: boolean,
+ *   displayNone: boolean,
+ *   opacity0: boolean,
+ *   circleR0: boolean,
+ *   ellipseRX0: boolean,
+ *   ellipseRY0: boolean,
+ *   rectWidth0: boolean,
+ *   rectHeight0: boolean,
+ *   patternWidth0: boolean,
+ *   patternHeight0: boolean,
+ *   imageWidth0: boolean,
+ *   imageHeight0: boolean,
+ *   pathEmptyD: boolean,
+ *   polylineEmptyPoints: boolean,
+ *   polygonEmptyPoints: boolean,
+ * }>}
  */
 removeHiddenElems$1.fn = (root, params) => {
   const {
@@ -40865,7 +41259,7 @@ removeHiddenElems$1.fn = (root, params) => {
           // keep if any descendant enables visibility
           querySelector(node, '[visibility=visible]') == null
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -40882,7 +41276,7 @@ removeHiddenElems$1.fn = (root, params) => {
           // markers with display: none still rendered
           node.name !== 'marker'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -40895,9 +41289,9 @@ removeHiddenElems$1.fn = (root, params) => {
           computedStyle.opacity.type === 'static' &&
           computedStyle.opacity.value === '0' &&
           // transparent element inside clipPath still affect clipped elements
-          closestByName$1(node, 'clipPath') == null
+          closestByName(node, 'clipPath') == null
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -40913,7 +41307,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.r === '0'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -40929,7 +41323,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.rx === '0'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -40945,7 +41339,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.ry === '0'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -40961,7 +41355,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.width === '0'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -40978,7 +41372,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.height === '0'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -40993,7 +41387,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'pattern' &&
           node.attributes.width === '0'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -41008,7 +41402,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'pattern' &&
           node.attributes.height === '0'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -41023,7 +41417,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'image' &&
           node.attributes.width === '0'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -41038,7 +41432,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'image' &&
           node.attributes.height === '0'
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -41049,12 +41443,12 @@ removeHiddenElems$1.fn = (root, params) => {
         // <path d=""/>
         if (pathEmptyD && node.name === 'path') {
           if (node.attributes.d == null) {
-            detachNodeFromParent$8(node, parentNode);
+            detachNodeFromParent$a(node, parentNode);
             return;
           }
-          const pathData = parsePathData$1(node.attributes.d);
+          const pathData = parsePathData$2(node.attributes.d);
           if (pathData.length === 0) {
-            detachNodeFromParent$8(node, parentNode);
+            detachNodeFromParent$a(node, parentNode);
             return;
           }
           // keep single point paths for markers
@@ -41063,7 +41457,7 @@ removeHiddenElems$1.fn = (root, params) => {
             computedStyle['marker-start'] == null &&
             computedStyle['marker-end'] == null
           ) {
-            detachNodeFromParent$8(node, parentNode);
+            detachNodeFromParent$a(node, parentNode);
             return;
           }
           return;
@@ -41079,7 +41473,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'polyline' &&
           node.attributes.points == null
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
 
@@ -41093,7 +41487,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'polygon' &&
           node.attributes.points == null
         ) {
-          detachNodeFromParent$8(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
           return;
         }
       },
@@ -41103,7 +41497,7 @@ removeHiddenElems$1.fn = (root, params) => {
 
 var removeEmptyText$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$7 } = xast;
+const { detachNodeFromParent: detachNodeFromParent$9 } = xast;
 
 removeEmptyText$1.name = 'removeEmptyText';
 removeEmptyText$1.type = 'visitor';
@@ -41126,6 +41520,12 @@ removeEmptyText$1.description = 'removes empty <text> elements';
  * <tref xlink:href=""/>
  *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   text?: boolean,
+ *   tspan?: boolean,
+ *   tref?: boolean
+ * }>}
  */
 removeEmptyText$1.fn = (root, params) => {
   const { text = true, tspan = true, tref = true } = params;
@@ -41134,11 +41534,11 @@ removeEmptyText$1.fn = (root, params) => {
       enter: (node, parentNode) => {
         // Remove empty text element
         if (text && node.name === 'text' && node.children.length === 0) {
-          detachNodeFromParent$7(node, parentNode);
+          detachNodeFromParent$9(node, parentNode);
         }
         // Remove empty tspan element
         if (tspan && node.name === 'tspan' && node.children.length === 0) {
-          detachNodeFromParent$7(node, parentNode);
+          detachNodeFromParent$9(node, parentNode);
         }
         // Remove tref with empty xlink:href attribute
         if (
@@ -41146,7 +41546,7 @@ removeEmptyText$1.fn = (root, params) => {
           node.name === 'tref' &&
           node.attributes['xlink:href'] == null
         ) {
-          detachNodeFromParent$7(node, parentNode);
+          detachNodeFromParent$9(node, parentNode);
         }
       },
     },
@@ -41155,8 +41555,12 @@ removeEmptyText$1.fn = (root, params) => {
 
 var convertShapeToPath$1 = {};
 
+/**
+ * @typedef {import('../lib/types').PathDataItem} PathDataItem
+ */
+
 const { stringifyPathData: stringifyPathData$1 } = path;
-const { detachNodeFromParent: detachNodeFromParent$6 } = xast;
+const { detachNodeFromParent: detachNodeFromParent$8 } = xast;
 
 convertShapeToPath$1.name = 'convertShapeToPath';
 convertShapeToPath$1.type = 'visitor';
@@ -41173,9 +41577,14 @@ const regNumber = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
  * @see https://www.w3.org/TR/SVG11/shapes.html
  *
  * @author Lev Solntsev
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   convertArcs?: boolean,
+ *   floatPrecision?: number
+ * }>}
  */
 convertShapeToPath$1.fn = (root, params) => {
-  const { convertArcs = false, floatPrecision: precision = null } = params;
+  const { convertArcs = false, floatPrecision: precision } = params;
 
   return {
     element: {
@@ -41196,6 +41605,9 @@ convertShapeToPath$1.fn = (root, params) => {
           // cleanupNumericValues when 'px' units has already been removed.
           // TODO: Calculate sizes from % and non-px units if possible.
           if (Number.isNaN(x - y + width - height)) return;
+          /**
+           * @type {Array<PathDataItem>}
+           */
           const pathData = [
             { command: 'M', args: [x, y] },
             { command: 'H', args: [x + width] },
@@ -41218,6 +41630,9 @@ convertShapeToPath$1.fn = (root, params) => {
           const x2 = Number(node.attributes.x2 || '0');
           const y2 = Number(node.attributes.y2 || '0');
           if (Number.isNaN(x1 - y1 + x2 - y2)) return;
+          /**
+           * @type {Array<PathDataItem>}
+           */
           const pathData = [
             { command: 'M', args: [x1, y1] },
             { command: 'L', args: [x2, y2] },
@@ -41239,9 +41654,12 @@ convertShapeToPath$1.fn = (root, params) => {
             Number
           );
           if (coords.length < 4) {
-            detachNodeFromParent$6(node, parentNode);
+            detachNodeFromParent$8(node, parentNode);
             return;
           }
+          /**
+           * @type {Array<PathDataItem>}
+           */
           const pathData = [];
           for (let i = 0; i < coords.length; i += 2) {
             pathData.push({
@@ -41265,6 +41683,9 @@ convertShapeToPath$1.fn = (root, params) => {
           if (Number.isNaN(cx - cy + r)) {
             return;
           }
+          /**
+           * @type {Array<PathDataItem>}
+           */
           const pathData = [
             { command: 'M', args: [cx, cy - r] },
             { command: 'A', args: [r, r, 0, 1, 0, cx, cy + r] },
@@ -41287,6 +41708,9 @@ convertShapeToPath$1.fn = (root, params) => {
           if (Number.isNaN(ecx - ecy + rx - ry)) {
             return;
           }
+          /**
+           * @type {Array<PathDataItem>}
+           */
           const pathData = [
             { command: 'M', args: [ecx, ecy - ry] },
             { command: 'A', args: [rx, ry, 0, 1, 0, ecx, ecy + ry] },
@@ -41318,14 +41742,16 @@ convertEllipseToCircle$1.description = 'converts non-eccentric <ellipse>s to <ci
  * @see https://www.w3.org/TR/SVG11/shapes.html
  *
  * @author Taylor Hunt
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 convertEllipseToCircle$1.fn = () => {
   return {
     element: {
       enter: (node) => {
         if (node.name === 'ellipse') {
-          const rx = node.attributes.rx || 0;
-          const ry = node.attributes.ry || 0;
+          const rx = node.attributes.rx || '0';
+          const ry = node.attributes.ry || '0';
           if (
             rx === ry ||
             rx === 'auto' ||
@@ -41409,6 +41835,8 @@ moveElemsAttrsToGroup$1.fn = function (item) {
 
           return true;
         }
+
+        return false;
       }),
       allPath = item.children.every(function (inner) {
         return inner.isElem(pathElems$2);
@@ -41639,331 +42067,191 @@ collapseGroups$1.fn = function (item) {
 
 var convertPathData$1 = {};
 
-var _path$1 = {};
+var _path = {};
 
-const { parsePathData, stringifyPathData } = path;
+/**
+ * @typedef {import('../lib/types').XastElement} XastElement
+ * @typedef {import('../lib/types').PathDataItem} PathDataItem
+ */
 
+const { parsePathData: parsePathData$1, stringifyPathData } = path;
+
+/**
+ * @type {[number, number]}
+ */
 var prevCtrlPoint;
 
 /**
  * Convert path string to JS representation.
  *
- * @param {String} pathString input string
- * @param {Object} params plugin params
- * @return {Array} output array
+ * @type {(path: XastElement) => Array<PathDataItem>}
  */
-_path$1.path2js = function (path) {
+const path2js$2 = (path) => {
+  // @ts-ignore legacy
   if (path.pathJS) return path.pathJS;
+  /**
+   * @type {Array<PathDataItem>}
+   */
   const pathData = []; // JS representation of the path data
-  const newPathData = parsePathData(path.attributes.d);
+  const newPathData = parsePathData$1(path.attributes.d);
   for (const { command, args } of newPathData) {
-    if (command === 'Z' || command === 'z') {
-      pathData.push({ instruction: 'z' });
-    } else {
-      pathData.push({ instruction: command, data: args });
-    }
+    pathData.push({ command, args });
   }
   // First moveto is actually absolute. Subsequent coordinates were separated above.
-  if (pathData.length && pathData[0].instruction == 'm') {
-    pathData[0].instruction = 'M';
+  if (pathData.length && pathData[0].command == 'm') {
+    pathData[0].command = 'M';
   }
+  // @ts-ignore legacy
   path.pathJS = pathData;
   return pathData;
 };
+_path.path2js = path2js$2;
 
 /**
  * Convert relative Path data to absolute.
  *
- * @param {Array} data input data
- * @return {Array} output data
+ * @type {(data: Array<PathDataItem>) => Array<PathDataItem>}
+ *
  */
-var relative2absolute = (_path$1.relative2absolute = function (data) {
-  var currentPoint = [0, 0],
-    subpathPoint = [0, 0],
-    i;
+const convertRelativeToAbsolute = (data) => {
+  /**
+   * @type {Array<PathDataItem>}
+   */
+  const newData = [];
+  let start = [0, 0];
+  let cursor = [0, 0];
 
-  return data.map(function (item) {
-    var instruction = item.instruction,
-      itemData = item.data && item.data.slice();
+  for (let { command, args } of data) {
+    args = args.slice();
 
-    if (instruction == 'M') {
-      set(currentPoint, itemData);
-      set(subpathPoint, itemData);
-    } else if ('mlcsqt'.indexOf(instruction) > -1) {
-      for (i = 0; i < itemData.length; i++) {
-        itemData[i] += currentPoint[i % 2];
-      }
-      set(currentPoint, itemData);
-
-      if (instruction == 'm') {
-        set(subpathPoint, itemData);
-      }
-    } else if (instruction == 'a') {
-      itemData[5] += currentPoint[0];
-      itemData[6] += currentPoint[1];
-      set(currentPoint, itemData);
-    } else if (instruction == 'h') {
-      itemData[0] += currentPoint[0];
-      currentPoint[0] = itemData[0];
-    } else if (instruction == 'v') {
-      itemData[0] += currentPoint[1];
-      currentPoint[1] = itemData[0];
-    } else if ('MZLCSQTA'.indexOf(instruction) > -1) {
-      set(currentPoint, itemData);
-    } else if (instruction == 'H') {
-      currentPoint[0] = itemData[0];
-    } else if (instruction == 'V') {
-      currentPoint[1] = itemData[0];
-    } else if (instruction == 'z') {
-      set(currentPoint, subpathPoint);
+    // moveto (x y)
+    if (command === 'm') {
+      args[0] += cursor[0];
+      args[1] += cursor[1];
+      command = 'M';
+    }
+    if (command === 'M') {
+      cursor[0] = args[0];
+      cursor[1] = args[1];
+      start[0] = cursor[0];
+      start[1] = cursor[1];
     }
 
-    return instruction == 'z'
-      ? { instruction: 'z' }
-      : {
-          instruction: instruction.toUpperCase(),
-          data: itemData,
-        };
-  });
-});
-
-/**
- * Compute Cubic Bézie bounding box.
- *
- * @see https://pomax.github.io/bezierinfo/
- *
- * @param {Float} xa
- * @param {Float} ya
- * @param {Float} xb
- * @param {Float} yb
- * @param {Float} xc
- * @param {Float} yc
- * @param {Float} xd
- * @param {Float} yd
- *
- * @return {Object}
- */
-_path$1.computeCubicBoundingBox = function (xa, ya, xb, yb, xc, yc, xd, yd) {
-  var minx = Number.POSITIVE_INFINITY,
-    miny = Number.POSITIVE_INFINITY,
-    maxx = Number.NEGATIVE_INFINITY,
-    maxy = Number.NEGATIVE_INFINITY,
-    ts,
-    t,
-    x,
-    y,
-    i;
-
-  // X
-  if (xa < minx) {
-    minx = xa;
-  }
-  if (xa > maxx) {
-    maxx = xa;
-  }
-  if (xd < minx) {
-    minx = xd;
-  }
-  if (xd > maxx) {
-    maxx = xd;
-  }
-
-  ts = computeCubicFirstDerivativeRoots(xa, xb, xc, xd);
-
-  for (i = 0; i < ts.length; i++) {
-    t = ts[i];
-
-    if (t >= 0 && t <= 1) {
-      x = computeCubicBaseValue(t, xa, xb, xc, xd);
-      // y = computeCubicBaseValue(t, ya, yb, yc, yd);
-
-      if (x < minx) {
-        minx = x;
-      }
-      if (x > maxx) {
-        maxx = x;
-      }
+    // horizontal lineto (x)
+    if (command === 'h') {
+      args[0] += cursor[0];
+      command = 'H';
     }
-  }
-
-  // Y
-  if (ya < miny) {
-    miny = ya;
-  }
-  if (ya > maxy) {
-    maxy = ya;
-  }
-  if (yd < miny) {
-    miny = yd;
-  }
-  if (yd > maxy) {
-    maxy = yd;
-  }
-
-  ts = computeCubicFirstDerivativeRoots(ya, yb, yc, yd);
-
-  for (i = 0; i < ts.length; i++) {
-    t = ts[i];
-
-    if (t >= 0 && t <= 1) {
-      // x = computeCubicBaseValue(t, xa, xb, xc, xd);
-      y = computeCubicBaseValue(t, ya, yb, yc, yd);
-
-      if (y < miny) {
-        miny = y;
-      }
-      if (y > maxy) {
-        maxy = y;
-      }
+    if (command === 'H') {
+      cursor[0] = args[0];
     }
-  }
 
-  return {
-    minx: minx,
-    miny: miny,
-    maxx: maxx,
-    maxy: maxy,
-  };
+    // vertical lineto (y)
+    if (command === 'v') {
+      args[0] += cursor[1];
+      command = 'V';
+    }
+    if (command === 'V') {
+      cursor[1] = args[0];
+    }
+
+    // lineto (x y)
+    if (command === 'l') {
+      args[0] += cursor[0];
+      args[1] += cursor[1];
+      command = 'L';
+    }
+    if (command === 'L') {
+      cursor[0] = args[0];
+      cursor[1] = args[1];
+    }
+
+    // curveto (x1 y1 x2 y2 x y)
+    if (command === 'c') {
+      args[0] += cursor[0];
+      args[1] += cursor[1];
+      args[2] += cursor[0];
+      args[3] += cursor[1];
+      args[4] += cursor[0];
+      args[5] += cursor[1];
+      command = 'C';
+    }
+    if (command === 'C') {
+      cursor[0] = args[4];
+      cursor[1] = args[5];
+    }
+
+    // smooth curveto (x2 y2 x y)
+    if (command === 's') {
+      args[0] += cursor[0];
+      args[1] += cursor[1];
+      args[2] += cursor[0];
+      args[3] += cursor[1];
+      command = 'S';
+    }
+    if (command === 'S') {
+      cursor[0] = args[2];
+      cursor[1] = args[3];
+    }
+
+    // quadratic Bézier curveto (x1 y1 x y)
+    if (command === 'q') {
+      args[0] += cursor[0];
+      args[1] += cursor[1];
+      args[2] += cursor[0];
+      args[3] += cursor[1];
+      command = 'Q';
+    }
+    if (command === 'Q') {
+      cursor[0] = args[2];
+      cursor[1] = args[3];
+    }
+
+    // smooth quadratic Bézier curveto (x y)
+    if (command === 't') {
+      args[0] += cursor[0];
+      args[1] += cursor[1];
+      command = 'T';
+    }
+    if (command === 'T') {
+      cursor[0] = args[0];
+      cursor[1] = args[1];
+    }
+
+    // elliptical arc (rx ry x-axis-rotation large-arc-flag sweep-flag x y)
+    if (command === 'a') {
+      args[5] += cursor[0];
+      args[6] += cursor[1];
+      command = 'A';
+    }
+    if (command === 'A') {
+      cursor[0] = args[5];
+      cursor[1] = args[6];
+    }
+
+    // closepath
+    if (command === 'z' || command === 'Z') {
+      cursor[0] = start[0];
+      cursor[1] = start[1];
+      command = 'z';
+    }
+
+    newData.push({ command, args });
+  }
+  return newData;
 };
 
-// compute the value for the cubic bezier function at time=t
-function computeCubicBaseValue(t, a, b, c, d) {
-  var mt = 1 - t;
-
-  return (
-    mt * mt * mt * a + 3 * mt * mt * t * b + 3 * mt * t * t * c + t * t * t * d
-  );
-}
-
-// compute the value for the first derivative of the cubic bezier function at time=t
-function computeCubicFirstDerivativeRoots(a, b, c, d) {
-  var result = [-1, -1],
-    tl = -a + 2 * b - c,
-    tr = -Math.sqrt(-a * (c - d) + b * b - b * (c + d) + c * c),
-    dn = -a + 3 * b - 3 * c + d;
-
-  if (dn !== 0) {
-    result[0] = (tl + tr) / dn;
-    result[1] = (tl - tr) / dn;
-  }
-
-  return result;
-}
-
 /**
- * Compute Quadratic Bézier bounding box.
- *
- * @see https://pomax.github.io/bezierinfo/
- *
- * @param {Float} xa
- * @param {Float} ya
- * @param {Float} xb
- * @param {Float} yb
- * @param {Float} xc
- * @param {Float} yc
- *
- * @return {Object}
+ * @typedef {{ floatPrecision?: number, noSpaceAfterFlags?: boolean }} Js2PathParams
  */
-_path$1.computeQuadraticBoundingBox = function (xa, ya, xb, yb, xc, yc) {
-  var minx = Number.POSITIVE_INFINITY,
-    miny = Number.POSITIVE_INFINITY,
-    maxx = Number.NEGATIVE_INFINITY,
-    maxy = Number.NEGATIVE_INFINITY,
-    t,
-    x,
-    y;
-
-  // X
-  if (xa < minx) {
-    minx = xa;
-  }
-  if (xa > maxx) {
-    maxx = xa;
-  }
-  if (xc < minx) {
-    minx = xc;
-  }
-  if (xc > maxx) {
-    maxx = xc;
-  }
-
-  t = computeQuadraticFirstDerivativeRoot(xa, xb, xc);
-
-  if (t >= 0 && t <= 1) {
-    x = computeQuadraticBaseValue(t, xa, xb, xc);
-    // y = computeQuadraticBaseValue(t, ya, yb, yc);
-
-    if (x < minx) {
-      minx = x;
-    }
-    if (x > maxx) {
-      maxx = x;
-    }
-  }
-
-  // Y
-  if (ya < miny) {
-    miny = ya;
-  }
-  if (ya > maxy) {
-    maxy = ya;
-  }
-  if (yc < miny) {
-    miny = yc;
-  }
-  if (yc > maxy) {
-    maxy = yc;
-  }
-
-  t = computeQuadraticFirstDerivativeRoot(ya, yb, yc);
-
-  if (t >= 0 && t <= 1) {
-    // x = computeQuadraticBaseValue(t, xa, xb, xc);
-    y = computeQuadraticBaseValue(t, ya, yb, yc);
-
-    if (y < miny) {
-      miny = y;
-    }
-    if (y > maxy) {
-      maxy = y;
-    }
-  }
-
-  return {
-    minx: minx,
-    miny: miny,
-    maxx: maxx,
-    maxy: maxy,
-  };
-};
-
-// compute the value for the quadratic bezier function at time=t
-function computeQuadraticBaseValue(t, a, b, c) {
-  var mt = 1 - t;
-
-  return mt * mt * a + 2 * mt * t * b + t * t * c;
-}
-
-// compute the value for the first derivative of the quadratic bezier function at time=t
-function computeQuadraticFirstDerivativeRoot(a, b, c) {
-  var t = -1,
-    denominator = a - 2 * b + c;
-
-  if (denominator !== 0) {
-    t = (a - b) / denominator;
-  }
-
-  return t;
-}
 
 /**
  * Convert path array to string.
  *
- * @param {Array} path input path data
- * @param {Object} params plugin params
- * @return {String} output path string
+ * @type {(path: XastElement, data: Array<PathDataItem>, params: Js2PathParams) => void}
  */
-_path$1.js2path = function (path, data, params) {
+_path.js2path = function (path, data, params) {
+  // @ts-ignore legacy
   path.pathJS = data;
 
   const pathData = [];
@@ -41971,7 +42259,7 @@ _path$1.js2path = function (path, data, params) {
     // remove moveto commands which are followed by moveto commands
     if (
       pathData.length !== 0 &&
-      (item.instruction === 'M' || item.instruction === 'm')
+      (item.command === 'M' || item.command === 'm')
     ) {
       const last = pathData[pathData.length - 1];
       if (last.command === 'M' || last.command === 'm') {
@@ -41979,8 +42267,8 @@ _path$1.js2path = function (path, data, params) {
       }
     }
     pathData.push({
-      command: item.instruction,
-      args: item.data || [],
+      command: item.command,
+      args: item.args,
     });
   }
 
@@ -41991,6 +42279,9 @@ _path$1.js2path = function (path, data, params) {
   });
 };
 
+/**
+ * @type {(dest: Array<number>, source: Array<number>) => Array<number>}
+ */
 function set(dest, source) {
   dest[0] = source[source.length - 2];
   dest[1] = source[source.length - 1];
@@ -42002,14 +42293,12 @@ function set(dest, source) {
  * collision using Gilbert-Johnson-Keerthi distance algorithm
  * https://web.archive.org/web/20180822200027/http://entropyinteractive.com/2011/04/gjk-algorithm/
  *
- * @param {Array} path1 JS path representation
- * @param {Array} path2 JS path representation
- * @return {Boolean}
+ * @type {(path1: Array<PathDataItem>, path2: Array<PathDataItem>) => boolean}
  */
-_path$1.intersects = function (path1, path2) {
+_path.intersects = function (path1, path2) {
   // Collect points of every subpath.
-  var points1 = relative2absolute(path1).reduce(gatherPoints, []),
-    points2 = relative2absolute(path2).reduce(gatherPoints, []);
+  const points1 = gatherPoints(convertRelativeToAbsolute(path1));
+  const points2 = gatherPoints(convertRelativeToAbsolute(path2));
 
   // Axis-aligned bounding box check.
   if (
@@ -42017,13 +42306,13 @@ _path$1.intersects = function (path1, path2) {
     points2.maxX <= points1.minX ||
     points1.maxY <= points2.minY ||
     points2.maxY <= points1.minY ||
-    points1.every(function (set1) {
-      return points2.every(function (set2) {
+    points1.list.every((set1) => {
+      return points2.list.every((set2) => {
         return (
-          set1[set1.maxX][0] <= set2[set2.minX][0] ||
-          set2[set2.maxX][0] <= set1[set1.minX][0] ||
-          set1[set1.maxY][1] <= set2[set2.minY][1] ||
-          set2[set2.maxY][1] <= set1[set1.minY][1]
+          set1.list[set1.maxX][0] <= set2.list[set2.minX][0] ||
+          set2.list[set2.maxX][0] <= set1.list[set1.minX][0] ||
+          set1.list[set1.maxY][1] <= set2.list[set2.minY][1] ||
+          set2.list[set2.maxY][1] <= set1.list[set1.minY][1]
         );
       });
     })
@@ -42031,15 +42320,15 @@ _path$1.intersects = function (path1, path2) {
     return false;
 
   // Get a convex hull from points of each subpath. Has the most complexity O(n·log n).
-  var hullNest1 = points1.map(convexHull),
-    hullNest2 = points2.map(convexHull);
+  const hullNest1 = points1.list.map(convexHull);
+  const hullNest2 = points2.list.map(convexHull);
 
   // Check intersection of every subpath of the first path with every subpath of the second.
   return hullNest1.some(function (hull1) {
-    if (hull1.length < 3) return false;
+    if (hull1.list.length < 3) return false;
 
     return hullNest2.some(function (hull2) {
-      if (hull2.length < 3) return false;
+      if (hull2.list.length < 3) return false;
 
       var simplex = [getSupport(hull1, hull2, [1, 0])], // create the initial simplex
         direction = minus(simplex[0]); // set the direction to point towards the origin
@@ -42064,6 +42353,9 @@ _path$1.intersects = function (path1, path2) {
     });
   });
 
+  /**
+   * @type {(a: Point, b: Point, direction: Array<number>) => Array<number>}
+   */
   function getSupport(a, b, direction) {
     return sub(supportPoint(a, direction), supportPoint(b, minus(direction)));
   }
@@ -42071,6 +42363,9 @@ _path$1.intersects = function (path1, path2) {
   // Computes farthest polygon point in particular direction.
   // Thanks to knowledge of min/max x and y coordinates we can choose a quadrant to search in.
   // Since we're working on convex hull, the dot product is increasing until we find the farthest point.
+  /**
+   * @type {(polygon: Point, direction: Array<number>) => Array<number>}
+   */
   function supportPoint(polygon, direction) {
     var index =
         direction[1] >= 0
@@ -42082,14 +42377,17 @@ _path$1.intersects = function (path1, path2) {
           : polygon.minY,
       max = -Infinity,
       value;
-    while ((value = dot(polygon[index], direction)) > max) {
+    while ((value = dot(polygon.list[index], direction)) > max) {
       max = value;
-      index = ++index % polygon.length;
+      index = ++index % polygon.list.length;
     }
-    return polygon[(index || polygon.length) - 1];
+    return polygon.list[(index || polygon.list.length) - 1];
   }
 };
 
+/**
+ * @type {(simplex: Array<Array<number>>, direction: Array<number>) => boolean}
+ */
 function processSimplex(simplex, direction) {
   // we only need to handle to 1-simplex and 2-simplex
   if (simplex.length == 2) {
@@ -42144,200 +42442,328 @@ function processSimplex(simplex, direction) {
   return false;
 }
 
+/**
+ * @type {(v: Array<number>) => Array<number>}
+ */
 function minus(v) {
   return [-v[0], -v[1]];
 }
 
+/**
+ * @type {(v1: Array<number>, v2: Array<number>) => Array<number>}
+ */
 function sub(v1, v2) {
   return [v1[0] - v2[0], v1[1] - v2[1]];
 }
 
+/**
+ * @type {(v1: Array<number>, v2: Array<number>) => number}
+ */
 function dot(v1, v2) {
   return v1[0] * v2[0] + v1[1] * v2[1];
 }
 
+/**
+ * @type {(v1: Array<number>, v2: Array<number>) => Array<number>}
+ */
 function orth(v, from) {
   var o = [-v[1], v[0]];
   return dot(o, minus(from)) < 0 ? minus(o) : o;
 }
 
-function gatherPoints(points, item, index, path) {
-  var subPath = points.length && points[points.length - 1],
-    prev = index && path[index - 1],
-    basePoint = subPath.length && subPath[subPath.length - 1],
-    data = item.data,
-    ctrlPoint = basePoint;
+/**
+ * @typedef {{
+ *   list: Array<Array<number>>,
+ *   minX: number,
+ *   minY: number,
+ *   maxX: number,
+ *   maxY: number
+ * }} Point
+ */
 
-  switch (item.instruction) {
-    case 'M':
-      points.push((subPath = []));
-      break;
-    case 'H':
-      addPoint(subPath, [data[0], basePoint[1]]);
-      break;
-    case 'V':
-      addPoint(subPath, [basePoint[0], data[0]]);
-      break;
-    case 'Q':
-      addPoint(subPath, data.slice(0, 2));
-      prevCtrlPoint = [data[2] - data[0], data[3] - data[1]]; // Save control point for shorthand
-      break;
-    case 'T':
-      if (prev.instruction == 'Q' || prev.instruction == 'T') {
-        ctrlPoint = [
-          basePoint[0] + prevCtrlPoint[0],
-          basePoint[1] + prevCtrlPoint[1],
-        ];
-        addPoint(subPath, ctrlPoint);
-        prevCtrlPoint = [data[0] - ctrlPoint[0], data[1] - ctrlPoint[1]];
-      }
-      break;
-    case 'C':
-      // Approximate quibic Bezier curve with middle points between control points
-      addPoint(subPath, [
-        0.5 * (basePoint[0] + data[0]),
-        0.5 * (basePoint[1] + data[1]),
-      ]);
-      addPoint(subPath, [0.5 * (data[0] + data[2]), 0.5 * (data[1] + data[3])]);
-      addPoint(subPath, [0.5 * (data[2] + data[4]), 0.5 * (data[3] + data[5])]);
-      prevCtrlPoint = [data[4] - data[2], data[5] - data[3]]; // Save control point for shorthand
-      break;
-    case 'S':
-      if (prev.instruction == 'C' || prev.instruction == 'S') {
-        addPoint(subPath, [
-          basePoint[0] + 0.5 * prevCtrlPoint[0],
-          basePoint[1] + 0.5 * prevCtrlPoint[1],
-        ]);
-        ctrlPoint = [
-          basePoint[0] + prevCtrlPoint[0],
-          basePoint[1] + prevCtrlPoint[1],
-        ];
-      }
-      addPoint(subPath, [
-        0.5 * (ctrlPoint[0] + data[0]),
-        0.5 * (ctrlPoint[1] + data[1]),
-      ]);
-      addPoint(subPath, [0.5 * (data[0] + data[2]), 0.5 * (data[1] + data[3])]);
-      prevCtrlPoint = [data[2] - data[0], data[3] - data[1]];
-      break;
-    case 'A':
-      // Convert the arc to bezier curves and use the same approximation
-      var curves = a2c.apply(0, basePoint.concat(data));
-      for (var cData; (cData = curves.splice(0, 6).map(toAbsolute)).length; ) {
-        addPoint(subPath, [
-          0.5 * (basePoint[0] + cData[0]),
-          0.5 * (basePoint[1] + cData[1]),
-        ]);
-        addPoint(subPath, [
-          0.5 * (cData[0] + cData[2]),
-          0.5 * (cData[1] + cData[3]),
-        ]);
-        addPoint(subPath, [
-          0.5 * (cData[2] + cData[4]),
-          0.5 * (cData[3] + cData[5]),
-        ]);
-        if (curves.length) addPoint(subPath, (basePoint = cData.slice(-2)));
-      }
-      break;
-  }
-  // Save final command coordinates
-  if (data && data.length >= 2) addPoint(subPath, data.slice(-2));
-  return points;
+/**
+ * @typedef {{
+ *   list: Array<Point>,
+ *   minX: number,
+ *   minY: number,
+ *   maxX: number,
+ *   maxY: number
+ * }} Points
+ */
 
-  function toAbsolute(n, i) {
-    return n + basePoint[i % 2];
-  }
+/**
+ * @type {(pathData: Array<PathDataItem>) => Points}
+ */
+function gatherPoints(pathData) {
+  /**
+   * @type {Points}
+   */
+  const points = { list: [], minX: 0, minY: 0, maxX: 0, maxY: 0 };
 
   // Writes data about the extreme points on each axle
-  function addPoint(path, point) {
-    if (!path.length || point[1] > path[path.maxY][1]) {
-      path.maxY = path.length;
-      points.maxY = points.length ? Math.max(point[1], points.maxY) : point[1];
+  /**
+   * @type {(path: Point, point: Array<number>) => void}
+   */
+  const addPoint = (path, point) => {
+    if (!path.list.length || point[1] > path.list[path.maxY][1]) {
+      path.maxY = path.list.length;
+      points.maxY = points.list.length
+        ? Math.max(point[1], points.maxY)
+        : point[1];
     }
-    if (!path.length || point[0] > path[path.maxX][0]) {
-      path.maxX = path.length;
-      points.maxX = points.length ? Math.max(point[0], points.maxX) : point[0];
+    if (!path.list.length || point[0] > path.list[path.maxX][0]) {
+      path.maxX = path.list.length;
+      points.maxX = points.list.length
+        ? Math.max(point[0], points.maxX)
+        : point[0];
     }
-    if (!path.length || point[1] < path[path.minY][1]) {
-      path.minY = path.length;
-      points.minY = points.length ? Math.min(point[1], points.minY) : point[1];
+    if (!path.list.length || point[1] < path.list[path.minY][1]) {
+      path.minY = path.list.length;
+      points.minY = points.list.length
+        ? Math.min(point[1], points.minY)
+        : point[1];
     }
-    if (!path.length || point[0] < path[path.minX][0]) {
-      path.minX = path.length;
-      points.minX = points.length ? Math.min(point[0], points.minX) : point[0];
+    if (!path.list.length || point[0] < path.list[path.minX][0]) {
+      path.minX = path.list.length;
+      points.minX = points.list.length
+        ? Math.min(point[0], points.minX)
+        : point[0];
     }
-    path.push(point);
+    path.list.push(point);
+  };
+
+  for (let i = 0; i < pathData.length; i += 1) {
+    const pathDataItem = pathData[i];
+    let subPath =
+      points.list.length === 0
+        ? { list: [], minX: 0, minY: 0, maxX: 0, maxY: 0 }
+        : points.list[points.list.length - 1];
+    let prev = i === 0 ? null : pathData[i - 1];
+    let basePoint =
+      subPath.list.length === 0 ? null : subPath.list[subPath.list.length - 1];
+    let data = pathDataItem.args;
+    let ctrlPoint = basePoint;
+
+    /**
+     * @type {(n: number, i: number) => number}
+     * TODO fix null hack
+     */
+    const toAbsolute = (n, i) => n + (basePoint == null ? 0 : basePoint[i % 2]);
+
+    switch (pathDataItem.command) {
+      case 'M':
+        subPath = { list: [], minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        points.list.push(subPath);
+        break;
+
+      case 'H':
+        if (basePoint != null) {
+          addPoint(subPath, [data[0], basePoint[1]]);
+        }
+        break;
+
+      case 'V':
+        if (basePoint != null) {
+          addPoint(subPath, [basePoint[0], data[0]]);
+        }
+        break;
+
+      case 'Q':
+        addPoint(subPath, data.slice(0, 2));
+        prevCtrlPoint = [data[2] - data[0], data[3] - data[1]]; // Save control point for shorthand
+        break;
+
+      case 'T':
+        if (
+          basePoint != null &&
+          prev != null &&
+          (prev.command == 'Q' || prev.command == 'T')
+        ) {
+          ctrlPoint = [
+            basePoint[0] + prevCtrlPoint[0],
+            basePoint[1] + prevCtrlPoint[1],
+          ];
+          addPoint(subPath, ctrlPoint);
+          prevCtrlPoint = [data[0] - ctrlPoint[0], data[1] - ctrlPoint[1]];
+        }
+        break;
+
+      case 'C':
+        if (basePoint != null) {
+          // Approximate quibic Bezier curve with middle points between control points
+          addPoint(subPath, [
+            0.5 * (basePoint[0] + data[0]),
+            0.5 * (basePoint[1] + data[1]),
+          ]);
+        }
+        addPoint(subPath, [
+          0.5 * (data[0] + data[2]),
+          0.5 * (data[1] + data[3]),
+        ]);
+        addPoint(subPath, [
+          0.5 * (data[2] + data[4]),
+          0.5 * (data[3] + data[5]),
+        ]);
+        prevCtrlPoint = [data[4] - data[2], data[5] - data[3]]; // Save control point for shorthand
+        break;
+
+      case 'S':
+        if (
+          basePoint != null &&
+          prev != null &&
+          (prev.command == 'C' || prev.command == 'S')
+        ) {
+          addPoint(subPath, [
+            basePoint[0] + 0.5 * prevCtrlPoint[0],
+            basePoint[1] + 0.5 * prevCtrlPoint[1],
+          ]);
+          ctrlPoint = [
+            basePoint[0] + prevCtrlPoint[0],
+            basePoint[1] + prevCtrlPoint[1],
+          ];
+        }
+        if (ctrlPoint != null) {
+          addPoint(subPath, [
+            0.5 * (ctrlPoint[0] + data[0]),
+            0.5 * (ctrlPoint[1] + data[1]),
+          ]);
+        }
+        addPoint(subPath, [
+          0.5 * (data[0] + data[2]),
+          0.5 * (data[1] + data[3]),
+        ]);
+        prevCtrlPoint = [data[2] - data[0], data[3] - data[1]];
+        break;
+
+      case 'A':
+        if (basePoint != null) {
+          // Convert the arc to bezier curves and use the same approximation
+          // @ts-ignore no idea what's going on here
+          var curves = a2c.apply(0, basePoint.concat(data));
+          for (
+            var cData;
+            (cData = curves.splice(0, 6).map(toAbsolute)).length;
+
+          ) {
+            if (basePoint != null) {
+              addPoint(subPath, [
+                0.5 * (basePoint[0] + cData[0]),
+                0.5 * (basePoint[1] + cData[1]),
+              ]);
+            }
+            addPoint(subPath, [
+              0.5 * (cData[0] + cData[2]),
+              0.5 * (cData[1] + cData[3]),
+            ]);
+            addPoint(subPath, [
+              0.5 * (cData[2] + cData[4]),
+              0.5 * (cData[3] + cData[5]),
+            ]);
+            if (curves.length) addPoint(subPath, (basePoint = cData.slice(-2)));
+          }
+        }
+        break;
+    }
+
+    // Save final command coordinates
+    if (data.length >= 2) addPoint(subPath, data.slice(-2));
   }
+
+  return points;
 }
 
 /**
  * Forms a convex hull from set of points of every subpath using monotone chain convex hull algorithm.
  * https://en.wikibooks.org/wiki/Algorithm_Implementation/Geometry/Convex_hull/Monotone_chain
  *
- * @param points An array of [X, Y] coordinates
+ * @type {(points: Point) => Point}
  */
 function convexHull(points) {
-  points.sort(function (a, b) {
+  points.list.sort(function (a, b) {
     return a[0] == b[0] ? a[1] - b[1] : a[0] - b[0];
   });
 
   var lower = [],
     minY = 0,
     bottom = 0;
-  for (let i = 0; i < points.length; i++) {
+  for (let i = 0; i < points.list.length; i++) {
     while (
       lower.length >= 2 &&
-      cross(lower[lower.length - 2], lower[lower.length - 1], points[i]) <= 0
+      cross(lower[lower.length - 2], lower[lower.length - 1], points.list[i]) <=
+        0
     ) {
       lower.pop();
     }
-    if (points[i][1] < points[minY][1]) {
+    if (points.list[i][1] < points.list[minY][1]) {
       minY = i;
       bottom = lower.length;
     }
-    lower.push(points[i]);
+    lower.push(points.list[i]);
   }
 
   var upper = [],
-    maxY = points.length - 1,
+    maxY = points.list.length - 1,
     top = 0;
-  for (let i = points.length; i--; ) {
+  for (let i = points.list.length; i--; ) {
     while (
       upper.length >= 2 &&
-      cross(upper[upper.length - 2], upper[upper.length - 1], points[i]) <= 0
+      cross(upper[upper.length - 2], upper[upper.length - 1], points.list[i]) <=
+        0
     ) {
       upper.pop();
     }
-    if (points[i][1] > points[maxY][1]) {
+    if (points.list[i][1] > points.list[maxY][1]) {
       maxY = i;
       top = upper.length;
     }
-    upper.push(points[i]);
+    upper.push(points.list[i]);
   }
 
   // last points are equal to starting points of the other part
   upper.pop();
   lower.pop();
 
-  var hull = lower.concat(upper);
+  const hullList = lower.concat(upper);
 
-  hull.minX = 0; // by sorting
-  hull.maxX = lower.length;
-  hull.minY = bottom;
-  hull.maxY = (lower.length + top) % hull.length;
+  /**
+   * @type {Point}
+   */
+  const hull = {
+    list: hullList,
+    minX: 0, // by sorting
+    maxX: lower.length,
+    minY: bottom,
+    maxY: (lower.length + top) % hullList.length,
+  };
 
   return hull;
 }
 
+/**
+ * @type {(o: Array<number>, a: Array<number>, b: Array<number>) => number}
+ */
 function cross(o, a, b) {
   return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
 }
 
-/* Based on code from Snap.svg (Apache 2 license). http://snapsvg.io/
+/**
+ * Based on code from Snap.svg (Apache 2 license). http://snapsvg.io/
  * Thanks to Dmitry Baranovskiy for his great work!
+ *
+ * @type {(
+ *  x1: number,
+ *  y1: number,
+ *  rx: number,
+ *  ry: number,
+ *  angle: number,
+ *  large_arc_flag: number,
+ *  sweep_flag: number,
+ *  x2: number,
+ *  y2: number,
+ *  recursive: Array<number>
+ * ) => Array<number>}
  */
-
-function a2c(
+const a2c = (
   x1,
   y1,
   rx,
@@ -42348,18 +42774,27 @@ function a2c(
   x2,
   y2,
   recursive
-) {
+) => {
   // for more information of where this Math came from visit:
   // https://www.w3.org/TR/SVG11/implnote.html#ArcImplementationNotes
-  var _120 = (Math.PI * 120) / 180,
-    rad = (Math.PI / 180) * (+angle || 0),
-    res = [],
-    rotateX = function (x, y, rad) {
-      return x * Math.cos(rad) - y * Math.sin(rad);
-    },
-    rotateY = function (x, y, rad) {
-      return x * Math.sin(rad) + y * Math.cos(rad);
-    };
+  const _120 = (Math.PI * 120) / 180;
+  const rad = (Math.PI / 180) * (+angle || 0);
+  /**
+   * @type {Array<number>}
+   */
+  let res = [];
+  /**
+   * @type {(x: number, y: number, rad: number) => number}
+   */
+  const rotateX = (x, y, rad) => {
+    return x * Math.cos(rad) - y * Math.sin(rad);
+  };
+  /**
+   * @type {(x: number, y: number, rad: number) => number}
+   */
+  const rotateY = (x, y, rad) => {
+    return x * Math.sin(rad) + y * Math.cos(rad);
+  };
   if (!recursive) {
     x1 = rotateX(x1, y1, -rad);
     y1 = rotateY(x1, y1, -rad);
@@ -42373,20 +42808,19 @@ function a2c(
       rx = h * rx;
       ry = h * ry;
     }
-    var rx2 = rx * rx,
-      ry2 = ry * ry,
-      k =
-        (large_arc_flag == sweep_flag ? -1 : 1) *
-        Math.sqrt(
-          Math.abs(
-            (rx2 * ry2 - rx2 * y * y - ry2 * x * x) /
-              (rx2 * y * y + ry2 * x * x)
-          )
-        ),
-      cx = (k * rx * y) / ry + (x1 + x2) / 2,
-      cy = (k * -ry * x) / rx + (y1 + y2) / 2,
-      f1 = Math.asin(((y1 - cy) / ry).toFixed(9)),
-      f2 = Math.asin(((y2 - cy) / ry).toFixed(9));
+    var rx2 = rx * rx;
+    var ry2 = ry * ry;
+    var k =
+      (large_arc_flag == sweep_flag ? -1 : 1) *
+      Math.sqrt(
+        Math.abs(
+          (rx2 * ry2 - rx2 * y * y - ry2 * x * x) / (rx2 * y * y + ry2 * x * x)
+        )
+      );
+    var cx = (k * rx * y) / ry + (x1 + x2) / 2;
+    var cy = (k * -ry * x) / rx + (y1 + y2) / 2;
+    var f1 = Math.asin(Number(((y1 - cy) / ry).toFixed(9)));
+    var f2 = Math.asin(Number(((y2 - cy) / ry).toFixed(9)));
 
     f1 = x1 < cx ? Math.PI - f1 : f1;
     f2 = x2 < cx ? Math.PI - f2 : f2;
@@ -42448,137 +42882,183 @@ function a2c(
     }
     return newres;
   }
-}
+};
 
 var _applyTransforms = {};
 
 var _transforms = {};
 
-var regTransformTypes = /matrix|translate|scale|rotate|skewX|skewY/,
-  regTransformSplit = /\s*(matrix|translate|scale|rotate|skewX|skewY)\s*\(\s*(.+?)\s*\)[\s,]*/,
-  regNumericValues$2 = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
+const regTransformTypes = /matrix|translate|scale|rotate|skewX|skewY/;
+const regTransformSplit =
+  /\s*(matrix|translate|scale|rotate|skewX|skewY)\s*\(\s*(.+?)\s*\)[\s,]*/;
+const regNumericValues$2 = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
+
+/**
+ * @typedef {{ name: string, data: Array<number> }} TransformItem
+ */
 
 /**
  * Convert transform string to JS representation.
  *
- * @param {String} transformString input string
- * @param {Object} params plugin params
- * @return {Array} output array
+ * @type {(transformString: string) => Array<TransformItem>}
  */
-_transforms.transform2js = function (transformString) {
+_transforms.transform2js = (transformString) => {
   // JS representation of the transform data
-  var transforms = [],
-    // current transform context
-    current;
-
+  /**
+   * @type {Array<TransformItem>}
+   */
+  const transforms = [];
+  // current transform context
+  /**
+   * @type {null | TransformItem}
+   */
+  let current = null;
   // split value into ['', 'translate', '10 50', '', 'scale', '2', '', 'rotate', '-45', '']
-  transformString.split(regTransformSplit).forEach(function (item) {
+  for (const item of transformString.split(regTransformSplit)) {
     var num;
-
     if (item) {
       // if item is a translate function
       if (regTransformTypes.test(item)) {
         // then collect it and change current context
-        transforms.push((current = { name: item }));
+        current = { name: item, data: [] };
+        transforms.push(current);
         // else if item is data
       } else {
         // then split it into [10, 50] and collect as context.data
         // eslint-disable-next-line no-cond-assign
         while ((num = regNumericValues$2.exec(item))) {
           num = Number(num);
-          if (current.data) current.data.push(num);
-          else current.data = [num];
+          if (current != null) {
+            current.data.push(num);
+          }
         }
       }
     }
-  });
-
+  }
   // return empty array if broken transform (no data)
-  return current && current.data ? transforms : [];
+  return current == null || current.data.length == 0 ? [] : transforms;
 };
 
 /**
  * Multiply transforms into one.
  *
- * @param {Array} input transforms array
- * @return {Array} output matrix array
+ * @type {(transforms: Array<TransformItem>) => TransformItem}
  */
-_transforms.transformsMultiply = function (transforms) {
+_transforms.transformsMultiply = (transforms) => {
   // convert transforms objects to the matrices
-  transforms = transforms.map(function (transform) {
+  const matrixData = transforms.map((transform) => {
     if (transform.name === 'matrix') {
       return transform.data;
     }
     return transformToMatrix(transform);
   });
-
   // multiply all matrices into one
-  transforms = {
+  const matrixTransform = {
     name: 'matrix',
     data:
-      transforms.length > 0 ? transforms.reduce(multiplyTransformMatrices) : [],
+      matrixData.length > 0 ? matrixData.reduce(multiplyTransformMatrices) : [],
   };
-
-  return transforms;
+  return matrixTransform;
 };
 
 /**
- * Do math like a schoolgirl.
- *
- * @type {Object}
+ * math utilities in radians.
  */
-var mth = (_transforms.mth = {
-  rad: function (deg) {
+const mth = {
+  /**
+   * @type {(deg: number) => number}
+   */
+  rad: (deg) => {
     return (deg * Math.PI) / 180;
   },
 
-  deg: function (rad) {
+  /**
+   * @type {(rad: number) => number}
+   */
+  deg: (rad) => {
     return (rad * 180) / Math.PI;
   },
 
-  cos: function (deg) {
-    return Math.cos(this.rad(deg));
+  /**
+   * @type {(deg: number) => number}
+   */
+  cos: (deg) => {
+    return Math.cos(mth.rad(deg));
   },
 
-  acos: function (val, floatPrecision) {
-    return +this.deg(Math.acos(val)).toFixed(floatPrecision);
+  /**
+   * @type {(val: number, floatPrecision: number) => number}
+   */
+  acos: (val, floatPrecision) => {
+    return Number(mth.deg(Math.acos(val)).toFixed(floatPrecision));
   },
 
-  sin: function (deg) {
-    return Math.sin(this.rad(deg));
+  /**
+   * @type {(deg: number) => number}
+   */
+  sin: (deg) => {
+    return Math.sin(mth.rad(deg));
   },
 
-  asin: function (val, floatPrecision) {
-    return +this.deg(Math.asin(val)).toFixed(floatPrecision);
+  /**
+   * @type {(val: number, floatPrecision: number) => number}
+   */
+  asin: (val, floatPrecision) => {
+    return Number(mth.deg(Math.asin(val)).toFixed(floatPrecision));
   },
 
-  tan: function (deg) {
-    return Math.tan(this.rad(deg));
+  /**
+   * @type {(deg: number) => number}
+   */
+  tan: (deg) => {
+    return Math.tan(mth.rad(deg));
   },
 
-  atan: function (val, floatPrecision) {
-    return +this.deg(Math.atan(val)).toFixed(floatPrecision);
+  /**
+   * @type {(val: number, floatPrecision: number) => number}
+   */
+  atan: (val, floatPrecision) => {
+    return Number(mth.deg(Math.atan(val)).toFixed(floatPrecision));
   },
-});
+};
+
+/**
+ * @typedef {{
+ *   convertToShorts: boolean,
+ *   floatPrecision: number,
+ *   transformPrecision: number,
+ *   matrixToTransform: boolean,
+ *   shortTranslate: boolean,
+ *   shortScale: boolean,
+ *   shortRotate: boolean,
+ *   removeUseless: boolean,
+ *   collapseIntoOne: boolean,
+ *   leadingZero: boolean,
+ *   negativeExtraSpace: boolean,
+ * }} TransformParams
+ */
 
 /**
  * Decompose matrix into simple transforms. See
  * https://frederic-wang.fr/decomposition-of-2d-transform-matrices.html
  *
- * @param {Object} data matrix transform object
- * @return {Object|Array} transforms array or original transform object
+ * @type {(transform: TransformItem, params: TransformParams) => Array<TransformItem>}
  */
-_transforms.matrixToTransform = function (transform, params) {
-  var floatPrecision = params.floatPrecision,
-    data = transform.data,
-    transforms = [],
-    sx = +Math.hypot(data[0], data[1]).toFixed(params.transformPrecision),
-    sy = +((data[0] * data[3] - data[1] * data[2]) / sx).toFixed(
+_transforms.matrixToTransform = (transform, params) => {
+  let floatPrecision = params.floatPrecision;
+  let data = transform.data;
+  let transforms = [];
+  let sx = Number(
+    Math.hypot(data[0], data[1]).toFixed(params.transformPrecision)
+  );
+  let sy = Number(
+    ((data[0] * data[3] - data[1] * data[2]) / sx).toFixed(
       params.transformPrecision
-    ),
-    colsSum = data[0] * data[2] + data[1] * data[3],
-    rowsSum = data[0] * data[1] + data[2] * data[3],
-    scaleBefore = rowsSum != 0 || sx == sy;
+    )
+  );
+  let colsSum = data[0] * data[2] + data[1] * data[3];
+  let rowsSum = data[0] * data[1] + data[2] * data[3];
+  let scaleBefore = rowsSum != 0 || sx == sy;
 
   // [..., ..., ..., ..., tx, ty] → translate(tx, ty)
   if (data[4] || data[5]) {
@@ -42631,17 +43111,18 @@ _transforms.matrixToTransform = function (transform, params) {
       transforms.shift();
       var cos = data[0] / sx,
         sin = data[1] / (scaleBefore ? sx : sy),
-        x = data[4] * (scaleBefore || sy),
-        y = data[5] * (scaleBefore || sx),
+        x = data[4] * (scaleBefore ? 1 : sy),
+        y = data[5] * (scaleBefore ? 1 : sx),
         denom =
-          (Math.pow(1 - cos, 2) + Math.pow(sin, 2)) * (scaleBefore || sx * sy);
+          (Math.pow(1 - cos, 2) + Math.pow(sin, 2)) *
+          (scaleBefore ? 1 : sx * sy);
       rotate.push(((1 - cos) * x - sin * y) / denom);
       rotate.push(((1 - cos) * y + sin * x) / denom);
     }
 
     // Too many transformations, return original matrix if it isn't just a scale/translate
   } else if (data[1] || data[2]) {
-    return transform;
+    return [transform];
   }
 
   if ((scaleBefore && (sx != 1 || sy != 1)) || !transforms.length)
@@ -42656,22 +43137,19 @@ _transforms.matrixToTransform = function (transform, params) {
 /**
  * Convert transform to the matrix data.
  *
- * @param {Object} transform transform object
- * @return {Array} matrix data
+ * @type {(transform: TransformItem) => Array<number> }
  */
-function transformToMatrix(transform) {
-  if (transform.name === 'matrix') return transform.data;
-
-  var matrix;
-
+const transformToMatrix = (transform) => {
+  if (transform.name === 'matrix') {
+    return transform.data;
+  }
   switch (transform.name) {
     case 'translate':
       // [1, 0, 0, 1, tx, ty]
-      matrix = [1, 0, 0, 1, transform.data[0], transform.data[1] || 0];
-      break;
+      return [1, 0, 0, 1, transform.data[0], transform.data[1] || 0];
     case 'scale':
       // [sx, 0, 0, sy, 0, 0]
-      matrix = [
+      return [
         transform.data[0],
         0,
         0,
@@ -42679,15 +43157,13 @@ function transformToMatrix(transform) {
         0,
         0,
       ];
-      break;
     case 'rotate':
       // [cos(a), sin(a), -sin(a), cos(a), x, y]
       var cos = mth.cos(transform.data[0]),
         sin = mth.sin(transform.data[0]),
         cx = transform.data[1] || 0,
         cy = transform.data[2] || 0;
-
-      matrix = [
+      return [
         cos,
         sin,
         -sin,
@@ -42695,19 +43171,16 @@ function transformToMatrix(transform) {
         (1 - cos) * cx + sin * cy,
         (1 - cos) * cy - sin * cx,
       ];
-      break;
     case 'skewX':
       // [1, 0, tan(a), 1, 0, 0]
-      matrix = [1, 0, mth.tan(transform.data[0]), 1, 0, 0];
-      break;
+      return [1, 0, mth.tan(transform.data[0]), 1, 0, 0];
     case 'skewY':
       // [1, tan(a), 0, 1, 0, 0]
-      matrix = [1, mth.tan(transform.data[0]), 0, 1, 0, 0];
-      break;
+      return [1, mth.tan(transform.data[0]), 0, 1, 0, 0];
+    default:
+      throw Error(`Unknown transform ${transform.name}`);
   }
-
-  return matrix;
-}
+};
 
 /**
  * Applies transformation to an arc. To do so, we represent ellipse as a matrix, multiply it
@@ -42715,48 +43188,51 @@ function transformToMatrix(transform) {
  * rotate(θ)·scale(a b)·rotate(φ). This gives us new ellipse params a, b and θ.
  * SVD is being done with the formulae provided by Wolffram|Alpha (svd {{m0, m2}, {m1, m3}})
  *
- * @param {Array} cursor [x, y]
- * @param {Array} arc [a, b, rotation in deg]
- * @param {Array} transform transformation matrix
- * @return {Array} arc transformed input arc
+ * @type {(
+ *   cursor: [x: number, y: number],
+ *   arc: Array<number>,
+ *   transform: Array<number>
+ * ) => Array<number>}
  */
-_transforms.transformArc = function (cursor, arc, transform) {
+_transforms.transformArc = (cursor, arc, transform) => {
   const x = arc[5] - cursor[0];
   const y = arc[6] - cursor[1];
-  var a = arc[0],
-    b = arc[1],
-    rot = (arc[2] * Math.PI) / 180,
-    cos = Math.cos(rot),
-    sin = Math.sin(rot),
-    h =
+  let a = arc[0];
+  let b = arc[1];
+  const rot = (arc[2] * Math.PI) / 180;
+  const cos = Math.cos(rot);
+  const sin = Math.sin(rot);
+  // skip if radius is 0
+  if (a > 0 && b > 0) {
+    let h =
       Math.pow(x * cos + y * sin, 2) / (4 * a * a) +
       Math.pow(y * cos - x * sin, 2) / (4 * b * b);
-  if (h > 1) {
-    h = Math.sqrt(h);
-    a *= h;
-    b *= h;
+    if (h > 1) {
+      h = Math.sqrt(h);
+      a *= h;
+      b *= h;
+    }
   }
-  var ellipse = [a * cos, a * sin, -b * sin, b * cos, 0, 0],
-    m = multiplyTransformMatrices(transform, ellipse),
-    // Decompose the new ellipse matrix
-    lastCol = m[2] * m[2] + m[3] * m[3],
-    squareSum = m[0] * m[0] + m[1] * m[1] + lastCol,
-    root =
-      Math.hypot(m[0] - m[3], m[1] + m[2]) *
-      Math.hypot(m[0] + m[3], m[1] - m[2]);
+  const ellipse = [a * cos, a * sin, -b * sin, b * cos, 0, 0];
+  const m = multiplyTransformMatrices(transform, ellipse);
+  // Decompose the new ellipse matrix
+  const lastCol = m[2] * m[2] + m[3] * m[3];
+  const squareSum = m[0] * m[0] + m[1] * m[1] + lastCol;
+  const root =
+    Math.hypot(m[0] - m[3], m[1] + m[2]) * Math.hypot(m[0] + m[3], m[1] - m[2]);
 
   if (!root) {
     // circle
     arc[0] = arc[1] = Math.sqrt(squareSum / 2);
     arc[2] = 0;
   } else {
-    var majorAxisSqr = (squareSum + root) / 2,
-      minorAxisSqr = (squareSum - root) / 2,
-      major = Math.abs(majorAxisSqr - lastCol) > 1e-6,
-      sub = (major ? majorAxisSqr : minorAxisSqr) - lastCol,
-      rowsSum = m[0] * m[2] + m[1] * m[3],
-      term1 = m[0] * sub + m[2] * rowsSum,
-      term2 = m[1] * sub + m[3] * rowsSum;
+    const majorAxisSqr = (squareSum + root) / 2;
+    const minorAxisSqr = (squareSum - root) / 2;
+    const major = Math.abs(majorAxisSqr - lastCol) > 1e-6;
+    const sub = (major ? majorAxisSqr : minorAxisSqr) - lastCol;
+    const rowsSum = m[0] * m[2] + m[1] * m[3];
+    const term1 = m[0] * sub + m[2] * rowsSum;
+    const term2 = m[1] * sub + m[3] * rowsSum;
     arc[0] = Math.sqrt(majorAxisSqr);
     arc[1] = Math.sqrt(minorAxisSqr);
     arc[2] =
@@ -42777,11 +43253,9 @@ _transforms.transformArc = function (cursor, arc, transform) {
 /**
  * Multiply transformation matrices.
  *
- * @param {Array} a matrix A data
- * @param {Array} b matrix B data
- * @return {Array} result
+ * @type {(a: Array<number>, b: Array<number>) => Array<number>}
  */
-function multiplyTransformMatrices(a, b) {
+const multiplyTransformMatrices = (a, b) => {
   return [
     a[0] * b[0] + a[2] * b[1],
     a[1] * b[0] + a[3] * b[1],
@@ -42790,7 +43264,7 @@ function multiplyTransformMatrices(a, b) {
     a[0] * b[4] + a[2] * b[5] + a[4],
     a[1] * b[4] + a[3] * b[5] + a[5],
   ];
-}
+};
 
 // TODO implement as separate plugin
 
@@ -42879,10 +43353,9 @@ const applyTransforms$1 = (elem, pathData, params) => {
             .trim()
             .replace(regNumericValues$1, (num) => removeLeadingZero$1(num * scale));
         } else {
-          elem.attributes[
-            'stroke-width'
-          ] = strokeWidth.replace(regNumericValues$1, (num) =>
-            removeLeadingZero$1(num * scale)
+          elem.attributes['stroke-width'] = strokeWidth.replace(
+            regNumericValues$1,
+            (num) => removeLeadingZero$1(num * scale)
           );
         }
 
@@ -42930,11 +43403,12 @@ const transformRelativePoint = (matrix, x, y) => {
 };
 
 const applyMatrixToPathData = (pathData, matrix) => {
-  let start = [0, 0];
-  let cursor = [0, 0];
+  const start = [0, 0];
+  const cursor = [0, 0];
 
   for (const pathItem of pathData) {
-    let { instruction: command, data: args } = pathItem;
+    let { command, args } = pathItem;
+
     // moveto (x y)
     if (command === 'M') {
       cursor[0] = args[0];
@@ -43115,19 +43589,20 @@ const applyMatrixToPathData = (pathData, matrix) => {
       args[6] = y;
     }
 
+    // closepath
     if (command === 'z' || command === 'Z') {
       cursor[0] = start[0];
       cursor[1] = start[1];
     }
 
-    pathItem.instruction = command;
-    pathItem.data = args;
+    pathItem.command = command;
+    pathItem.args = args;
   }
 };
 
 const { collectStylesheet: collectStylesheet$1, computeStyle: computeStyle$1 } = style;
 const { pathElems } = _collections;
-const { path2js: path2js$2, js2path: js2path$1 } = _path$1;
+const { path2js: path2js$1, js2path: js2path$1 } = _path;
 const { applyTransforms } = _applyTransforms;
 const { cleanupOutData: cleanupOutData$1 } = tools;
 
@@ -43209,7 +43684,7 @@ convertPathData$1.fn = (root, params) => {
               computedStyle['stroke-linecap'].value !== 'butt');
           const maybeHasStrokeAndLinecap = maybeHasStroke && maybeHasLinecap;
 
-          var data = path2js$2(node);
+          var data = path2js$1(node);
 
           // TODO: get rid of functions returns
           if (data.length) {
@@ -43250,7 +43725,7 @@ const convertToRelative = (pathData) => {
 
   for (let i = 0; i < pathData.length; i += 1) {
     const pathItem = pathData[i];
-    let { instruction: command, data: args } = pathItem;
+    let { command, args } = pathItem;
 
     // moveto (x y)
     if (command === 'm') {
@@ -43396,8 +43871,8 @@ const convertToRelative = (pathData) => {
       cursor[1] = start[1];
     }
 
-    pathItem.instruction = command;
-    pathItem.data = args;
+    pathItem.command = command;
+    pathItem.args = args;
     // store absolute coordinates for later use
     // base should preserve reference from other element
     pathItem.base = prevCoords;
@@ -43422,19 +43897,19 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
     prev = {};
 
   path = path.filter(function (item, index, path) {
-    var instruction = item.instruction,
-      data = item.data,
-      next = path[index + 1];
+    let command = item.command;
+    let data = item.args;
+    let next = path[index + 1];
 
-    if (data) {
+    if (command !== 'Z' && command !== 'z') {
       var sdata = data,
         circle;
 
-      if (instruction === 's') {
+      if (command === 's') {
         sdata = [0, 0].concat(data);
 
-        if ('cs'.indexOf(prev.instruction) > -1) {
-          var pdata = prev.data,
+        if (command === 'c' || command === 's') {
+          var pdata = prev.args,
             n = pdata.length;
 
           // (-x, -y) of the prev tangent point relative to the current point
@@ -43446,7 +43921,7 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
       // convert curves to arcs if possible
       if (
         params.makeArcs &&
-        (instruction == 'c' || instruction == 's') &&
+        (command == 'c' || command == 's') &&
         isConvex(sdata) &&
         (circle = findCircle(sdata))
       ) {
@@ -43454,8 +43929,8 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
           angle = findArcAngle(sdata, circle),
           sweep = sdata[5] * sdata[0] - sdata[4] * sdata[1] > 0 ? 1 : 0,
           arc = {
-            instruction: 'a',
-            data: [r, r, 0, 0, sweep, sdata[4], sdata[5]],
+            command: 'a',
+            args: [r, r, 0, 0, sweep, sdata[4], sdata[5]],
             coords: item.coords.slice(),
             base: item.base,
           },
@@ -43472,18 +43947,16 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
           nextLonghand;
 
         if (
-          (prev.instruction == 'c' &&
-            isConvex(prev.data) &&
-            isArcPrev(prev.data, circle)) ||
-          (prev.instruction == 'a' &&
-            prev.sdata &&
-            isArcPrev(prev.sdata, circle))
+          (prev.command == 'c' &&
+            isConvex(prev.args) &&
+            isArcPrev(prev.args, circle)) ||
+          (prev.command == 'a' && prev.sdata && isArcPrev(prev.sdata, circle))
         ) {
           arcCurves.unshift(prev);
           arc.base = prev.base;
-          arc.data[5] = arc.coords[0] - arc.base[0];
-          arc.data[6] = arc.coords[1] - arc.base[1];
-          var prevData = prev.instruction == 'a' ? prev.sdata : prev.data;
+          arc.args[5] = arc.coords[0] - arc.base[0];
+          arc.args[6] = arc.coords[1] - arc.base[1];
+          var prevData = prev.command == 'a' ? prev.sdata : prev.args;
           var prevAngle = findArcAngle(prevData, {
             center: [
               prevData[4] + circle.center[0],
@@ -43492,47 +43965,47 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
             radius: circle.radius,
           });
           angle += prevAngle;
-          if (angle > Math.PI) arc.data[3] = 1;
+          if (angle > Math.PI) arc.args[3] = 1;
           hasPrev = 1;
         }
 
         // check if next curves are fitting the arc
         for (
           var j = index;
-          (next = path[++j]) && ~'cs'.indexOf(next.instruction);
+          (next = path[++j]) && ~'cs'.indexOf(next.command);
 
         ) {
-          var nextData = next.data;
-          if (next.instruction == 's') {
+          var nextData = next.args;
+          if (next.command == 's') {
             nextLonghand = makeLonghand(
-              { instruction: 's', data: next.data.slice() },
-              path[j - 1].data
+              { command: 's', args: next.args.slice() },
+              path[j - 1].args
             );
-            nextData = nextLonghand.data;
-            nextLonghand.data = nextData.slice(0, 2);
+            nextData = nextLonghand.args;
+            nextLonghand.args = nextData.slice(0, 2);
             suffix = stringify([nextLonghand]);
           }
           if (isConvex(nextData) && isArc(nextData, relCircle)) {
             angle += findArcAngle(nextData, relCircle);
             if (angle - 2 * Math.PI > 1e-3) break; // more than 360°
-            if (angle > Math.PI) arc.data[3] = 1;
+            if (angle > Math.PI) arc.args[3] = 1;
             arcCurves.push(next);
             if (2 * Math.PI - angle > 1e-3) {
               // less than 360°
               arc.coords = next.coords;
-              arc.data[5] = arc.coords[0] - arc.base[0];
-              arc.data[6] = arc.coords[1] - arc.base[1];
+              arc.args[5] = arc.coords[0] - arc.base[0];
+              arc.args[6] = arc.coords[1] - arc.base[1];
             } else {
               // full circle, make a half-circle arc and add a second one
-              arc.data[5] = 2 * (relCircle.center[0] - nextData[4]);
-              arc.data[6] = 2 * (relCircle.center[1] - nextData[5]);
+              arc.args[5] = 2 * (relCircle.center[0] - nextData[4]);
+              arc.args[6] = 2 * (relCircle.center[1] - nextData[5]);
               arc.coords = [
-                arc.base[0] + arc.data[5],
-                arc.base[1] + arc.data[6],
+                arc.base[0] + arc.args[5],
+                arc.base[1] + arc.args[6],
               ];
               arc = {
-                instruction: 'a',
-                data: [
+                command: 'a',
+                args: [
                   r,
                   r,
                   0,
@@ -43554,16 +44027,16 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
         }
 
         if ((stringify(output) + suffix).length < stringify(arcCurves).length) {
-          if (path[j] && path[j].instruction == 's') {
-            makeLonghand(path[j], path[j - 1].data);
+          if (path[j] && path[j].command == 's') {
+            makeLonghand(path[j], path[j - 1].args);
           }
           if (hasPrev) {
             var prevArc = output.shift();
-            roundData(prevArc.data);
-            relSubpoint[0] += prevArc.data[5] - prev.data[prev.data.length - 2];
-            relSubpoint[1] += prevArc.data[6] - prev.data[prev.data.length - 1];
-            prev.instruction = 'a';
-            prev.data = prevArc.data;
+            roundData(prevArc.args);
+            relSubpoint[0] += prevArc.args[5] - prev.args[prev.args.length - 2];
+            relSubpoint[1] += prevArc.args[6] - prev.args[prev.args.length - 1];
+            prev.command = 'a';
+            prev.args = prevArc.args;
             item.base = prev.coords = prevArc.coords;
           }
           arc = output.shift();
@@ -43577,8 +44050,8 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
             );
           }
           if (!arc) return false;
-          instruction = 'a';
-          data = arc.data;
+          command = 'a';
+          data = arc.args;
           item.coords = arc.coords;
         }
       }
@@ -43587,29 +44060,36 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
       // to get closer to absolute coordinates. Sum of rounded value remains same:
       // l .25 3 .25 2 .25 3 .25 2 -> l .3 3 .2 2 .3 3 .2 2
       if (precision !== false) {
-        if ('mltqsc'.indexOf(instruction) > -1) {
+        if (
+          command === 'm' ||
+          command === 'l' ||
+          command === 't' ||
+          command === 'q' ||
+          command === 's' ||
+          command === 'c'
+        ) {
           for (var i = data.length; i--; ) {
             data[i] += item.base[i % 2] - relSubpoint[i % 2];
           }
-        } else if (instruction == 'h') {
+        } else if (command == 'h') {
           data[0] += item.base[0] - relSubpoint[0];
-        } else if (instruction == 'v') {
+        } else if (command == 'v') {
           data[0] += item.base[1] - relSubpoint[1];
-        } else if (instruction == 'a') {
+        } else if (command == 'a') {
           data[5] += item.base[0] - relSubpoint[0];
           data[6] += item.base[1] - relSubpoint[1];
         }
         roundData(data);
 
-        if (instruction == 'h') relSubpoint[0] += data[0];
-        else if (instruction == 'v') relSubpoint[1] += data[0];
+        if (command == 'h') relSubpoint[0] += data[0];
+        else if (command == 'v') relSubpoint[1] += data[0];
         else {
           relSubpoint[0] += data[data.length - 2];
           relSubpoint[1] += data[data.length - 1];
         }
         roundData(relSubpoint);
 
-        if (instruction.toLowerCase() == 'm') {
+        if (command === 'M' || command === 'm') {
           pathBase[0] = relSubpoint[0];
           pathBase[1] = relSubpoint[1];
         }
@@ -43618,25 +44098,25 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
       // convert straight curves into lines segments
       if (params.straightCurves) {
         if (
-          (instruction === 'c' && isCurveStraightLine(data)) ||
-          (instruction === 's' && isCurveStraightLine(sdata))
+          (command === 'c' && isCurveStraightLine(data)) ||
+          (command === 's' && isCurveStraightLine(sdata))
         ) {
-          if (next && next.instruction == 's') makeLonghand(next, data); // fix up next curve
-          instruction = 'l';
+          if (next && next.command == 's') makeLonghand(next, data); // fix up next curve
+          command = 'l';
           data = data.slice(-2);
-        } else if (instruction === 'q' && isCurveStraightLine(data)) {
-          if (next && next.instruction == 't') makeLonghand(next, data); // fix up next curve
-          instruction = 'l';
+        } else if (command === 'q' && isCurveStraightLine(data)) {
+          if (next && next.command == 't') makeLonghand(next, data); // fix up next curve
+          command = 'l';
           data = data.slice(-2);
         } else if (
-          instruction === 't' &&
-          prev.instruction !== 'q' &&
-          prev.instruction !== 't'
+          command === 't' &&
+          prev.command !== 'q' &&
+          prev.command !== 't'
         ) {
-          instruction = 'l';
+          command = 'l';
           data = data.slice(-2);
-        } else if (instruction === 'a' && (data[0] === 0 || data[1] === 0)) {
-          instruction = 'l';
+        } else if (command === 'a' && (data[0] === 0 || data[1] === 0)) {
+          command = 'l';
           data = data.slice(-2);
         }
       }
@@ -43644,12 +44124,12 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
       // horizontal and vertical line shorthands
       // l 50 0 → h 50
       // l 0 50 → v 50
-      if (params.lineShorthands && instruction === 'l') {
+      if (params.lineShorthands && command === 'l') {
         if (data[1] === 0) {
-          instruction = 'h';
+          command = 'h';
           data.pop();
         } else if (data[0] === 0) {
-          instruction = 'v';
+          command = 'v';
           data.shift();
         }
       }
@@ -43659,15 +44139,15 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
       if (
         params.collapseRepeated &&
         hasMarkerMid === false &&
-        'mhv'.indexOf(instruction) > -1 &&
-        prev.instruction &&
-        instruction == prev.instruction.toLowerCase() &&
-        ((instruction != 'h' && instruction != 'v') ||
-          prev.data[0] >= 0 == data[0] >= 0)
+        (command === 'm' || command === 'h' || command === 'v') &&
+        prev.command &&
+        command == prev.command.toLowerCase() &&
+        ((command != 'h' && command != 'v') ||
+          prev.args[0] >= 0 == data[0] >= 0)
       ) {
-        prev.data[0] += data[0];
-        if (instruction != 'h' && instruction != 'v') {
-          prev.data[1] += data[1];
+        prev.args[0] += data[0];
+        if (command != 'h' && command != 'v') {
+          prev.args[1] += data[1];
         }
         prev.coords = item.coords;
         path[index] = prev;
@@ -43675,59 +44155,60 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
       }
 
       // convert curves into smooth shorthands
-      if (params.curveSmoothShorthands && prev.instruction) {
+      if (params.curveSmoothShorthands && prev.command) {
         // curveto
-        if (instruction === 'c') {
+        if (command === 'c') {
           // c + c → c + s
           if (
-            prev.instruction === 'c' &&
-            data[0] === -(prev.data[2] - prev.data[4]) &&
-            data[1] === -(prev.data[3] - prev.data[5])
+            prev.command === 'c' &&
+            data[0] === -(prev.args[2] - prev.args[4]) &&
+            data[1] === -(prev.args[3] - prev.args[5])
           ) {
-            instruction = 's';
+            command = 's';
             data = data.slice(2);
           }
 
           // s + c → s + s
           else if (
-            prev.instruction === 's' &&
-            data[0] === -(prev.data[0] - prev.data[2]) &&
-            data[1] === -(prev.data[1] - prev.data[3])
+            prev.command === 's' &&
+            data[0] === -(prev.args[0] - prev.args[2]) &&
+            data[1] === -(prev.args[1] - prev.args[3])
           ) {
-            instruction = 's';
+            command = 's';
             data = data.slice(2);
           }
 
           // [^cs] + c → [^cs] + s
           else if (
-            'cs'.indexOf(prev.instruction) === -1 &&
+            prev.command !== 'c' &&
+            prev.command !== 's' &&
             data[0] === 0 &&
             data[1] === 0
           ) {
-            instruction = 's';
+            command = 's';
             data = data.slice(2);
           }
         }
 
         // quadratic Bézier curveto
-        else if (instruction === 'q') {
+        else if (command === 'q') {
           // q + q → q + t
           if (
-            prev.instruction === 'q' &&
-            data[0] === prev.data[2] - prev.data[0] &&
-            data[1] === prev.data[3] - prev.data[1]
+            prev.command === 'q' &&
+            data[0] === prev.args[2] - prev.args[0] &&
+            data[1] === prev.args[3] - prev.args[1]
           ) {
-            instruction = 't';
+            command = 't';
             data = data.slice(2);
           }
 
           // t + q → t + t
           else if (
-            prev.instruction === 't' &&
-            data[2] === prev.data[0] &&
-            data[3] === prev.data[1]
+            prev.command === 't' &&
+            data[2] === prev.args[0] &&
+            data[3] === prev.args[1]
           ) {
-            instruction = 't';
+            command = 't';
             data = data.slice(2);
           }
         }
@@ -43737,7 +44218,13 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
       if (params.removeUseless && !maybeHasStrokeAndLinecap) {
         // l 0,0 / h 0 / v 0 / q 0,0 0,0 / t 0,0 / c 0,0 0,0 0,0 / s 0,0 0,0
         if (
-          'lhvqtcs'.indexOf(instruction) > -1 &&
+          (command === 'l' ||
+            command === 'h' ||
+            command === 'v' ||
+            command === 'q' ||
+            command === 't' ||
+            command === 'c' ||
+            command === 's') &&
           data.every(function (i) {
             return i === 0;
           })
@@ -43747,21 +44234,21 @@ function filters(path, params, { maybeHasStrokeAndLinecap, hasMarkerMid }) {
         }
 
         // a 25,25 -30 0,1 0,0
-        if (instruction === 'a' && data[5] === 0 && data[6] === 0) {
+        if (command === 'a' && data[5] === 0 && data[6] === 0) {
           path[index] = prev;
           return false;
         }
       }
 
-      item.instruction = instruction;
-      item.data = data;
+      item.command = command;
+      item.args = data;
 
       prev = item;
     } else {
       // z resets coordinates
       relSubpoint[0] = pathBase[0];
       relSubpoint[1] = pathBase[1];
-      if (prev.instruction == 'z') return false;
+      if (prev.command === 'Z' || prev.command === 'z') return false;
       prev = item;
     }
 
@@ -43782,24 +44269,31 @@ function convertToMixed(path, params) {
 
   path = path.filter(function (item, index) {
     if (index == 0) return true;
-    if (!item.data) {
+    if (item.command === 'Z' || item.command === 'z') {
       prev = item;
       return true;
     }
 
-    var instruction = item.instruction,
-      data = item.data,
-      adata = data && data.slice(0);
+    var command = item.command,
+      data = item.args,
+      adata = data.slice();
 
-    if ('mltqsc'.indexOf(instruction) > -1) {
+    if (
+      command === 'm' ||
+      command === 'l' ||
+      command === 't' ||
+      command === 'q' ||
+      command === 's' ||
+      command === 'c'
+    ) {
       for (var i = adata.length; i--; ) {
         adata[i] += item.base[i % 2];
       }
-    } else if (instruction == 'h') {
+    } else if (command == 'h') {
       adata[0] += item.base[0];
-    } else if (instruction == 'v') {
+    } else if (command == 'v') {
       adata[0] += item.base[1];
-    } else if (instruction == 'a') {
+    } else if (command == 'a') {
       adata[5] += item.base[0];
       adata[6] += item.base[1];
     }
@@ -43811,22 +44305,22 @@ function convertToMixed(path, params) {
 
     // Convert to absolute coordinates if it's shorter or forceAbsolutePath is true.
     // v-20 -> V0
-    // Don't convert if it fits following previous instruction.
+    // Don't convert if it fits following previous command.
     // l20 30-10-50 instead of l20 30L20 30
     if (
       params.forceAbsolutePath ||
       (absoluteDataStr.length < relativeDataStr.length &&
         !(
           params.negativeExtraSpace &&
-          instruction == prev.instruction &&
-          prev.instruction.charCodeAt(0) > 96 &&
+          command == prev.command &&
+          prev.command.charCodeAt(0) > 96 &&
           absoluteDataStr.length == relativeDataStr.length - 1 &&
           (data[0] < 0 ||
-            (/^0\./.test(data[0]) && prev.data[prev.data.length - 1] % 1))
+            (/^0\./.test(data[0]) && prev.args[prev.args.length - 1] % 1))
         ))
     ) {
-      item.instruction = instruction.toUpperCase();
-      item.data = adata;
+      item.command = command.toUpperCase();
+      item.args = adata;
     }
 
     prev = item;
@@ -43965,15 +44459,15 @@ function isCurveStraightLine(data) {
  */
 
 function makeLonghand(item, data) {
-  switch (item.instruction) {
+  switch (item.command) {
     case 's':
-      item.instruction = 'c';
+      item.command = 'c';
       break;
     case 't':
-      item.instruction = 'q';
+      item.command = 'q';
       break;
   }
-  item.data.unshift(
+  item.args.unshift(
     data[data.length - 2] - data[data.length - 4],
     data[data.length - 1] - data[data.length - 3]
   );
@@ -44121,45 +44615,30 @@ function findArcAngle(curve, relCircle) {
 function data2Path(params, pathData) {
   return pathData.reduce(function (pathString, item) {
     var strData = '';
-    if (item.data) {
-      strData = cleanupOutData$1(roundData(item.data.slice()), params);
+    if (item.args) {
+      strData = cleanupOutData$1(roundData(item.args.slice()), params);
     }
-    return pathString + item.instruction + strData;
+    return pathString + item.command + strData;
   }, '');
 }
 
 var convertTransform$2 = {};
 
+/**
+ * @typedef {import('../lib/types').XastElement} XastElement
+ */
+
+const { cleanupOutData } = tools;
+const {
+  transform2js,
+  transformsMultiply,
+  matrixToTransform,
+} = _transforms;
+
+convertTransform$2.type = 'visitor';
 convertTransform$2.name = 'convertTransform';
-
-convertTransform$2.type = 'perItem';
-
 convertTransform$2.active = true;
-
 convertTransform$2.description = 'collapses multiple transformations and optimizes it';
-
-convertTransform$2.params = {
-  convertToShorts: true,
-  // degPrecision: 3, // transformPrecision (or matrix precision) - 2 by default
-  floatPrecision: 3,
-  transformPrecision: 5,
-  matrixToTransform: true,
-  shortTranslate: true,
-  shortScale: true,
-  shortRotate: true,
-  removeUseless: true,
-  collapseIntoOne: true,
-  leadingZero: true,
-  negativeExtraSpace: false,
-};
-
-var cleanupOutData = tools.cleanupOutData,
-  transform2js = _transforms.transform2js,
-  transformsMultiply = _transforms.transformsMultiply,
-  matrixToTransform = _transforms.matrixToTransform,
-  degRound,
-  floatRound,
-  transformRound;
 
 /**
  * Convert matrices to the short aliases,
@@ -44169,39 +44648,100 @@ var cleanupOutData = tools.cleanupOutData,
  *
  * @see https://www.w3.org/TR/SVG11/coords.html#TransformMatrixDefined
  *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   convertToShorts?: boolean,
+ *   degPrecision?: number,
+ *   floatPrecision?: number,
+ *   transformPrecision?: number,
+ *   matrixToTransform?: boolean,
+ *   shortTranslate?: boolean,
+ *   shortScale?: boolean,
+ *   shortRotate?: boolean,
+ *   removeUseless?: boolean,
+ *   collapseIntoOne?: boolean,
+ *   leadingZero?: boolean,
+ *   negativeExtraSpace?: boolean,
+ * }>}
  */
-convertTransform$2.fn = function (item, params) {
-  if (item.type === 'element') {
-    // transform
-    if (item.attributes.transform != null) {
-      convertTransform$1(item, 'transform', params);
-    }
-
-    // gradientTransform
-    if (item.attributes.gradientTransform != null) {
-      convertTransform$1(item, 'gradientTransform', params);
-    }
-
-    // patternTransform
-    if (item.attributes.patternTransform != null) {
-      convertTransform$1(item, 'patternTransform', params);
-    }
-  }
+convertTransform$2.fn = (_root, params) => {
+  const {
+    convertToShorts = true,
+    // degPrecision = 3, // transformPrecision (or matrix precision) - 2 by default
+    degPrecision,
+    floatPrecision = 3,
+    transformPrecision = 5,
+    matrixToTransform = true,
+    shortTranslate = true,
+    shortScale = true,
+    shortRotate = true,
+    removeUseless = true,
+    collapseIntoOne = true,
+    leadingZero = true,
+    negativeExtraSpace = false,
+  } = params;
+  const newParams = {
+    convertToShorts,
+    degPrecision,
+    floatPrecision,
+    transformPrecision,
+    matrixToTransform,
+    shortTranslate,
+    shortScale,
+    shortRotate,
+    removeUseless,
+    collapseIntoOne,
+    leadingZero,
+    negativeExtraSpace,
+  };
+  return {
+    element: {
+      enter: (node) => {
+        // transform
+        if (node.attributes.transform != null) {
+          convertTransform$1(node, 'transform', newParams);
+        }
+        // gradientTransform
+        if (node.attributes.gradientTransform != null) {
+          convertTransform$1(node, 'gradientTransform', newParams);
+        }
+        // patternTransform
+        if (node.attributes.patternTransform != null) {
+          convertTransform$1(node, 'patternTransform', newParams);
+        }
+      },
+    },
+  };
 };
+
+/**
+ * @typedef {{
+ *   convertToShorts: boolean,
+ *   degPrecision?: number,
+ *   floatPrecision: number,
+ *   transformPrecision: number,
+ *   matrixToTransform: boolean,
+ *   shortTranslate: boolean,
+ *   shortScale: boolean,
+ *   shortRotate: boolean,
+ *   removeUseless: boolean,
+ *   collapseIntoOne: boolean,
+ *   leadingZero: boolean,
+ *   negativeExtraSpace: boolean,
+ * }} TransformParams
+ */
+
+/**
+ * @typedef {{ name: string, data: Array<number> }} TransformItem
+ */
 
 /**
  * Main function.
  *
- * @param {Object} item input item
- * @param {String} attrName attribute name
- * @param {Object} params plugin params
+ * @type {(item: XastElement, attrName: string, params: TransformParams) => void}
  */
-function convertTransform$1(item, attrName, params) {
+const convertTransform$1 = (item, attrName, params) => {
   let data = transform2js(item.attributes[attrName]);
   params = definePrecision(data, params);
 
@@ -44212,7 +44752,7 @@ function convertTransform$1(item, attrName, params) {
   if (params.convertToShorts) {
     data = convertToShorts(data, params);
   } else {
-    data.forEach(roundTransform);
+    data.forEach((item) => roundTransform(item, params));
   }
 
   if (params.removeUseless) {
@@ -44224,7 +44764,7 @@ function convertTransform$1(item, attrName, params) {
   } else {
     delete item.attributes[attrName];
   }
-}
+};
 
 /**
  * Defines precision to work with certain parts.
@@ -44233,82 +44773,94 @@ function convertTransform$1(item, attrName, params) {
  * degPrecision - for rotate and skew. By default it's equal to (rougly)
  * transformPrecision - 2 or floatPrecision whichever is lower. Can be set in params.
  *
- * @param {Array} transforms input array
- * @param {Object} params plugin params
- * @return {Array} output array
+ * @type {(data: Array<TransformItem>, params: TransformParams) => TransformParams}
+ *
+ * clone params so it don't affect other elements transformations.
  */
-function definePrecision(data, params) {
-  var matrixData = data.reduce(getMatrixData, []),
-    significantDigits = params.transformPrecision;
-
-  // Clone params so it don't affect other elements transformations.
-  params = Object.assign({}, params);
-
+const definePrecision = (data, { ...newParams }) => {
+  const matrixData = [];
+  for (const item of data) {
+    if (item.name == 'matrix') {
+      matrixData.push(...item.data.slice(0, 4));
+    }
+  }
+  let significantDigits = newParams.transformPrecision;
   // Limit transform precision with matrix one. Calculating with larger precision doesn't add any value.
   if (matrixData.length) {
-    params.transformPrecision = Math.min(
-      params.transformPrecision,
+    newParams.transformPrecision = Math.min(
+      newParams.transformPrecision,
       Math.max.apply(Math, matrixData.map(floatDigits)) ||
-        params.transformPrecision
+        newParams.transformPrecision
     );
-
     significantDigits = Math.max.apply(
       Math,
-      matrixData.map(function (n) {
-        return String(n).replace(/\D+/g, '').length; // Number of digits in a number. 123.45 → 5
-      })
+      matrixData.map(
+        (n) => n.toString().replace(/\D+/g, '').length // Number of digits in a number. 123.45 → 5
+      )
     );
   }
   // No sense in angle precision more then number of significant digits in matrix.
-  if (!('degPrecision' in params)) {
-    params.degPrecision = Math.max(
+  if (newParams.degPrecision == null) {
+    newParams.degPrecision = Math.max(
       0,
-      Math.min(params.floatPrecision, significantDigits - 2)
+      Math.min(newParams.floatPrecision, significantDigits - 2)
     );
   }
-
-  floatRound =
-    params.floatPrecision >= 1 && params.floatPrecision < 20
-      ? smartRound.bind(this, params.floatPrecision)
-      : round;
-  degRound =
-    params.degPrecision >= 1 && params.floatPrecision < 20
-      ? smartRound.bind(this, params.degPrecision)
-      : round;
-  transformRound =
-    params.transformPrecision >= 1 && params.floatPrecision < 20
-      ? smartRound.bind(this, params.transformPrecision)
-      : round;
-
-  return params;
-}
+  return newParams;
+};
 
 /**
- * Gathers four first matrix parameters.
- *
- * @param {Array} a array of data
- * @param {Object} transform
- * @return {Array} output array
+ * @type {(data: Array<number>, params: TransformParams) => Array<number>}
  */
-function getMatrixData(a, b) {
-  return b.name == 'matrix' ? a.concat(b.data.slice(0, 4)) : a;
-}
+const degRound = (data, params) => {
+  if (
+    params.degPrecision != null &&
+    params.degPrecision >= 1 &&
+    params.floatPrecision < 20
+  ) {
+    return smartRound(params.degPrecision, data);
+  } else {
+    return round(data);
+  }
+};
+/**
+ * @type {(data: Array<number>, params: TransformParams) => Array<number>}
+ */
+const floatRound = (data, params) => {
+  if (params.floatPrecision >= 1 && params.floatPrecision < 20) {
+    return smartRound(params.floatPrecision, data);
+  } else {
+    return round(data);
+  }
+};
+
+/**
+ * @type {(data: Array<number>, params: TransformParams) => Array<number>}
+ */
+const transformRound = (data, params) => {
+  if (params.transformPrecision >= 1 && params.floatPrecision < 20) {
+    return smartRound(params.transformPrecision, data);
+  } else {
+    return round(data);
+  }
+};
 
 /**
  * Returns number of digits after the point. 0.125 → 3
+ *
+ * @type {(n: number) => number}
  */
-function floatDigits(n) {
-  return (n = String(n)).slice(n.indexOf('.')).length - 1;
-}
+const floatDigits = (n) => {
+  const str = n.toString();
+  return str.slice(str.indexOf('.')).length - 1;
+};
 
 /**
  * Convert transforms to the shorthand alternatives.
  *
- * @param {Array} transforms input array
- * @param {Object} params plugin params
- * @return {Array} output array
+ * @type {(transforms: Array<TransformItem>, params: TransformParams) => Array<TransformItem>}
  */
-function convertToShorts(transforms, params) {
+const convertToShorts = (transforms, params) => {
   for (var i = 0; i < transforms.length; i++) {
     var transform = transforms[i];
 
@@ -44316,18 +44868,17 @@ function convertToShorts(transforms, params) {
     if (params.matrixToTransform && transform.name === 'matrix') {
       var decomposed = matrixToTransform(transform, params);
       if (
-        decomposed != transform &&
         js2transform(decomposed, params).length <=
-          js2transform([transform], params).length
+        js2transform([transform], params).length
       ) {
-        transforms.splice.apply(transforms, [i, 1].concat(decomposed));
+        transforms.splice(i, 1, ...decomposed);
       }
       transform = transforms[i];
     }
 
     // fixed-point numbers
     // 12.754997 → 12.755
-    roundTransform(transform);
+    roundTransform(transform, params);
 
     // convert long translate transform notation to the shorts one
     // translate(10 0) → translate(10)
@@ -44377,16 +44928,15 @@ function convertToShorts(transforms, params) {
   }
 
   return transforms;
-}
+};
 
 /**
  * Remove useless transforms.
  *
- * @param {Array} transforms input array
- * @return {Array} output array
+ * @type {(trasforms: Array<TransformItem>) => Array<TransformItem>}
  */
-function removeUseless(transforms) {
-  return transforms.filter(function (transform) {
+const removeUseless = (transforms) => {
+  return transforms.filter((transform) => {
     // translate(0), rotate(0[, cx, cy]), skewX(0), skewY(0)
     if (
       (['translate', 'rotate', 'skewX', 'skewY'].indexOf(transform.name) > -1 &&
@@ -44416,21 +44966,19 @@ function removeUseless(transforms) {
 
     return true;
   });
-}
+};
 
 /**
  * Convert transforms JS representation to string.
  *
- * @param {Array} transformJS JS representation array
- * @param {Object} params plugin params
- * @return {String} output string
+ * @type {(transformJS: Array<TransformItem>, params: TransformParams) => string}
  */
-function js2transform(transformJS, params) {
+const js2transform = (transformJS, params) => {
   var transformString = '';
 
   // collect output value string
-  transformJS.forEach(function (transform) {
-    roundTransform(transform);
+  transformJS.forEach((transform) => {
+    roundTransform(transform, params);
     transformString +=
       (transformString && ' ') +
       transform.name +
@@ -44440,61 +44988,63 @@ function js2transform(transformJS, params) {
   });
 
   return transformString;
-}
+};
 
-function roundTransform(transform) {
+/**
+ * @type {(transform: TransformItem, params: TransformParams) => TransformItem}
+ */
+const roundTransform = (transform, params) => {
   switch (transform.name) {
     case 'translate':
-      transform.data = floatRound(transform.data);
+      transform.data = floatRound(transform.data, params);
       break;
     case 'rotate':
-      transform.data = degRound(transform.data.slice(0, 1)).concat(
-        floatRound(transform.data.slice(1))
-      );
+      transform.data = [
+        ...degRound(transform.data.slice(0, 1), params),
+        ...floatRound(transform.data.slice(1), params),
+      ];
       break;
     case 'skewX':
     case 'skewY':
-      transform.data = degRound(transform.data);
+      transform.data = degRound(transform.data, params);
       break;
     case 'scale':
-      transform.data = transformRound(transform.data);
+      transform.data = transformRound(transform.data, params);
       break;
     case 'matrix':
-      transform.data = transformRound(transform.data.slice(0, 4)).concat(
-        floatRound(transform.data.slice(4))
-      );
+      transform.data = [
+        ...transformRound(transform.data.slice(0, 4), params),
+        ...floatRound(transform.data.slice(4), params),
+      ];
       break;
   }
   return transform;
-}
+};
 
 /**
  * Rounds numbers in array.
  *
- * @param {Array} data input data array
- * @return {Array} output data array
+ * @type {(data: Array<number>) => Array<number>}
  */
-function round(data) {
+const round = (data) => {
   return data.map(Math.round);
-}
+};
 
 /**
  * Decrease accuracy of floating-point numbers
  * in transforms keeping a specified number of decimals.
  * Smart rounds values like 2.349 to 2.35.
  *
- * @param {Number} fixed number of decimals
- * @param {Array} data input data array
- * @return {Array} output data array
+ * @type {(precision: number, data: Array<number>) => Array<number>}
  */
-function smartRound(precision, data) {
+const smartRound = (precision, data) => {
   for (
     var i = data.length,
       tolerance = +Math.pow(0.1, precision).toFixed(precision);
     i--;
 
   ) {
-    if (data[i].toFixed(precision) != data[i]) {
+    if (Number(data[i].toFixed(precision)) !== data[i]) {
       var rounded = +data[i].toFixed(precision - 1);
       data[i] =
         +Math.abs(rounded - data[i]).toFixed(precision + 1) >= tolerance
@@ -44503,7 +45053,7 @@ function smartRound(precision, data) {
     }
   }
   return data;
-}
+};
 
 var removeEmptyAttrs$1 = {};
 
@@ -44587,22 +45137,25 @@ removeEmptyContainers$1.fn = function (item) {
 
 var mergePaths$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$5 } = xast;
+const { detachNodeFromParent: detachNodeFromParent$7 } = xast;
 const { collectStylesheet, computeStyle } = style;
-const { path2js: path2js$1, js2path, intersects: intersects$1 } = _path$1;
+const { path2js, js2path, intersects: intersects$1 } = _path;
 
-mergePaths$1.name = 'mergePaths';
 mergePaths$1.type = 'visitor';
+mergePaths$1.name = 'mergePaths';
 mergePaths$1.active = true;
 mergePaths$1.description = 'merges multiple paths in one if possible';
 
 /**
  * Merge multiple Paths into one.
  *
- * @param {Object} root
- * @param {Object} params
- *
  * @author Kir Belevich, Lev Solntsev
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   force?: boolean,
+ *   floatPrecision?: number,
+ *   noSpaceAfterFlags?: boolean
+ * }>}
  */
 mergePaths$1.fn = (root, params) => {
   const {
@@ -44665,8 +45218,8 @@ mergePaths$1.fn = (root, params) => {
               }
             }
           }
-          const prevPathJS = path2js$1(prevChild);
-          const curPathJS = path2js$1(child);
+          const prevPathJS = path2js(prevChild);
+          const curPathJS = path2js(child);
 
           if (
             attributesAreEqual &&
@@ -44676,7 +45229,7 @@ mergePaths$1.fn = (root, params) => {
               floatPrecision,
               noSpaceAfterFlags,
             });
-            detachNodeFromParent$5(child, node);
+            detachNodeFromParent$7(child, node);
             continue;
           }
 
@@ -44689,134 +45242,130 @@ mergePaths$1.fn = (root, params) => {
 
 var removeUnusedNS$1 = {};
 
-const { traverse: traverse$1 } = xast;
-const { parseName: parseName$1 } = tools;
-
+removeUnusedNS$1.type = 'visitor';
 removeUnusedNS$1.name = 'removeUnusedNS';
-
-removeUnusedNS$1.type = 'full';
-
 removeUnusedNS$1.active = true;
-
 removeUnusedNS$1.description = 'removes unused namespaces declaration';
 
 /**
- * Remove unused namespaces declaration.
- *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
+ * Remove unused namespaces declaration from svg element
+ * which are not used in elements or attributes
  *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
-removeUnusedNS$1.fn = function (root) {
-  let svgElem;
-  const xmlnsCollection = [];
-
+removeUnusedNS$1.fn = () => {
   /**
-   * Remove namespace from collection.
-   *
-   * @param {String} ns namescape name
+   * @type {Set<string>}
    */
-  function removeNSfromCollection(ns) {
-    const pos = xmlnsCollection.indexOf(ns);
-
-    // if found - remove ns from the namespaces collection
-    if (pos > -1) {
-      xmlnsCollection.splice(pos, 1);
-    }
-  }
-
-  traverse$1(root, (node) => {
-    if (node.type === 'element') {
-      if (node.name === 'svg') {
-        for (const name of Object.keys(node.attributes)) {
-          const { prefix, local } = parseName$1(name);
-          // collect namespaces
-          if (prefix === 'xmlns' && local) {
-            xmlnsCollection.push(local);
+  const unusedNamespaces = new Set();
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        // collect all namespaces from svg element
+        // (such as xmlns:xlink="http://www.w3.org/1999/xlink")
+        if (node.name === 'svg' && parentNode.type === 'root') {
+          for (const name of Object.keys(node.attributes)) {
+            if (name.startsWith('xmlns:')) {
+              const local = name.slice('xmlns:'.length);
+              unusedNamespaces.add(local);
+            }
           }
         }
-
-        // if svg element has ns-attr
-        if (xmlnsCollection.length) {
-          // save svg element
-          svgElem = node;
+        if (unusedNamespaces.size !== 0) {
+          // preserve namespace used in nested elements names
+          if (node.name.includes(':')) {
+            const [ns] = node.name.split(':');
+            if (unusedNamespaces.has(ns)) {
+              unusedNamespaces.delete(ns);
+            }
+          }
+          // preserve namespace used in nested elements attributes
+          for (const name of Object.keys(node.attributes)) {
+            if (name.includes(':')) {
+              const [ns] = name.split(':');
+              unusedNamespaces.delete(ns);
+            }
+          }
         }
-      }
-
-      if (xmlnsCollection.length) {
-        const { prefix } = parseName$1(node.name);
-        // check node for the ns-attrs
-        if (prefix) {
-          removeNSfromCollection(prefix);
+      },
+      exit: (node, parentNode) => {
+        // remove unused namespace attributes from svg element
+        if (node.name === 'svg' && parentNode.type === 'root') {
+          for (const name of unusedNamespaces) {
+            delete node.attributes[`xmlns:${name}`];
+          }
         }
-
-        // check each attr for the ns-attrs
-        for (const name of Object.keys(node.attributes)) {
-          const { prefix } = parseName$1(name);
-          removeNSfromCollection(prefix);
-        }
-      }
-    }
-  });
-
-  // remove svg element ns-attributes if they are not used even once
-  if (xmlnsCollection.length) {
-    for (const name of xmlnsCollection) {
-      delete svgElem.attributes['xmlns:' + name];
-    }
-  }
-
-  return root;
+      },
+    },
+  };
 };
 
 var sortDefsChildren$1 = {};
 
+sortDefsChildren$1.type = 'visitor';
 sortDefsChildren$1.name = 'sortDefsChildren';
-
-sortDefsChildren$1.type = 'perItem';
-
 sortDefsChildren$1.active = true;
-
 sortDefsChildren$1.description = 'Sorts children of <defs> to improve compression';
 
 /**
  * Sorts children of defs in order to improve compression.
  * Sorted first by frequency then by element name length then by element name (to ensure grouping).
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
  * @author David Leston
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
-sortDefsChildren$1.fn = function (item) {
-  if (item.isElem('defs')) {
-    var frequency = item.children.reduce(function (frequency, child) {
-      if (child.name in frequency) {
-        frequency[child.name]++;
-      } else {
-        frequency[child.name] = 1;
-      }
-      return frequency;
-    }, {});
-    item.children.sort(function (a, b) {
-      var frequencyComparison = frequency[b.name] - frequency[a.name];
-      if (frequencyComparison !== 0) {
-        return frequencyComparison;
-      }
-      var lengthComparison = b.name.length - a.name.length;
-      if (lengthComparison !== 0) {
-        return lengthComparison;
-      }
-      return a.name != b.name ? (a.name > b.name ? -1 : 1) : 0;
-    });
-    return true;
-  }
+sortDefsChildren$1.fn = () => {
+  return {
+    element: {
+      enter: (node) => {
+        if (node.name === 'defs') {
+          /**
+           * @type {Map<string, number>}
+           */
+          const frequencies = new Map();
+          for (const child of node.children) {
+            if (child.type === 'element') {
+              const frequency = frequencies.get(child.name);
+              if (frequency == null) {
+                frequencies.set(child.name, 1);
+              } else {
+                frequencies.set(child.name, frequency + 1);
+              }
+            }
+          }
+          node.children.sort((a, b) => {
+            if (a.type !== 'element' || b.type !== 'element') {
+              return 0;
+            }
+            const aFrequency = frequencies.get(a.name);
+            const bFrequency = frequencies.get(b.name);
+            if (aFrequency != null && bFrequency != null) {
+              const frequencyComparison = bFrequency - aFrequency;
+              if (frequencyComparison !== 0) {
+                return frequencyComparison;
+              }
+            }
+            const lengthComparison = b.name.length - a.name.length;
+            if (lengthComparison !== 0) {
+              return lengthComparison;
+            }
+            if (a.name !== b.name) {
+              return a.name > b.name ? -1 : 1;
+            }
+            return 0;
+          });
+        }
+      },
+    },
+  };
 };
 
 var removeTitle$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$4 } = xast;
+const { detachNodeFromParent: detachNodeFromParent$6 } = xast;
 
 removeTitle$1.name = 'removeTitle';
 removeTitle$1.type = 'visitor';
@@ -44829,13 +45378,15 @@ removeTitle$1.description = 'removes <title>';
  * https://developer.mozilla.org/en-US/docs/Web/SVG/Element/title
  *
  * @author Igor Kalashnikov
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 removeTitle$1.fn = () => {
   return {
     element: {
       enter: (node, parentNode) => {
         if (node.name === 'title') {
-          detachNodeFromParent$4(node, parentNode);
+          detachNodeFromParent$6(node, parentNode);
         }
       },
     },
@@ -44844,7 +45395,7 @@ removeTitle$1.fn = () => {
 
 var removeDesc$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$3 } = xast;
+const { detachNodeFromParent: detachNodeFromParent$5 } = xast;
 
 removeDesc$1.name = 'removeDesc';
 removeDesc$1.type = 'visitor';
@@ -44861,6 +45412,8 @@ const standardDescs = /^(Created with|Created using)/;
  * https://developer.mozilla.org/en-US/docs/Web/SVG/Element/desc
  *
  * @author Daniel Wabyick
+ *
+ * @type {import('../lib/types').Plugin<{ removeAny?: boolean }>}
  */
 removeDesc$1.fn = (root, params) => {
   const { removeAny = true } = params;
@@ -44874,7 +45427,7 @@ removeDesc$1.fn = (root, params) => {
             (node.children[0].type === 'text' &&
               standardDescs.test(node.children[0].value))
           ) {
-            detachNodeFromParent$3(node, parentNode);
+            detachNodeFromParent$5(node, parentNode);
           }
         }
       },
@@ -44963,14 +45516,9 @@ var presetDefault_1 = presetDefault;
 
 var addAttributesToSVGElement = {};
 
-const { closestByName } = xast;
-
 addAttributesToSVGElement.name = 'addAttributesToSVGElement';
-
-addAttributesToSVGElement.type = 'perItem';
-
+addAttributesToSVGElement.type = 'visitor';
 addAttributesToSVGElement.active = false;
-
 addAttributesToSVGElement.description = 'adds attributes to an outer <svg> element';
 
 var ENOCLS$1 = `Error in plugin "addAttributesToSVGElement": absent parameters.
@@ -45016,93 +45564,130 @@ plugins: [
  * Add attributes to an outer <svg> element. Example config:
  *
  * @author April Arcus
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   attribute?: string | Record<string, null | string>,
+ *   attributes?: Array<string | Record<string, null | string>>
+ * }>}
  */
-addAttributesToSVGElement.fn = (node, params) => {
-  if (
-    node.type === 'element' &&
-    node.name === 'svg' &&
-    closestByName(node.parentNode, 'svg') == null
-  ) {
-    if (!params || !(Array.isArray(params.attributes) || params.attribute)) {
-      console.error(ENOCLS$1);
-      return;
-    }
-
-    const attributes = params.attributes || [params.attribute];
-
-    for (const attribute of attributes) {
-      if (typeof attribute === 'string') {
-        if (node.attributes[attribute] == null) {
-          node.attributes[attribute] = undefined;
-        }
-      }
-      if (typeof attribute === 'object') {
-        for (const key of Object.keys(attribute)) {
-          if (node.attributes[key] == null) {
-            node.attributes[key] = attribute[key];
+addAttributesToSVGElement.fn = (root, params) => {
+  if (!Array.isArray(params.attributes) && !params.attribute) {
+    console.error(ENOCLS$1);
+    return null;
+  }
+  const attributes = params.attributes || [params.attribute];
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (node.name === 'svg' && parentNode.type === 'root') {
+          for (const attribute of attributes) {
+            if (typeof attribute === 'string') {
+              if (node.attributes[attribute] == null) {
+                // @ts-ignore disallow explicit nullable attribute value
+                node.attributes[attribute] = undefined;
+              }
+            }
+            if (typeof attribute === 'object') {
+              for (const key of Object.keys(attribute)) {
+                if (node.attributes[key] == null) {
+                  // @ts-ignore disallow explicit nullable attribute value
+                  node.attributes[key] = attribute[key];
+                }
+              }
+            }
           }
         }
-      }
-    }
-  }
+      },
+    },
+  };
 };
 
 var addClassesToSVGElement = {};
 
 addClassesToSVGElement.name = 'addClassesToSVGElement';
-
-addClassesToSVGElement.type = 'full';
-
+addClassesToSVGElement.type = 'visitor';
 addClassesToSVGElement.active = false;
-
 addClassesToSVGElement.description = 'adds classnames to an outer <svg> element';
 
 var ENOCLS = `Error in plugin "addClassesToSVGElement": absent parameters.
 It should have a list of classes in "classNames" or one "className".
 Config example:
 
-plugins:
-- addClassesToSVGElement:
-    className: "mySvg"
+plugins: [
+  {
+    name: "addClassesToSVGElement",
+    params: {
+      className: "mySvg"
+    }
+  }
+]
 
-plugins:
-- addClassesToSVGElement:
-    classNames: ["mySvg", "size-big"]
+plugins: [
+  {
+    name: "addClassesToSVGElement",
+    params: {
+      classNames: ["mySvg", "size-big"]
+    }
+  }
+]
 `;
 
 /**
  * Add classnames to an outer <svg> element. Example config:
  *
- * plugins:
- * - addClassesToSVGElement:
- *     className: 'mySvg'
+ * plugins: [
+ *   {
+ *     name: "addClassesToSVGElement",
+ *     params: {
+ *       className: "mySvg"
+ *     }
+ *   }
+ * ]
  *
- * plugins:
- * - addClassesToSVGElement:
- *     classNames: ['mySvg', 'size-big']
+ * plugins: [
+ *   {
+ *     name: "addClassesToSVGElement",
+ *     params: {
+ *       classNames: ["mySvg", "size-big"]
+ *     }
+ *   }
+ * ]
  *
  * @author April Arcus
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   className?: string,
+ *   classNames?: Array<string>
+ * }>}
  */
-addClassesToSVGElement.fn = function (data, params) {
+addClassesToSVGElement.fn = (root, params) => {
   if (
-    !params ||
-    !(
-      (Array.isArray(params.classNames) && params.classNames.some(String)) ||
-      params.className
-    )
+    !(Array.isArray(params.classNames) && params.classNames.some(String)) &&
+    !params.className
   ) {
     console.error(ENOCLS);
-    return data;
+    return null;
   }
-
-  var classNames = params.classNames || [params.className],
-    svg = data.children[0];
-
-  if (svg.isElem('svg')) {
-    svg.class.add.apply(svg.class, classNames);
-  }
-
-  return data;
+  const classNames = params.classNames || [params.className];
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (node.name === 'svg' && parentNode.type === 'root') {
+          const classList = new Set(
+            node.attributes.class == null
+              ? null
+              : node.attributes.class.split(' ')
+          );
+          for (const className of classNames) {
+            if (className != null) {
+              classList.add(className);
+            }
+          }
+          node.attributes.class = Array.from(classList).join(' ');
+        }
+      },
+    },
+  };
 };
 
 var cleanupListOfValues = {};
@@ -45110,21 +45695,12 @@ var cleanupListOfValues = {};
 const { removeLeadingZero } = tools;
 
 cleanupListOfValues.name = 'cleanupListOfValues';
-
-cleanupListOfValues.type = 'perItem';
-
+cleanupListOfValues.type = 'visitor';
 cleanupListOfValues.active = false;
-
 cleanupListOfValues.description = 'rounds list of values to the fixed precision';
 
-cleanupListOfValues.params = {
-  floatPrecision: 3,
-  leadingZero: true,
-  defaultPx: true,
-  convertToPx: true,
-};
-
-const regNumericValues = /^([-+]?\d*\.?\d+([eE][-+]?\d+)?)(px|pt|pc|mm|cm|m|in|ft|em|ex|%)?$/;
+const regNumericValues =
+  /^([-+]?\d*\.?\d+([eE][-+]?\d+)?)(px|pt|pc|mm|cm|m|in|ft|em|ex|%)?$/;
 const regSeparator = /\s+,?\s*|,\s*/;
 const absoluteLengths = {
   // relative to px
@@ -45133,6 +45709,7 @@ const absoluteLengths = {
   in: 96,
   pt: 4 / 3,
   pc: 16,
+  px: 1,
 };
 
 /**
@@ -45143,98 +45720,76 @@ const absoluteLengths = {
  *         ⬇
  * <svg viewBox="0 0 200.284 200.284" enable-background="new 0 0 200.284 200.284">
  *
- *
  * <polygon points="208.250977 77.1308594 223.069336 ... "/>
  *         ⬇
  * <polygon points="208.251 77.131 223.069 ... "/>
  *
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
  * @author kiyopikko
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   floatPrecision?: number,
+ *   leadingZero?: boolean,
+ *   defaultPx?: boolean,
+ *   convertToPx?: boolean
+ * }>}
  */
-cleanupListOfValues.fn = function (item, params) {
-  if (item.type !== 'element') {
-    return;
-  }
+cleanupListOfValues.fn = (_root, params) => {
+  const {
+    floatPrecision = 3,
+    leadingZero = true,
+    defaultPx = true,
+    convertToPx = true,
+  } = params;
 
-  if (item.attributes.points != null) {
-    item.attributes.points = roundValues(item.attributes.points);
-  }
+  /**
+   * @type {(lists: string) => string}
+   */
+  const roundValues = (lists) => {
+    const roundedList = [];
 
-  if (item.attributes['enable-background'] != null) {
-    item.attributes['enable-background'] = roundValues(
-      item.attributes['enable-background']
-    );
-  }
-
-  if (item.attributes.viewBox != null) {
-    item.attributes.viewBox = roundValues(item.attributes.viewBox);
-  }
-
-  if (item.attributes['stroke-dasharray'] != null) {
-    item.attributes['stroke-dasharray'] = roundValues(
-      item.attributes['stroke-dasharray']
-    );
-  }
-
-  if (item.attributes.dx != null) {
-    item.attributes.dx = roundValues(item.attributes.dx);
-  }
-
-  if (item.attributes.dy != null) {
-    item.attributes.dy = roundValues(item.attributes.dy);
-  }
-
-  if (item.attributes.x != null) {
-    item.attributes.x = roundValues(item.attributes.x);
-  }
-
-  if (item.attributes.y != null) {
-    item.attributes.y = roundValues(item.attributes.y);
-  }
-
-  function roundValues(lists) {
-    var num,
-      units,
-      match,
-      matchNew,
-      listsArr = lists.split(regSeparator),
-      roundedList = [];
-
-    for (const elem of listsArr) {
-      match = elem.match(regNumericValues);
-      matchNew = elem.match(/new/);
+    for (const elem of lists.split(regSeparator)) {
+      const match = elem.match(regNumericValues);
+      const matchNew = elem.match(/new/);
 
       // if attribute value matches regNumericValues
       if (match) {
         // round it to the fixed precision
-        (num = +(+match[1]).toFixed(params.floatPrecision)),
-          (units = match[3] || '');
+        let num = Number(Number(match[1]).toFixed(floatPrecision));
+        /**
+         * @type {any}
+         */
+        let matchedUnit = match[3] || '';
+        /**
+         * @type{'' | keyof typeof absoluteLengths}
+         */
+        let units = matchedUnit;
 
         // convert absolute values to pixels
-        if (params.convertToPx && units && units in absoluteLengths) {
-          var pxNum = +(absoluteLengths[units] * match[1]).toFixed(
-            params.floatPrecision
+        if (convertToPx && units && units in absoluteLengths) {
+          const pxNum = Number(
+            (absoluteLengths[units] * Number(match[1])).toFixed(floatPrecision)
           );
 
-          if (String(pxNum).length < match[0].length)
-            (num = pxNum), (units = 'px');
+          if (pxNum.toString().length < match[0].length) {
+            num = pxNum;
+            units = 'px';
+          }
         }
 
         // and remove leading zero
-        if (params.leadingZero) {
-          num = removeLeadingZero(num);
+        let str;
+        if (leadingZero) {
+          str = removeLeadingZero(num);
+        } else {
+          str = num.toString();
         }
 
         // remove default 'px' units
-        if (params.defaultPx && units === 'px') {
+        if (defaultPx && units === 'px') {
           units = '';
         }
 
-        roundedList.push(num + units);
+        roundedList.push(str + units);
       }
       // if attribute value is "new"(only enable-background).
       else if (matchNew) {
@@ -45245,7 +45800,49 @@ cleanupListOfValues.fn = function (item, params) {
     }
 
     return roundedList.join(' ');
-  }
+  };
+
+  return {
+    element: {
+      enter: (node) => {
+        if (node.attributes.points != null) {
+          node.attributes.points = roundValues(node.attributes.points);
+        }
+
+        if (node.attributes['enable-background'] != null) {
+          node.attributes['enable-background'] = roundValues(
+            node.attributes['enable-background']
+          );
+        }
+
+        if (node.attributes.viewBox != null) {
+          node.attributes.viewBox = roundValues(node.attributes.viewBox);
+        }
+
+        if (node.attributes['stroke-dasharray'] != null) {
+          node.attributes['stroke-dasharray'] = roundValues(
+            node.attributes['stroke-dasharray']
+          );
+        }
+
+        if (node.attributes.dx != null) {
+          node.attributes.dx = roundValues(node.attributes.dx);
+        }
+
+        if (node.attributes.dy != null) {
+          node.attributes.dy = roundValues(node.attributes.dy);
+        }
+
+        if (node.attributes.x != null) {
+          node.attributes.x = roundValues(node.attributes.x);
+        }
+
+        if (node.attributes.y != null) {
+          node.attributes.y = roundValues(node.attributes.y);
+        }
+      },
+    },
+  };
 };
 
 var convertStyleToAttrs = {};
@@ -45383,168 +45980,26 @@ function g() {
 
 var prefixIds = {};
 
+const csstree = lib$1;
+const { referencesProps } = _collections;
+
+/**
+ * @typedef {import('../lib/types').XastElement} XastElement
+ * @typedef {import('../lib/types').PluginInfo} PluginInfo
+ */
+
+prefixIds.type = 'visitor';
 prefixIds.name = 'prefixIds';
-
-prefixIds.type = 'perItem';
-
 prefixIds.active = false;
-
-prefixIds.params = {
-  delim: '__',
-  prefixIds: true,
-  prefixClassNames: true,
-};
-
 prefixIds.description = 'prefix IDs';
 
-var csstree = lib$1,
-  collections = _collections,
-  referencesProps = collections.referencesProps,
-  rxId = /^#(.*)$/, // regular expression for matching an ID + extracing its name
-  addPrefix = null;
-
-const unquote = (string) => {
-  const first = string.charAt(0);
-  if (first === "'" || first === '"') {
-    if (first === string.charAt(string.length - 1)) {
-      return string.slice(1, -1);
-    }
-  }
-  return string;
-};
-
-// Escapes a string for being used as ID
-var escapeIdentifierName = function (str) {
-  return str.replace(/[. ]/g, '_');
-};
-
-// Matches an #ID value, captures the ID name
-var matchId = function (urlVal) {
-  var idUrlMatches = urlVal.match(rxId);
-  if (idUrlMatches === null) {
-    return false;
-  }
-  return idUrlMatches[1];
-};
-
-// Matches an url(...) value, captures the URL
-var matchUrl = function (val) {
-  var urlMatches = /url\((.*?)\)/gi.exec(val);
-  if (urlMatches === null) {
-    return false;
-  }
-  return urlMatches[1];
-};
-
-// prefixes an #ID
-var prefixId = function (val) {
-  var idName = matchId(val);
-  if (!idName) {
-    return false;
-  }
-  return '#' + addPrefix(idName);
-};
-
-// prefixes a class attribute value
-const addPrefixToClassAttr = (element, name) => {
-  if (
-    element.attributes[name] == null ||
-    element.attributes[name].length === 0
-  ) {
-    return;
-  }
-
-  element.attributes[name] = element.attributes[name]
-    .split(/\s+/)
-    .map(addPrefix)
-    .join(' ');
-};
-
-// prefixes an ID attribute value
-const addPrefixToIdAttr = (element, name) => {
-  if (
-    element.attributes[name] == null ||
-    element.attributes[name].length === 0
-  ) {
-    return;
-  }
-
-  element.attributes[name] = addPrefix(element.attributes[name]);
-};
-
-// prefixes a href attribute value
-const addPrefixToHrefAttr = (element, name) => {
-  if (
-    element.attributes[name] == null ||
-    element.attributes[name].length === 0
-  ) {
-    return;
-  }
-
-  const idPrefixed = prefixId(element.attributes[name]);
-  if (!idPrefixed) {
-    return;
-  }
-  element.attributes[name] = idPrefixed;
-};
-
-// prefixes an URL attribute value
-const addPrefixToUrlAttr = (element, name) => {
-  if (
-    element.attributes[name] == null ||
-    element.attributes[name].length === 0
-  ) {
-    return;
-  }
-
-  // url(...) in value
-  const urlVal = matchUrl(element.attributes[name]);
-  if (!urlVal) {
-    return;
-  }
-
-  const idPrefixed = prefixId(urlVal);
-  if (!idPrefixed) {
-    return;
-  }
-
-  element.attributes[name] = 'url(' + idPrefixed + ')';
-};
-
-// prefixes begin/end attribute value
-const addPrefixToBeginEndAttr = (element, name) => {
-  if (
-    element.attributes[name] == null ||
-    element.attributes[name].length === 0
-  ) {
-    return;
-  }
-
-  const parts = element.attributes[name].split('; ').map((val) => {
-    val = val.trim();
-
-    if (val.endsWith('.end') || val.endsWith('.start')) {
-      const [id, postfix] = val.split('.');
-
-      let idPrefixed = prefixId(`#${id}`);
-
-      if (!idPrefixed) {
-        return val;
-      }
-
-      idPrefixed = idPrefixed.slice(1);
-      return `${idPrefixed}.${postfix}`;
-    } else {
-      return val;
-    }
-  });
-
-  element.attributes[name] = parts.join('; ');
-};
-
+/**
+ * extract basename from path
+ * @type {(path: string) => string}
+ */
 const getBasename = (path) => {
   // extract everything after latest slash or backslash
-  const matched = path.match(/[/\\]([^/\\]+)$/);
+  const matched = path.match(/[/\\]?([^/\\]+)$/);
   if (matched) {
     return matched[1];
   }
@@ -45552,241 +46007,337 @@ const getBasename = (path) => {
 };
 
 /**
+ * escapes a string for being used as ID
+ * @type {(string: string) => string}
+ */
+const escapeIdentifierName = (str) => {
+  return str.replace(/[. ]/g, '_');
+};
+
+/**
+ * @type {(string: string) => string}
+ */
+const unquote = (string) => {
+  if (
+    (string.startsWith('"') && string.endsWith('"')) ||
+    (string.startsWith("'") && string.endsWith("'"))
+  ) {
+    return string.slice(1, -1);
+  }
+  return string;
+};
+
+/**
+ * prefix an ID
+ * @type {(prefix: string, name: string) => string}
+ */
+const prefixId = (prefix, value) => {
+  if (value.startsWith(prefix)) {
+    return value;
+  }
+  return prefix + value;
+};
+
+/**
+ * prefix an #ID
+ * @type {(prefix: string, name: string) => string | null}
+ */
+const prefixReference = (prefix, value) => {
+  if (value.startsWith('#')) {
+    return '#' + prefixId(prefix, value.slice(1));
+  }
+  return null;
+};
+
+/**
  * Prefixes identifiers
  *
- * @param {Object} node node
- * @param {Object} opts plugin params
- * @param {Object} extra plugin extra information
- *
  * @author strarsis <strarsis@gmail.com>
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   prefix?: boolean | string | ((node: XastElement, info: PluginInfo) => string),
+ *   delim?: string,
+ *   prefixIds?: boolean,
+ *   prefixClassNames?: boolean,
+ * }>}
  */
-prefixIds.fn = function (node, opts, extra) {
-  // skip subsequent passes when multipass is used
-  if (extra.multipassCount && extra.multipassCount > 0) {
-    return;
-  }
+prefixIds.fn = (_root, params, info) => {
+  const { delim = '__', prefixIds = true, prefixClassNames = true } = params;
 
-  // prefix, from file name or option
-  var prefix = 'prefix';
-  if (opts.prefix) {
-    if (typeof opts.prefix === 'function') {
-      prefix = opts.prefix(node, extra);
-    } else {
-      prefix = opts.prefix;
-    }
-  } else if (opts.prefix === false) {
-    prefix = false;
-  } else if (extra && extra.path && extra.path.length > 0) {
-    var filename = getBasename(extra.path);
-    prefix = filename;
-  }
+  return {
+    element: {
+      enter: (node) => {
+        /**
+         * prefix, from file name or option
+         * @type {string}
+         */
+        let prefix = 'prefix' + delim;
+        if (typeof params.prefix === 'function') {
+          prefix = params.prefix(node, info) + delim;
+        } else if (typeof params.prefix === 'string') {
+          prefix = params.prefix + delim;
+        } else if (params.prefix === false) {
+          prefix = '';
+        } else if (info.path != null && info.path.length > 0) {
+          prefix = escapeIdentifierName(getBasename(info.path)) + delim;
+        }
 
-  // prefixes a normal value
-  addPrefix = function (name) {
-    if (prefix === false) {
-      return escapeIdentifierName(name);
-    }
-    return escapeIdentifierName(prefix + opts.delim + name);
-  };
+        // prefix id/class selectors and url() references in styles
+        if (node.name === 'style') {
+          // skip empty <style/> elements
+          if (node.children.length === 0) {
+            return;
+          }
 
-  // <style/> property values
+          // parse styles
+          let cssText = '';
+          if (
+            node.children[0].type === 'text' ||
+            node.children[0].type === 'cdata'
+          ) {
+            cssText = node.children[0].value;
+          }
+          /**
+           * @type {null | csstree.CssNode}
+           */
+          let cssAst = null;
+          try {
+            cssAst = csstree.parse(cssText, {
+              parseValue: true,
+              parseCustomProperty: false,
+            });
+          } catch {
+            return;
+          }
 
-  if (node.type === 'element' && node.name === 'style') {
-    if (node.children.length === 0) {
-      // skip empty <style/>s
-      return;
-    }
+          csstree.walk(cssAst, (node) => {
+            // #ID, .class selectors
+            if (
+              (prefixIds && node.type === 'IdSelector') ||
+              (prefixClassNames && node.type === 'ClassSelector')
+            ) {
+              node.name = prefixId(prefix, node.name);
+              return;
+            }
+            // url(...) references
+            if (
+              node.type === 'Url' &&
+              node.value.value &&
+              node.value.value.length > 0
+            ) {
+              const prefixed = prefixReference(
+                prefix,
+                unquote(node.value.value)
+              );
+              if (prefixed != null) {
+                node.value.value = prefixed;
+              }
+            }
+          });
 
-    var cssStr = '';
-    if (node.children[0].type === 'text' || node.children[0].type === 'cdata') {
-      cssStr = node.children[0].value;
-    }
-
-    var cssAst = {};
-    try {
-      cssAst = csstree.parse(cssStr, {
-        parseValue: true,
-        parseCustomProperty: false,
-      });
-    } catch (parseError) {
-      console.warn(
-        'Warning: Parse error of styles of <style/> element, skipped. Error details: ' +
-          parseError
-      );
-      return;
-    }
-
-    var idPrefixed = '';
-    csstree.walk(cssAst, function (node) {
-      // #ID, .class
-      if (
-        ((opts.prefixIds && node.type === 'IdSelector') ||
-          (opts.prefixClassNames && node.type === 'ClassSelector')) &&
-        node.name
-      ) {
-        node.name = addPrefix(node.name);
-        return;
-      }
-
-      // url(...) in value
-      if (
-        node.type === 'Url' &&
-        node.value.value &&
-        node.value.value.length > 0
-      ) {
-        idPrefixed = prefixId(unquote(node.value.value));
-        if (!idPrefixed) {
+          // update styles
+          if (
+            node.children[0].type === 'text' ||
+            node.children[0].type === 'cdata'
+          ) {
+            node.children[0].value = csstree.generate(cssAst);
+          }
           return;
         }
-        node.value.value = idPrefixed;
-      }
-    });
 
-    // update <style>s
-    node.children[0].value = csstree.generate(cssAst);
-    return;
-  }
+        // prefix an ID attribute value
+        if (
+          prefixIds &&
+          node.attributes.id != null &&
+          node.attributes.id.length !== 0
+        ) {
+          node.attributes.id = prefixId(prefix, node.attributes.id);
+        }
 
-  // element attributes
+        // prefix a class attribute value
+        if (
+          prefixClassNames &&
+          node.attributes.class != null &&
+          node.attributes.class.length !== 0
+        ) {
+          node.attributes.class = node.attributes.class
+            .split(/\s+/)
+            .map((name) => prefixId(prefix, name))
+            .join(' ');
+        }
 
-  if (node.type !== 'element') {
-    return;
-  }
+        // prefix a href attribute value
+        // xlink:href is deprecated, must be still supported
+        for (const name of ['href', 'xlink:href']) {
+          if (
+            node.attributes[name] != null &&
+            node.attributes[name].length !== 0
+          ) {
+            const prefixed = prefixReference(prefix, node.attributes[name]);
+            if (prefixed != null) {
+              node.attributes[name] = prefixed;
+            }
+          }
+        }
 
-  // Nodes
+        // prefix an URL attribute value
+        for (const name of referencesProps) {
+          if (
+            node.attributes[name] != null &&
+            node.attributes[name].length !== 0
+          ) {
+            // extract id reference from url(...) value
+            const matches = /url\((.*?)\)/gi.exec(node.attributes[name]);
+            if (matches != null) {
+              const value = matches[1];
+              const prefixed = prefixReference(prefix, value);
+              if (prefixed != null) {
+                node.attributes[name] = `url(${prefixed})`;
+              }
+            }
+          }
+        }
 
-  if (opts.prefixIds) {
-    // ID
-    addPrefixToIdAttr(node, 'id');
-  }
-
-  if (opts.prefixClassNames) {
-    // Class
-    addPrefixToClassAttr(node, 'class');
-  }
-
-  // References
-
-  // href
-  addPrefixToHrefAttr(node, 'href');
-
-  // (xlink:)href (deprecated, must be still supported)
-  addPrefixToHrefAttr(node, 'xlink:href');
-
-  // (referenceable) properties
-  for (var referencesProp of referencesProps) {
-    addPrefixToUrlAttr(node, referencesProp);
-  }
-
-  addPrefixToBeginEndAttr(node, 'begin');
-  addPrefixToBeginEndAttr(node, 'end');
+        // prefix begin/end attribute value
+        for (const name of ['begin', 'end']) {
+          if (
+            node.attributes[name] != null &&
+            node.attributes[name].length !== 0
+          ) {
+            const parts = node.attributes[name].split(/\s*;\s+/).map((val) => {
+              if (val.endsWith('.end') || val.endsWith('.start')) {
+                const [id, postfix] = val.split('.');
+                return `${prefixId(prefix, id)}.${postfix}`;
+              }
+              return val;
+            });
+            node.attributes[name] = parts.join('; ');
+          }
+        }
+      },
+    },
+  };
 };
 
 var removeAttributesBySelector = {};
 
+const { querySelectorAll } = xast;
+
 removeAttributesBySelector.name = 'removeAttributesBySelector';
-
-removeAttributesBySelector.type = 'perItem';
-
+removeAttributesBySelector.type = 'visitor';
 removeAttributesBySelector.active = false;
-
 removeAttributesBySelector.description =
   'removes attributes of elements that match a css selector';
 
 /**
  * Removes attributes of elements that match a css selector.
  *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
  * @example
  * <caption>A selector removing a single attribute</caption>
- * plugins:
- *   - removeAttributesBySelector:
+ * plugins: [
+ *   {
+ *     name: "removeAttributesBySelector",
+ *     params: {
  *       selector: "[fill='#00ff00']"
  *       attributes: "fill"
+ *     }
+ *   }
+ * ]
  *
  * <rect x="0" y="0" width="100" height="100" fill="#00ff00" stroke="#00ff00"/>
  *   ↓
  * <rect x="0" y="0" width="100" height="100" stroke="#00ff00"/>
  *
  * <caption>A selector removing multiple attributes</caption>
- * plugins:
- *   - removeAttributesBySelector:
- *       selector: "[fill='#00ff00']"
- *       attributes:
- *         - fill
- *         - stroke
+ * plugins: [
+ *   {
+ *     name: "removeAttributesBySelector",
+ *     params: {
+ *       selector: "[fill='#00ff00']",
+ *       attributes: [
+ *         "fill",
+ *         "stroke"
+ *       ]
+ *     }
+ *   }
+ * ]
  *
  * <rect x="0" y="0" width="100" height="100" fill="#00ff00" stroke="#00ff00"/>
  *   ↓
  * <rect x="0" y="0" width="100" height="100"/>
  *
  * <caption>Multiple selectors removing attributes</caption>
- * plugins:
- *   - removeAttributesBySelector:
- *       selectors:
- *         - selector: "[fill='#00ff00']"
+ * plugins: [
+ *   {
+ *     name: "removeAttributesBySelector",
+ *     params: {
+ *       selectors: [
+ *         {
+ *           selector: "[fill='#00ff00']",
  *           attributes: "fill"
- *
- *         - selector: "#remove"
- *           attributes:
- *             - stroke
- *             - id
+ *         },
+ *         {
+ *           selector: "#remove",
+ *           attributes: [
+ *             "stroke",
+ *             "id"
+ *           ]
+ *         }
+ *       ]
+ *     }
+ *   }
+ * ]
  *
  * <rect x="0" y="0" width="100" height="100" fill="#00ff00" stroke="#00ff00"/>
  *   ↓
  * <rect x="0" y="0" width="100" height="100"/>
  *
- * @see {@link https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Selectors|MDN CSS Selectors}
+ * @link https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Selectors|MDN CSS Selectors
  *
  * @author Bradley Mease
+ *
+ * @type {import('../lib/types').Plugin<any>}
  */
-removeAttributesBySelector.fn = function (item, params) {
-  var selectors = Array.isArray(params.selectors) ? params.selectors : [params];
-
-  selectors.map(({ selector, attributes }) => {
-    if (item.matches(selector)) {
-      if (Array.isArray(attributes)) {
-        for (const name of attributes) {
-          delete item.attributes[name];
+removeAttributesBySelector.fn = (root, params) => {
+  const selectors = Array.isArray(params.selectors)
+    ? params.selectors
+    : [params];
+  for (const { selector, attributes } of selectors) {
+    const nodes = querySelectorAll(root, selector);
+    for (const node of nodes) {
+      if (node.type === 'element') {
+        if (Array.isArray(attributes)) {
+          for (const name of attributes) {
+            delete node.attributes[name];
+          }
+        } else {
+          delete node.attributes[attributes];
         }
-      } else {
-        delete item.attributes[attributes];
       }
     }
-  });
+  }
+  return {};
 };
 
 var removeAttrs = {};
 
-var DEFAULT_SEPARATOR = ':';
-
 removeAttrs.name = 'removeAttrs';
-
-removeAttrs.type = 'perItem';
-
+removeAttrs.type = 'visitor';
 removeAttrs.active = false;
-
 removeAttrs.description = 'removes specified attributes';
 
-removeAttrs.params = {
-  elemSeparator: DEFAULT_SEPARATOR,
-  preserveCurrentColor: false,
-  attrs: [],
-};
+const DEFAULT_SEPARATOR = ':';
 
 /**
  * Remove attributes
  *
- * @param elemSeparator
+ * @example elemSeparator
  *   format: string
  *
- * @param preserveCurrentColor
+ * @example preserveCurrentColor
  *   format: boolean
  *
- * @param attrs:
+ * @example attrs:
  *
  *   format: [ element* : attribute* : value* ]
  *
@@ -45838,74 +46389,77 @@ removeAttrs.params = {
  *     attrs: 'stroke.*'
  *
  *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Benny Schudel
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   elemSeparator?: string,
+ *   preserveCurrentColor?: boolean,
+ *   attrs: string | Array<string>
+ * }>}
  */
-removeAttrs.fn = function (item, params) {
+removeAttrs.fn = (root, params) => {
   // wrap into an array if params is not
-  if (!Array.isArray(params.attrs)) {
-    params.attrs = [params.attrs];
-  }
+  const elemSeparator =
+    typeof params.elemSeparator == 'string'
+      ? params.elemSeparator
+      : DEFAULT_SEPARATOR;
+  const preserveCurrentColor =
+    typeof params.preserveCurrentColor == 'boolean'
+      ? params.preserveCurrentColor
+      : false;
+  const attrs = Array.isArray(params.attrs) ? params.attrs : [params.attrs];
 
-  if (item.type === 'element') {
-    var elemSeparator =
-      typeof params.elemSeparator == 'string'
-        ? params.elemSeparator
-        : DEFAULT_SEPARATOR;
-    var preserveCurrentColor =
-      typeof params.preserveCurrentColor == 'boolean'
-        ? params.preserveCurrentColor
-        : false;
+  return {
+    element: {
+      enter: (node) => {
+        for (let pattern of attrs) {
+          // if no element separators (:), assume it's attribute name, and apply to all elements *regardless of value*
+          if (pattern.includes(elemSeparator) === false) {
+            pattern = ['.*', elemSeparator, pattern, elemSeparator, '.*'].join(
+              ''
+            );
+            // if only 1 separator, assume it's element and attribute name, and apply regardless of attribute value
+          } else if (pattern.split(elemSeparator).length < 3) {
+            pattern = [pattern, elemSeparator, '.*'].join('');
+          }
 
-    // prepare patterns
-    var patterns = params.attrs.map(function (pattern) {
-      // if no element separators (:), assume it's attribute name, and apply to all elements *regardless of value*
-      if (pattern.indexOf(elemSeparator) === -1) {
-        pattern = ['.*', elemSeparator, pattern, elemSeparator, '.*'].join('');
+          // create regexps for element, attribute name, and attribute value
+          const list = pattern.split(elemSeparator).map((value) => {
+            // adjust single * to match anything
+            if (value === '*') {
+              value = '.*';
+            }
+            return new RegExp(['^', value, '$'].join(''), 'i');
+          });
 
-        // if only 1 separator, assume it's element and attribute name, and apply regardless of attribute value
-      } else if (pattern.split(elemSeparator).length < 3) {
-        pattern = [pattern, elemSeparator, '.*'].join('');
-      }
-
-      // create regexps for element, attribute name, and attribute value
-      return pattern.split(elemSeparator).map(function (value) {
-        // adjust single * to match anything
-        if (value === '*') {
-          value = '.*';
-        }
-
-        return new RegExp(['^', value, '$'].join(''), 'i');
-      });
-    });
-
-    // loop patterns
-    patterns.forEach(function (pattern) {
-      // matches element
-      if (pattern[0].test(item.name)) {
-        // loop attributes
-        for (const [name, value] of Object.entries(item.attributes)) {
-          var isFillCurrentColor =
-            preserveCurrentColor && name == 'fill' && value == 'currentColor';
-          var isStrokeCurrentColor =
-            preserveCurrentColor && name == 'stroke' && value == 'currentColor';
-
-          if (!(isFillCurrentColor || isStrokeCurrentColor)) {
-            // matches attribute name
-            if (pattern[1].test(name)) {
-              // matches attribute value
-              if (pattern[2].test(value)) {
-                delete item.attributes[name];
+          // matches element
+          if (list[0].test(node.name)) {
+            // loop attributes
+            for (const [name, value] of Object.entries(node.attributes)) {
+              const isFillCurrentColor =
+                preserveCurrentColor &&
+                name == 'fill' &&
+                value == 'currentColor';
+              const isStrokeCurrentColor =
+                preserveCurrentColor &&
+                name == 'stroke' &&
+                value == 'currentColor';
+              if (
+                !isFillCurrentColor &&
+                !isStrokeCurrentColor &&
+                // matches attribute name
+                list[1].test(name) &&
+                // matches attribute value
+                list[2].test(value)
+              ) {
+                delete node.attributes[name];
               }
             }
           }
         }
-      }
-    });
-  }
+      },
+    },
+  };
 };
 
 var removeDimensions = {};
@@ -45954,26 +46508,18 @@ removeDimensions.fn = function (item) {
 
 var removeElementsByAttr = {};
 
+const { detachNodeFromParent: detachNodeFromParent$4 } = xast;
+
 removeElementsByAttr.name = 'removeElementsByAttr';
-
-removeElementsByAttr.type = 'perItem';
-
+removeElementsByAttr.type = 'visitor';
 removeElementsByAttr.active = false;
-
 removeElementsByAttr.description =
   'removes arbitrary elements by ID or className (disabled by default)';
-
-removeElementsByAttr.params = {
-  id: [],
-  class: [],
-};
 
 /**
  * Remove arbitrary SVG elements by ID or className.
  *
- * @param id
- *   examples:
- *
+ * @example id
  *     > single: remove element with ID of `elementID`
  *     ---
  *     removeElementsByAttr:
@@ -45986,9 +46532,7 @@ removeElementsByAttr.params = {
  *         - 'elementID'
  *         - 'anotherID'
  *
- * @param class
- *   examples:
- *
+ * @example class
  *     > single: remove all elements with class of `elementClass`
  *     ---
  *     removeElementsByAttr:
@@ -46001,178 +46545,184 @@ removeElementsByAttr.params = {
  *         - 'elementClass'
  *         - 'anotherClass'
  *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Eli Dupuis (@elidupuis)
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   id?: string | Array<string>,
+ *   class?: string | Array<string>
+ * }>}
  */
-removeElementsByAttr.fn = function (item, params) {
-  // wrap params in an array if not already
-  ['id', 'class'].forEach(function (key) {
-    if (!Array.isArray(params[key])) {
-      params[key] = [params[key]];
-    }
-  });
-
-  // abort if current item is no an element
-  if (item.type !== 'element') {
-    return;
-  }
-
-  // remove element if it's `id` matches configured `id` params
-  if (item.attributes.id != null && params.id.length !== 0) {
-    return params.id.includes(item.attributes.id) === false;
-  }
-
-  // remove element if it's `class` contains any of the configured `class` params
-  if (item.attributes.class && params.class.length !== 0) {
-    const classList = item.attributes.class.split(' ');
-    return params.class.some((item) => classList.includes(item)) === false;
-  }
+removeElementsByAttr.fn = (root, params) => {
+  const ids =
+    params.id == null ? [] : Array.isArray(params.id) ? params.id : [params.id];
+  const classes =
+    params.class == null
+      ? []
+      : Array.isArray(params.class)
+      ? params.class
+      : [params.class];
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        // remove element if it's `id` matches configured `id` params
+        if (node.attributes.id != null && ids.length !== 0) {
+          if (ids.includes(node.attributes.id)) {
+            detachNodeFromParent$4(node, parentNode);
+          }
+        }
+        // remove element if it's `class` contains any of the configured `class` params
+        if (node.attributes.class && classes.length !== 0) {
+          const classList = node.attributes.class.split(' ');
+          for (const item of classes) {
+            if (classList.includes(item)) {
+              detachNodeFromParent$4(node, parentNode);
+              break;
+            }
+          }
+        }
+      },
+    },
+  };
 };
 
 var removeOffCanvasPaths = {};
 
+/**
+ * @typedef {import('../lib/types').PathDataItem} PathDataItem
+ */
+
+const { visitSkip, detachNodeFromParent: detachNodeFromParent$3 } = xast;
+const { parsePathData } = path;
+const { intersects } = _path;
+
+removeOffCanvasPaths.type = 'visitor';
 removeOffCanvasPaths.name = 'removeOffCanvasPaths';
-
-removeOffCanvasPaths.type = 'perItem';
-
 removeOffCanvasPaths.active = false;
-
 removeOffCanvasPaths.description =
   'removes elements that are drawn outside of the viewbox (disabled by default)';
-
-const JSAPI$3 = jsAPI;
-
-var _path = _path$1,
-  intersects = _path.intersects,
-  path2js = _path.path2js,
-  viewBox,
-  viewBoxJS;
 
 /**
  * Remove elements that are drawn outside of the viewbox.
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
  * @author JoshyPHP
- */
-removeOffCanvasPaths.fn = function (item) {
-  if (
-    item.type === 'element' &&
-    item.name === 'path' &&
-    item.attributes.d != null &&
-    typeof viewBox !== 'undefined'
-  ) {
-    // Consider that any item with a transform attribute or a M instruction
-    // within the viewBox is visible
-    if (hasTransform(item) || pathMovesWithinViewBox(item.attributes.d)) {
-      return true;
-    }
-
-    var pathJS = path2js(item);
-    if (pathJS.length === 2) {
-      // Use a closed clone of the path if it's too short for intersects()
-      pathJS = JSON.parse(JSON.stringify(pathJS));
-      pathJS.push({ instruction: 'z' });
-    }
-
-    return intersects(viewBoxJS, pathJS);
-  }
-  if (item.type === 'element' && item.name === 'svg') {
-    parseViewBox(item);
-  }
-
-  return true;
-};
-
-/**
- * Test whether given item or any of its ancestors has a transform attribute.
  *
- * @param {String} path
- * @return {Boolean}
+ * @type {import('../lib/types').Plugin<void>}
  */
-function hasTransform(item) {
-  return (
-    item.attributes.transform != null ||
-    (item.parentNode &&
-      item.parentNode.type === 'element' &&
-      hasTransform(item.parentNode))
-  );
-}
+removeOffCanvasPaths.fn = () => {
+  /**
+   * @type {null | {
+   *   top: number,
+   *   right: number,
+   *   bottom: number,
+   *   left: number,
+   *   width: number,
+   *   height: number
+   * }}
+   */
+  let viewBoxData = null;
 
-/**
- * Parse the viewBox coordinates and compute the JS representation of its path.
- *
- * @param {Object} svg svg element item
- */
-function parseViewBox(svg) {
-  var viewBoxData = '';
-  if (svg.attributes.viewBox != null) {
-    // Remove commas and plus signs, normalize and trim whitespace
-    viewBoxData = svg.attributes.viewBox;
-  } else if (svg.attributes.height != null && svg.attributes.width != null) {
-    viewBoxData = `0 0 ${svg.attributes.width} ${svg.attributes.height}`;
-  }
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        if (node.name === 'svg' && parentNode.type === 'root') {
+          let viewBox = '';
+          // find viewbox
+          if (node.attributes.viewBox != null) {
+            // remove commas and plus signs, normalize and trim whitespace
+            viewBox = node.attributes.viewBox;
+          } else if (
+            node.attributes.height != null &&
+            node.attributes.width != null
+          ) {
+            viewBox = `0 0 ${node.attributes.width} ${node.attributes.height}`;
+          }
 
-  // Remove commas and plus signs, normalize and trim whitespace
-  viewBoxData = viewBoxData
-    .replace(/[,+]|px/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/^\s*|\s*$/g, '');
+          // parse viewbox
+          // remove commas and plus signs, normalize and trim whitespace
+          viewBox = viewBox
+            .replace(/[,+]|px/g, ' ')
+            .replace(/\s+/g, ' ')
+            .replace(/^\s*|\s*$/g, '');
+          // ensure that the dimensions are 4 values separated by space
+          const m =
+            /^(-?\d*\.?\d+) (-?\d*\.?\d+) (\d*\.?\d+) (\d*\.?\d+)$/.exec(
+              viewBox
+            );
+          if (m == null) {
+            return;
+          }
+          const left = Number.parseFloat(m[1]);
+          const top = Number.parseFloat(m[2]);
+          const width = Number.parseFloat(m[3]);
+          const height = Number.parseFloat(m[4]);
 
-  // Ensure that the dimensions are 4 values separated by space
-  var m = /^(-?\d*\.?\d+) (-?\d*\.?\d+) (\d*\.?\d+) (\d*\.?\d+)$/.exec(
-    viewBoxData
-  );
-  if (!m) {
-    return;
-  }
+          // store the viewBox boundaries
+          viewBoxData = {
+            left,
+            top,
+            right: left + width,
+            bottom: top + height,
+            width,
+            height,
+          };
+        }
 
-  // Store the viewBox boundaries
-  viewBox = {
-    left: parseFloat(m[1]),
-    top: parseFloat(m[2]),
-    right: parseFloat(m[1]) + parseFloat(m[3]),
-    bottom: parseFloat(m[2]) + parseFloat(m[4]),
-  };
+        // consider that any item with a transform attribute is visible
+        if (node.attributes.transform != null) {
+          return visitSkip;
+        }
 
-  var path = new JSAPI$3({
-    type: 'element',
-    name: 'path',
-    attributes: {
-      d: 'M' + m[1] + ' ' + m[2] + 'h' + m[3] + 'v' + m[4] + 'H' + m[1] + 'z',
+        if (
+          node.name === 'path' &&
+          node.attributes.d != null &&
+          viewBoxData != null
+        ) {
+          const pathData = parsePathData(node.attributes.d);
+
+          // consider that a M command within the viewBox is visible
+          let visible = false;
+          for (const pathDataItem of pathData) {
+            if (pathDataItem.command === 'M') {
+              const [x, y] = pathDataItem.args;
+              if (
+                x >= viewBoxData.left &&
+                x <= viewBoxData.right &&
+                y >= viewBoxData.top &&
+                y <= viewBoxData.bottom
+              ) {
+                visible = true;
+              }
+            }
+          }
+          if (visible) {
+            return;
+          }
+
+          if (pathData.length === 2) {
+            // close the path too short for intersects()
+            pathData.push({ command: 'z', args: [] });
+          }
+
+          const { left, top, width, height } = viewBoxData;
+          /**
+           * @type {Array<PathDataItem>}
+           */
+          const viewBoxPathData = [
+            { command: 'M', args: [left, top] },
+            { command: 'h', args: [width] },
+            { command: 'v', args: [height] },
+            { command: 'H', args: [left] },
+            { command: 'z', args: [] },
+          ];
+
+          if (intersects(viewBoxPathData, pathData) === false) {
+            detachNodeFromParent$3(node, parentNode);
+          }
+        }
+      },
     },
-    content: [],
-  });
-
-  viewBoxJS = path2js(path);
-}
-
-/**
- * Test whether given path has a M instruction with coordinates within the viewBox.
- *
- * @param {String} path
- * @return {Boolean}
- */
-function pathMovesWithinViewBox(path) {
-  var regexp = /M\s*(-?\d*\.?\d+)(?!\d)\s*(-?\d*\.?\d+)/g,
-    m;
-  while (null !== (m = regexp.exec(path))) {
-    if (
-      m[1] >= viewBox.left &&
-      m[1] <= viewBox.right &&
-      m[2] >= viewBox.top &&
-      m[2] <= viewBox.bottom
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-}
+  };
+};
 
 var removeRasterImages = {};
 
@@ -46189,6 +46739,8 @@ removeRasterImages.description = 'removes raster images (disabled by default)';
  * @see https://bugs.webkit.org/show_bug.cgi?id=63548
  *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 removeRasterImages.fn = () => {
   return {
@@ -46220,8 +46772,9 @@ removeScriptElement.description = 'removes <script> elements (disabled by defaul
  *
  * https://www.w3.org/TR/SVG11/script.html
  *
- *
  * @author Patrick Klingemann
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 removeScriptElement.fn = () => {
   return {
@@ -46250,6 +46803,8 @@ removeStyleElement.description = 'removes <style> element (disabled by default)'
  * https://www.w3.org/TR/SVG11/styling.html#StyleElement
  *
  * @author Betsy Dupuis
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 removeStyleElement.fn = () => {
   return {
@@ -46295,15 +46850,17 @@ removeXMLNS.fn = function (item) {
 
 var reusePaths = {};
 
-const { traverse } = xast;
+/**
+ * @typedef {import('../lib/types').XastElement} XastElement
+ * @typedef {import('../lib/types').XastParent} XastParent
+ * @typedef {import('../lib/types').XastNode} XastNode
+ */
+
 const JSAPI$2 = jsAPI;
 
+reusePaths.type = 'visitor';
 reusePaths.name = 'reusePaths';
-
-reusePaths.type = 'full';
-
 reusePaths.active = false;
-
 reusePaths.description =
   'Finds <path> elements with the same d, fill, and ' +
   'stroke, and converts them to <use> elements ' +
@@ -46314,169 +46871,209 @@ reusePaths.description =
  * <use> elements referencing a single <path> def.
  *
  * @author Jacob Howcroft
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
-reusePaths.fn = function (root) {
-  const seen = new Map();
-  let count = 0;
-  const defs = [];
-  traverse(root, (node) => {
-    if (
-      node.type !== 'element' ||
-      node.name !== 'path' ||
-      node.attributes.d == null
-    ) {
-      return;
-    }
-    const d = node.attributes.d;
-    const fill = node.attributes.fill || '';
-    const stroke = node.attributes.stroke || '';
-    const key = d + ';s:' + stroke + ';f:' + fill;
-    const hasSeen = seen.get(key);
-    if (!hasSeen) {
-      seen.set(key, { elem: node, reused: false });
-      return;
-    }
-    if (!hasSeen.reused) {
-      hasSeen.reused = true;
-      if (hasSeen.elem.attributes.id == null) {
-        hasSeen.elem.attributes.id = 'reuse-' + count++;
-      }
-      defs.push(hasSeen.elem);
-    }
-    convertToUse(node, hasSeen.elem.attributes.id);
-  });
-  if (defs.length > 0) {
-    const defsTag = new JSAPI$2(
-      {
-        type: 'element',
-        name: 'defs',
-        attributes: {},
-        children: [],
-      },
-      root
-    );
-    root.children[0].spliceContent(0, 0, defsTag);
-    for (let def of defs) {
-      // Remove class and style before copying to avoid circular refs in
-      // JSON.stringify. This is fine because we don't actually want class or
-      // style information to be copied.
-      const style = def.style;
-      const defClass = def.class;
-      delete def.style;
-      delete def.class;
-      const defClone = def.clone();
-      def.style = style;
-      def.class = defClass;
-      delete defClone.attributes.transform;
-      defsTag.spliceContent(0, 0, defClone);
-      // Convert the original def to a use so the first usage isn't duplicated.
-      def = convertToUse(def, defClone.attributes.id);
-      delete def.attributes.id;
-    }
-  }
-  return root;
-};
+reusePaths.fn = () => {
+  /**
+   * @type {Map<string, Array<XastElement>>}
+   */
+  const paths = new Map();
 
-/** */
-function convertToUse(item, href) {
-  item.renameElem('use');
-  delete item.attributes.d;
-  delete item.attributes.stroke;
-  delete item.attributes.fill;
-  item.attributes['xlink:href'] = '#' + href;
-  delete item.pathJS;
-  return item;
-}
+  return {
+    element: {
+      enter: (node) => {
+        if (node.name === 'path' && node.attributes.d != null) {
+          const d = node.attributes.d;
+          const fill = node.attributes.fill || '';
+          const stroke = node.attributes.stroke || '';
+          const key = d + ';s:' + stroke + ';f:' + fill;
+          let list = paths.get(key);
+          if (list == null) {
+            list = [];
+            paths.set(key, list);
+          }
+          list.push(node);
+        }
+      },
+
+      exit: (node, parentNode) => {
+        if (node.name === 'svg' && parentNode.type === 'root') {
+          /**
+           * @type {XastElement}
+           */
+          const rawDefs = {
+            type: 'element',
+            name: 'defs',
+            attributes: {},
+            children: [],
+          };
+          /**
+           * @type {XastElement}
+           */
+          const defsTag = new JSAPI$2(rawDefs, node);
+          let index = 0;
+          for (const list of paths.values()) {
+            if (list.length > 1) {
+              // add reusable path to defs
+              /**
+               * @type {XastElement}
+               */
+              const rawPath = {
+                type: 'element',
+                name: 'path',
+                attributes: { ...list[0].attributes },
+                children: [],
+              };
+              delete rawPath.attributes.transform;
+              let id;
+              if (rawPath.attributes.id == null) {
+                id = 'reuse-' + index;
+                index += 1;
+                rawPath.attributes.id = id;
+              } else {
+                id = rawPath.attributes.id;
+                delete list[0].attributes.id;
+              }
+              /**
+               * @type {XastElement}
+               */
+              const reusablePath = new JSAPI$2(rawPath, defsTag);
+              defsTag.children.push(reusablePath);
+              // convert paths to <use>
+              for (const pathNode of list) {
+                pathNode.name = 'use';
+                pathNode.attributes['xlink:href'] = '#' + id;
+                delete pathNode.attributes.d;
+                delete pathNode.attributes.stroke;
+                delete pathNode.attributes.fill;
+              }
+            }
+          }
+          if (defsTag.children.length !== 0) {
+            if (node.attributes['xmlns:xlink'] == null) {
+              node.attributes['xmlns:xlink'] = 'http://www.w3.org/1999/xlink';
+            }
+            node.children.unshift(defsTag);
+          }
+        }
+      },
+    },
+  };
+};
 
 var sortAttrs = {};
 
-const { parseName } = tools;
-
+sortAttrs.type = 'visitor';
 sortAttrs.name = 'sortAttrs';
-
-sortAttrs.type = 'perItem';
-
 sortAttrs.active = false;
-
-sortAttrs.description = 'sorts element attributes (disabled by default)';
-
-sortAttrs.params = {
-  order: [
-    'id',
-    'width',
-    'height',
-    'x',
-    'x1',
-    'x2',
-    'y',
-    'y1',
-    'y2',
-    'cx',
-    'cy',
-    'r',
-    'fill',
-    'stroke',
-    'marker',
-    'd',
-    'points',
-  ],
-};
+sortAttrs.description = 'Sort element attributes for better compression';
 
 /**
- * Sort element attributes for epic readability.
- *
- * @param {Object} item current iteration item
- * @param {Object} params plugin params
+ * Sort element attributes for better compression
  *
  * @author Nikolay Frantsev
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   order?: Array<string>
+ *   xmlnsOrder?: 'front' | 'alphabetical'
+ * }>}
  */
-sortAttrs.fn = function (item, params) {
-  const orderlen = params.order.length + 1;
-  const xmlnsOrder = params.xmlnsOrder || 'front';
+sortAttrs.fn = (_root, params) => {
+  const {
+    order = [
+      'id',
+      'width',
+      'height',
+      'x',
+      'x1',
+      'x2',
+      'y',
+      'y1',
+      'y2',
+      'cx',
+      'cy',
+      'r',
+      'fill',
+      'stroke',
+      'marker',
+      'd',
+      'points',
+    ],
+    xmlnsOrder = 'front',
+  } = params;
 
-  if (item.type === 'element') {
-    const attrs = Object.entries(item.attributes);
-
-    attrs.sort(([aName], [bName]) => {
-      const { prefix: aPrefix } = parseName(aName);
-      const { prefix: bPrefix } = parseName(bName);
-      if (aPrefix != bPrefix) {
-        // xmlns attributes implicitly have the prefix xmlns
-        if (xmlnsOrder == 'front') {
-          if (aPrefix === 'xmlns') return -1;
-          if (bPrefix === 'xmlns') return 1;
-        }
-        return aPrefix < bPrefix ? -1 : 1;
+  /**
+   * @type {(name: string) => number}
+   */
+  const getNsPriority = (name) => {
+    if (xmlnsOrder === 'front') {
+      // put xmlns first
+      if (name === 'xmlns') {
+        return 3;
       }
-
-      let aindex = orderlen;
-      let bindex = orderlen;
-
-      for (let i = 0; i < params.order.length; i++) {
-        if (aName == params.order[i]) {
-          aindex = i;
-        } else if (aName.indexOf(params.order[i] + '-') === 0) {
-          aindex = i + 0.5;
-        }
-        if (bName == params.order[i]) {
-          bindex = i;
-        } else if (bName.indexOf(params.order[i] + '-') === 0) {
-          bindex = i + 0.5;
-        }
+      // xmlns:* attributes second
+      if (name.startsWith('xmlns:')) {
+        return 2;
       }
-
-      if (aindex != bindex) {
-        return aindex - bindex;
-      }
-      return aName < bName ? -1 : 1;
-    });
-
-    const sorted = {};
-    for (const [name, value] of attrs) {
-      sorted[name] = value;
     }
-    item.attributes = sorted;
-  }
+    // other namespaces after and sort them alphabetically
+    if (name.includes(':')) {
+      return 1;
+    }
+    // other attributes
+    return 0;
+  };
+
+  /**
+   * @type {(a: [string, string], b: [string, string]) => number}
+   */
+  const compareAttrs = ([aName], [bName]) => {
+    // sort namespaces
+    const aPriority = getNsPriority(aName);
+    const bPriority = getNsPriority(bName);
+    const priorityNs = bPriority - aPriority;
+    if (priorityNs !== 0) {
+      return priorityNs;
+    }
+    // extract the first part from attributes
+    // for example "fill" from "fill" and "fill-opacity"
+    const [aPart] = aName.split('-');
+    const [bPart] = bName.split('-');
+    // rely on alphabetical sort when the first part is the same
+    if (aPart !== bPart) {
+      const aInOrderFlag = order.includes(aPart) ? 1 : 0;
+      const bInOrderFlag = order.includes(bPart) ? 1 : 0;
+      // sort by position in order param
+      if (aInOrderFlag === 1 && bInOrderFlag === 1) {
+        return order.indexOf(aPart) - order.indexOf(bPart);
+      }
+      // put attributes from order param before others
+      const priorityOrder = bInOrderFlag - aInOrderFlag;
+      if (priorityOrder !== 0) {
+        return priorityOrder;
+      }
+    }
+    // sort alphabetically
+    return aName < bName ? -1 : 1;
+  };
+
+  return {
+    element: {
+      enter: (node) => {
+        const attrs = Object.entries(node.attributes);
+        attrs.sort(compareAttrs);
+        /**
+         * @type {Record<string, string>}
+         */
+        const sortedAttributes = {};
+        for (const [name, value] of attrs) {
+          sortedAttributes[name] = value;
+        }
+        node.attributes = sortedAttributes;
+      },
+    },
+  };
 };
 
 (function (exports) {
@@ -47214,16 +47811,18 @@ var sax = {};
     return text
   }
 
-  function error (parser, er) {
+  function error (parser, reason) {
     closeText(parser);
-    if (parser.trackPosition) {
-      er += '\nLine: ' + parser.line +
-        '\nColumn: ' + parser.column +
-        '\nChar: ' + parser.c;
-    }
-    er = new Error(er);
-    parser.error = er;
-    emit(parser, 'onerror', er);
+    const message = reason +
+      '\nLine: ' + parser.line +
+      '\nColumn: ' + parser.column +
+      '\nChar: ' + parser.c;
+    const error = new Error(message);
+    error.reason = reason;
+    error.line = parser.line;
+    error.column = parser.column;
+    parser.error = error;
+    emit(parser, 'onerror', error);
     return parser
   }
 
@@ -48092,6 +48691,55 @@ const SAX = sax;
 const JSAPI$1 = jsAPI;
 const { textElems: textElems$1 } = _collections;
 
+class SvgoParserError extends Error {
+  constructor(message, line, column, source, file) {
+    super(message);
+    this.name = 'SvgoParserError';
+    this.message = `${file || '<input>'}:${line}:${column}: ${message}`;
+    this.reason = message;
+    this.line = line;
+    this.column = column;
+    this.source = source;
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, SvgoParserError);
+    }
+  }
+  toString() {
+    const lines = this.source.split(/\r?\n/);
+    const startLine = Math.max(this.line - 3, 0);
+    const endLine = Math.min(this.line + 2, lines.length);
+    const lineNumberWidth = String(endLine).length;
+    const startColumn = Math.max(this.column - 54, 0);
+    const endColumn = Math.max(this.column + 20, 80);
+    const code = lines
+      .slice(startLine, endLine)
+      .map((line, index) => {
+        const lineSlice = line.slice(startColumn, endColumn);
+        let ellipsisPrefix = '';
+        let ellipsisSuffix = '';
+        if (startColumn !== 0) {
+          ellipsisPrefix = startColumn > line.length - 1 ? ' ' : '…';
+        }
+        if (endColumn < line.length - 1) {
+          ellipsisSuffix = '…';
+        }
+        const number = startLine + 1 + index;
+        const gutter = ` ${number.toString().padStart(lineNumberWidth)} | `;
+        if (number === this.line) {
+          const gutterSpacing = gutter.replace(/[^|]/g, ' ');
+          const lineSpacing = (
+            ellipsisPrefix + line.slice(startColumn, this.column - 1)
+          ).replace(/[^\t]/g, ' ');
+          const spacing = gutterSpacing + lineSpacing;
+          return `>${gutter}${ellipsisPrefix}${lineSlice}${ellipsisSuffix}\n ${spacing}^`;
+        }
+        return ` ${gutter}${ellipsisPrefix}${lineSlice}${ellipsisSuffix}`;
+      })
+      .join('\n');
+    return `${this.name}: ${this.message}\n\n${code}\n`;
+  }
+}
+
 const entityDeclaration = /<!ENTITY\s+(\S+)\s+(?:'([^']+)'|"([^"]+)")\s*>/g;
 
 const config = {
@@ -48108,7 +48756,7 @@ const config = {
  *
  * @param {String} data input data
  */
-var svg2js$1 = function (data) {
+var svg2js$1 = function (data, from) {
   const sax = SAX.parser(config.strict, config);
   const root = new JSAPI$1({ type: 'root', children: [] });
   let current = root;
@@ -48203,22 +48851,23 @@ var svg2js$1 = function (data) {
   };
 
   sax.onerror = function (e) {
-    e.message = 'Error in parsing SVG: ' + e.message;
-    if (e.message.indexOf('Unexpected end') < 0) {
-      throw e;
+    const error = new SvgoParserError(
+      e.reason,
+      e.line + 1,
+      e.column,
+      data,
+      from
+    );
+    if (e.message.indexOf('Unexpected end') === -1) {
+      throw error;
     }
   };
 
-  try {
-    sax.write(data).close();
-    return root;
-  } catch (e) {
-    return { error: e.message };
-  }
+  sax.write(data).close();
+  return root;
 };
 
-var EOL = require$$1$3.EOL,
-  textElems = _collections.textElems;
+const { textElems } = _collections;
 
 var defaults = {
   doctypeStart: '<!DOCTYPE',
@@ -48245,6 +48894,8 @@ var defaults = {
   encodeEntity: encodeEntity,
   pretty: false,
   useShortTags: true,
+  eol: 'lf',
+  finalNewline: false,
 };
 
 var entities = {
@@ -48281,15 +48932,21 @@ function JS2SVG(config) {
     this.config.indent = '    ';
   }
 
+  if (this.config.eol === 'crlf') {
+    this.eol = '\r\n';
+  } else {
+    this.eol = '\n';
+  }
+
   if (this.config.pretty) {
-    this.config.doctypeEnd += EOL;
-    this.config.procInstEnd += EOL;
-    this.config.commentEnd += EOL;
-    this.config.cdataEnd += EOL;
-    this.config.tagShortEnd += EOL;
-    this.config.tagOpenEnd += EOL;
-    this.config.tagCloseEnd += EOL;
-    this.config.textEnd += EOL;
+    this.config.doctypeEnd += this.eol;
+    this.config.procInstEnd += this.eol;
+    this.config.commentEnd += this.eol;
+    this.config.cdataEnd += this.eol;
+    this.config.tagShortEnd += this.eol;
+    this.config.tagOpenEnd += this.eol;
+    this.config.tagCloseEnd += this.eol;
+    this.config.textEnd += this.eol;
   }
 
   this.indentLevel = 0;
@@ -48334,6 +48991,15 @@ JS2SVG.prototype.convert = function (data) {
   }
 
   this.indentLevel--;
+
+  if (
+    this.config.finalNewline &&
+    this.indentLevel === 0 &&
+    svg.length > 0 &&
+    svg[svg.length - 1] !== '\n'
+  ) {
+    svg += this.eol;
+  }
 
   return {
     data: svg,
@@ -48566,7 +49232,12 @@ const optimize$1 = (input, config) => {
   }
   for (let i = 0; i < maxPassCount; i += 1) {
     info.multipassCount = i;
-    svgjs = svg2js(input);
+    // TODO throw this error in v3
+    try {
+      svgjs = svg2js(input, config.path);
+    } catch (error) {
+      return { error: error.toString(), modernError: error };
+    }
     if (svgjs.error != null) {
       if (config.path != null) {
         svgjs.path = config.path;
@@ -48617,11 +49288,26 @@ const createContentItem$1 = (data) => {
 };
 svgo.createContentItem = createContentItem$1;
 
+const os = require$$2$2;
 const {
   extendDefaultPlugins,
-  optimize,
+  optimize: optimizeAgnostic,
   createContentItem,
 } = svgo;
+
+const optimize = (input, config) => {
+  if (typeof config !== 'object') {
+    throw Error('Config should be an object');
+  }
+  return optimizeAgnostic(input, {
+    ...config,
+    js2svg: {
+      // platform specific default for end of line
+      eol: os.EOL === '\r\n' ? 'crlf' : 'lf',
+      ...(config == null ? null : config.js2svg),
+    },
+  });
+};
 var optimize_1 = optimize;
 
 export { defaultPlugins_1 as defaultPlugins, extendDefaultPlugins_1 as extendDefaultPlugins, optimize_1 as optimize, plugins$1 as plugins };

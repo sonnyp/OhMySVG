@@ -6,13 +6,13 @@
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^13.0.4",
     "eslint": "^7.32.0",
-    "eslint-plugin-import": "^2.24.0",
-    "husky": "^7.0.1",
+    "eslint-plugin-import": "^2.24.2",
+    "husky": "^7.0.2",
     "lint-staged": "^11.1.2",
-    "prettier": "^2.3.2",
-    "rollup": "^2.56.2",
-    "rollup-plugin-ignore": "^1.0.9",
-    "svgo": "^2.4.0"
+    "prettier": "^2.4.0",
+    "rollup": "^2.56.3",
+    "rollup-plugin-ignore": "^1.0.10",
+    "svgo": "^2.6.0"
   },
   "lint-staged": {
     "*.js": "eslint --cache --fix",
