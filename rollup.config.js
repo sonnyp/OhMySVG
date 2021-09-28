@@ -8,5 +8,10 @@ export default {
   output: {
     file: "src/svgo.js",
   },
-  plugins: [ignore(["fs", "path", "os"]), nodeResolve(), commonjs(), json()],
+  plugins: [
+    ignore(["fs", "path", "os", "url"]),
+    nodeResolve(),
+    commonjs(),
+    json(),
+  ],
 };

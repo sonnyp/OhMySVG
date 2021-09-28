@@ -22,7 +22,7 @@ var _rollup_plugin_ignore_empty_module_placeholder$1 = /*#__PURE__*/Object.freez
 	'default': _rollup_plugin_ignore_empty_module_placeholder
 });
 
-var require$$2$2 = /*@__PURE__*/getAugmentedNamespace(_rollup_plugin_ignore_empty_module_placeholder$1);
+var require$$3$1 = /*@__PURE__*/getAugmentedNamespace(_rollup_plugin_ignore_empty_module_placeholder$1);
 
 var svgo = {};
 
@@ -8491,7 +8491,7 @@ xast.matches = matches$2;
 /**
  * @type {(node: XastChild, name: string) => null | XastChild}
  */
-const closestByName$3 = (node, name) => {
+const closestByName$2 = (node, name) => {
   let currentNode = node;
   while (currentNode) {
     if (currentNode.type === 'element' && currentNode.name === name) {
@@ -8502,20 +8502,20 @@ const closestByName$3 = (node, name) => {
   }
   return null;
 };
-xast.closestByName = closestByName$3;
+xast.closestByName = closestByName$2;
 
-const visitSkip$4 = Symbol();
-xast.visitSkip = visitSkip$4;
+const visitSkip$5 = Symbol();
+xast.visitSkip = visitSkip$5;
 
 /**
  * @type {(node: XastNode, visitor: Visitor, parentNode?: any) => void}
  */
-const visit$4 = (node, visitor, parentNode) => {
+const visit$5 = (node, visitor, parentNode) => {
   const callbacks = visitor[node.type];
   if (callbacks && callbacks.enter) {
     // @ts-ignore hard to infer
     const symbol = callbacks.enter(node, parentNode);
-    if (symbol === visitSkip$4) {
+    if (symbol === visitSkip$5) {
       return;
     }
   }
@@ -8523,14 +8523,14 @@ const visit$4 = (node, visitor, parentNode) => {
   if (node.type === 'root') {
     // copy children array to not loose cursor when children is spliced
     for (const child of node.children) {
-      visit$4(child, visitor, node);
+      visit$5(child, visitor, node);
     }
   }
   // visit element children if still attached to parent
   if (node.type === 'element') {
     if (parentNode.children.includes(node)) {
       for (const child of node.children) {
-        visit$4(child, visitor, node);
+        visit$5(child, visitor, node);
       }
     }
   }
@@ -8539,18 +8539,18 @@ const visit$4 = (node, visitor, parentNode) => {
     callbacks.exit(node, parentNode);
   }
 };
-xast.visit = visit$4;
+xast.visit = visit$5;
 
 /**
  * @type {(node: XastChild, parentNode: XastParent) => void}
  */
-const detachNodeFromParent$k = (node, parentNode) => {
+const detachNodeFromParent$l = (node, parentNode) => {
   // avoid splice to not break for loops
   parentNode.children = parentNode.children.filter((child) => child !== node);
 };
-xast.detachNodeFromParent = detachNodeFromParent$k;
+xast.detachNodeFromParent = detachNodeFromParent$l;
 
-const { visit: visit$3 } = xast;
+const { visit: visit$4 } = xast;
 
 /**
  * Plugins engine.
@@ -8585,7 +8585,7 @@ const invokePlugins$1 = (ast, info, plugins, overrides, globalOverrides) => {
       if (plugin.active) {
         const visitor = plugin.fn(ast, params, info);
         if (visitor != null) {
-          visit$3(ast, visitor);
+          visit$4(ast, visitor);
         }
       }
     }
@@ -8644,7 +8644,7 @@ plugins.createPreset = createPreset$1;
 
 var removeDoctype$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$j } = xast;
+const { detachNodeFromParent: detachNodeFromParent$k } = xast;
 
 removeDoctype$1.name = 'removeDoctype';
 removeDoctype$1.type = 'visitor';
@@ -8679,7 +8679,7 @@ removeDoctype$1.fn = () => {
   return {
     doctype: {
       enter: (node, parentNode) => {
-        detachNodeFromParent$j(node, parentNode);
+        detachNodeFromParent$k(node, parentNode);
       },
     },
   };
@@ -8687,7 +8687,7 @@ removeDoctype$1.fn = () => {
 
 var removeXMLProcInst$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$i } = xast;
+const { detachNodeFromParent: detachNodeFromParent$j } = xast;
 
 removeXMLProcInst$1.name = 'removeXMLProcInst';
 removeXMLProcInst$1.type = 'visitor';
@@ -8709,7 +8709,7 @@ removeXMLProcInst$1.fn = () => {
     instruction: {
       enter: (node, parentNode) => {
         if (node.name === 'xml') {
-          detachNodeFromParent$i(node, parentNode);
+          detachNodeFromParent$j(node, parentNode);
         }
       },
     },
@@ -8718,7 +8718,7 @@ removeXMLProcInst$1.fn = () => {
 
 var removeComments$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$h } = xast;
+const { detachNodeFromParent: detachNodeFromParent$i } = xast;
 
 removeComments$1.name = 'removeComments';
 removeComments$1.type = 'visitor';
@@ -8741,7 +8741,7 @@ removeComments$1.fn = () => {
     comment: {
       enter: (node, parentNode) => {
         if (node.value.charAt(0) !== '!') {
-          detachNodeFromParent$h(node, parentNode);
+          detachNodeFromParent$i(node, parentNode);
         }
       },
     },
@@ -8750,7 +8750,7 @@ removeComments$1.fn = () => {
 
 var removeMetadata$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$g } = xast;
+const { detachNodeFromParent: detachNodeFromParent$h } = xast;
 
 removeMetadata$1.name = 'removeMetadata';
 removeMetadata$1.type = 'visitor';
@@ -8771,7 +8771,7 @@ removeMetadata$1.fn = () => {
     element: {
       enter: (node, parentNode) => {
         if (node.name === 'metadata') {
-          detachNodeFromParent$g(node, parentNode);
+          detachNodeFromParent$h(node, parentNode);
         }
       },
     },
@@ -8859,10 +8859,16 @@ exports.elemsGroups = {
     'feConvolveMatrix',
     'feDiffuseLighting',
     'feDisplacementMap',
+    'feDropShadow',
     'feFlood',
+    'feFuncA',
+    'feFuncB',
+    'feFuncG',
+    'feFuncR',
     'feGaussianBlur',
     'feImage',
     'feMerge',
+    'feMergeNode',
     'feMorphology',
     'feOffset',
     'feSpecularLighting',
@@ -10946,7 +10952,7 @@ exports.colorsProps = [
 ];
 }(_collections));
 
-const { detachNodeFromParent: detachNodeFromParent$f } = xast;
+const { detachNodeFromParent: detachNodeFromParent$g } = xast;
 const { editorNamespaces } = _collections;
 
 removeEditorsNSData$1.type = 'visitor';
@@ -11005,7 +11011,7 @@ removeEditorsNSData$1.fn = (_root, params) => {
         if (node.name.includes(':')) {
           const [prefix] = node.name.split(':');
           if (prefixes.includes(prefix)) {
-            detachNodeFromParent$f(node, parentNode);
+            detachNodeFromParent$g(node, parentNode);
           }
         }
       },
@@ -34080,7 +34086,7 @@ var pseudo = {
     'slotted': slotted
 };
 
-var parser = {
+var parser$1 = {
     parseContext: {
         default: 'StyleSheet',
         stylesheet: 'StyleSheet',
@@ -34259,7 +34265,7 @@ function merge() {
 syntax.exports = create$4.create(
     merge(
         lexer$2,
-        parser,
+        parser$1,
         walker
     )
 );
@@ -35348,7 +35354,11 @@ JSAPI$4.prototype.matches = function (selector) {
   return is(this, selector, cssSelectOpts);
 };
 
-const { closestByName: closestByName$2, detachNodeFromParent: detachNodeFromParent$e } = xast;
+/**
+ * @typedef {import('../lib/types').XastElement} XastElement
+ */
+
+const { visitSkip: visitSkip$4, detachNodeFromParent: detachNodeFromParent$f } = xast;
 const JSAPI$3 = jsAPI;
 
 mergeStyles$1.name = 'mergeStyles';
@@ -35360,75 +35370,78 @@ mergeStyles$1.description = 'merge multiple style elements into one';
  * Merge multiple style elements into one.
  *
  * @author strarsis <strarsis@gmail.com>
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
 mergeStyles$1.fn = () => {
+  /**
+   * @type {null | XastElement}
+   */
   let firstStyleElement = null;
   let collectedStyles = '';
   let styleContentType = 'text';
 
-  const enterElement = (node, parentNode) => {
-    // collect style elements
-    if (node.name !== 'style') {
-      return;
-    }
-
-    // skip <style> with invalid type attribute
-    if (
-      node.attributes.type != null &&
-      node.attributes.type !== '' &&
-      node.attributes.type !== 'text/css'
-    ) {
-      return;
-    }
-
-    // skip <foreignObject> content
-    if (closestByName$2(node, 'foreignObject')) {
-      return;
-    }
-
-    // extract style element content
-    let css = '';
-    for (const child of node.children) {
-      if (child.type === 'text') {
-        css += child.value;
-      }
-      if (child.type === 'cdata') {
-        styleContentType = 'cdata';
-        css += child.value;
-      }
-    }
-
-    // remove empty style elements
-    if (css.trim().length === 0) {
-      detachNodeFromParent$e(node, parentNode);
-      return;
-    }
-
-    // collect css and wrap with media query if present in attribute
-    if (node.attributes.media == null) {
-      collectedStyles += css;
-    } else {
-      collectedStyles += `@media ${node.attributes.media}{${css}}`;
-      delete node.attributes.media;
-    }
-
-    // combine collected styles in the first style element
-    if (firstStyleElement == null) {
-      firstStyleElement = node;
-    } else {
-      detachNodeFromParent$e(node, parentNode);
-      firstStyleElement.children = [
-        new JSAPI$3(
-          { type: styleContentType, value: collectedStyles },
-          firstStyleElement
-        ),
-      ];
-    }
-  };
-
   return {
     element: {
-      enter: enterElement,
+      enter: (node, parentNode) => {
+        // skip <foreignObject> content
+        if (node.name === 'foreignObject') {
+          return visitSkip$4;
+        }
+
+        // collect style elements
+        if (node.name !== 'style') {
+          return;
+        }
+
+        // skip <style> with invalid type attribute
+        if (
+          node.attributes.type != null &&
+          node.attributes.type !== '' &&
+          node.attributes.type !== 'text/css'
+        ) {
+          return;
+        }
+
+        // extract style element content
+        let css = '';
+        for (const child of node.children) {
+          if (child.type === 'text') {
+            css += child.value;
+          }
+          if (child.type === 'cdata') {
+            styleContentType = 'cdata';
+            css += child.value;
+          }
+        }
+
+        // remove empty style elements
+        if (css.trim().length === 0) {
+          detachNodeFromParent$f(node, parentNode);
+          return;
+        }
+
+        // collect css and wrap with media query if present in attribute
+        if (node.attributes.media == null) {
+          collectedStyles += css;
+        } else {
+          collectedStyles += `@media ${node.attributes.media}{${css}}`;
+          delete node.attributes.media;
+        }
+
+        // combine collected styles in the first style element
+        if (firstStyleElement == null) {
+          firstStyleElement = node;
+        } else {
+          detachNodeFromParent$f(node, parentNode);
+          firstStyleElement.children = [
+            new JSAPI$3(
+              { type: styleContentType, value: collectedStyles },
+              firstStyleElement
+            ),
+          ];
+        }
+      },
     },
   };
 };
@@ -39553,7 +39566,7 @@ var removeUselessDefs$1 = {};
  * @typedef {import('../lib/types').XastElement} XastElement
  */
 
-const { detachNodeFromParent: detachNodeFromParent$d } = xast;
+const { detachNodeFromParent: detachNodeFromParent$e } = xast;
 const { elemsGroups: elemsGroups$4 } = _collections;
 
 removeUselessDefs$1.type = 'visitor';
@@ -39579,7 +39592,7 @@ removeUselessDefs$1.fn = () => {
           const usefulNodes = [];
           collectUsefulNodes(node, usefulNodes);
           if (usefulNodes.length === 0) {
-            detachNodeFromParent$d(node, parentNode);
+            detachNodeFromParent$e(node, parentNode);
           }
           // TODO remove in SVGO 3
           for (const usefulNode of usefulNodes) {
@@ -39591,7 +39604,7 @@ removeUselessDefs$1.fn = () => {
           elemsGroups$4.nonRendering.includes(node.name) &&
           node.attributes.id == null
         ) {
-          detachNodeFromParent$d(node, parentNode);
+          detachNodeFromParent$e(node, parentNode);
         }
       },
     },
@@ -40025,6 +40038,7 @@ var style = {};
 /**
  * @typedef {import('css-tree').Rule} CsstreeRule
  * @typedef {import('./types').Specificity} Specificity
+ * @typedef {import('./types').Stylesheet} Stylesheet
  * @typedef {import('./types').StylesheetRule} StylesheetRule
  * @typedef {import('./types').StylesheetDeclaration} StylesheetDeclaration
  * @typedef {import('./types').ComputedStyles} ComputedStyles
@@ -40038,7 +40052,7 @@ const stable = stable$2.exports;
 const csstree$1 = lib$1;
 // @ts-ignore not defined in @types/csso
 const specificity = specificity$3;
-const { visit: visit$2, matches } = xast;
+const { visit: visit$3, matches } = xast;
 const {
   attrsGroups: attrsGroups$3,
   inheritableAttrs: inheritableAttrs$3,
@@ -40150,7 +40164,7 @@ const parseStyleDeclarations = (css) => {
 };
 
 /**
- * @type {(stylesheet: Array<StylesheetRule>, node: XastElement) => ComputedStyles}
+ * @type {(stylesheet: Stylesheet, node: XastElement) => ComputedStyles}
  */
 const computeOwnStyle = (stylesheet, node) => {
   /**
@@ -40168,7 +40182,7 @@ const computeOwnStyle = (stylesheet, node) => {
   }
 
   // collect matching rules
-  for (const { selectors, declarations, dynamic } of stylesheet) {
+  for (const { selectors, declarations, dynamic } of stylesheet.rules) {
     if (matches(node, selectors)) {
       for (const { name, value, important } of declarations) {
         const computed = computedStyle[name];
@@ -40233,17 +40247,23 @@ const compareSpecificity = (a, b) => {
 };
 
 /**
- * @type {(root: XastRoot) => Array<StylesheetRule>}
+ * @type {(root: XastRoot) => Stylesheet}
  */
 const collectStylesheet$5 = (root) => {
   /**
    * @type {Array<StylesheetRule>}
    */
-  const stylesheet = [];
-  // find and parse all styles
-  visit$2(root, {
+  const rules = [];
+  /**
+   * @type {Map<XastElement, XastParent>}
+   */
+  const parents = new Map();
+  visit$3(root, {
     element: {
-      enter: (node) => {
+      enter: (node, parentNode) => {
+        // store parents
+        parents.set(node, parentNode);
+        // find and parse all styles
         if (node.name === 'style') {
           const dynamic =
             node.attributes.media != null && node.attributes.media !== 'all';
@@ -40255,7 +40275,7 @@ const collectStylesheet$5 = (root) => {
             const children = node.children;
             for (const child of children) {
               if (child.type === 'text' || child.type === 'cdata') {
-                stylesheet.push(...parseStylesheet(child.value, dynamic));
+                rules.push(...parseStylesheet(child.value, dynamic));
               }
             }
           }
@@ -40264,24 +40284,23 @@ const collectStylesheet$5 = (root) => {
     },
   });
   // sort by selectors specificity
-  stable.inplace(stylesheet, (a, b) =>
+  stable.inplace(rules, (a, b) =>
     compareSpecificity(a.specificity, b.specificity)
   );
-  return stylesheet;
+  return { rules, parents };
 };
 style.collectStylesheet = collectStylesheet$5;
 
 /**
- * @type {(stylesheet: Array<StylesheetRule>, node: XastElement) => ComputedStyles}
+ * @type {(stylesheet: Stylesheet, node: XastElement) => ComputedStyles}
  */
 const computeStyle$5 = (stylesheet, node) => {
+  const { parents } = stylesheet;
   // collect inherited styles
   const computedStyles = computeOwnStyle(stylesheet, node);
-  let parent = node;
-  // @ts-ignore parentNode is forbidden in public usage
-  while (parent.parentNode && parent.parentNode.type !== 'root') {
-    // @ts-ignore parentNode is forbidden in public usage
-    const inheritedStyles = computeOwnStyle(stylesheet, parent.parentNode);
+  let parent = parents.get(node);
+  while (parent != null && parent.type !== 'root') {
+    const inheritedStyles = computeOwnStyle(stylesheet, parent);
     for (const [name, computed] of Object.entries(inheritedStyles)) {
       if (
         computedStyles[name] == null &&
@@ -40292,14 +40311,13 @@ const computeStyle$5 = (stylesheet, node) => {
         computedStyles[name] = { ...computed, inherited: true };
       }
     }
-    // @ts-ignore parentNode is forbidden in public usage
-    parent = parent.parentNode;
+    parent = parents.get(parent);
   }
   return computedStyles;
 };
 style.computeStyle = computeStyle$5;
 
-const { visitSkip: visitSkip$2, detachNodeFromParent: detachNodeFromParent$c } = xast;
+const { visitSkip: visitSkip$2, detachNodeFromParent: detachNodeFromParent$d } = xast;
 const { collectStylesheet: collectStylesheet$4, computeStyle: computeStyle$4 } = style;
 const {
   elems,
@@ -40435,13 +40453,13 @@ removeUnknownsAndDefaults$1.fn = (root, params) => {
           if (allowedChildren == null || allowedChildren.size === 0) {
             // remove unknown elements
             if (allowedChildrenPerElement.get(node.name) == null) {
-              detachNodeFromParent$c(node, parentNode);
+              detachNodeFromParent$d(node, parentNode);
               return;
             }
           } else {
             // remove not allowed children
             if (allowedChildren.has(node.name) === false) {
-              detachNodeFromParent$c(node, parentNode);
+              detachNodeFromParent$d(node, parentNode);
               return;
             }
           }
@@ -40557,7 +40575,7 @@ removeNonInheritableGroupAttrs$1.fn = function (item) {
 
 var removeUselessStrokeAndFill$1 = {};
 
-const { visit: visit$1, visitSkip: visitSkip$1, detachNodeFromParent: detachNodeFromParent$b } = xast;
+const { visit: visit$2, visitSkip: visitSkip$1, detachNodeFromParent: detachNodeFromParent$c } = xast;
 const { collectStylesheet: collectStylesheet$3, computeStyle: computeStyle$3 } = style;
 const { elemsGroups: elemsGroups$2 } = _collections;
 
@@ -40586,7 +40604,7 @@ removeUselessStrokeAndFill$1.fn = (root, params) => {
 
   // style and script elements deoptimise this plugin
   let hasStyleOrScript = false;
-  visit$1(root, {
+  visit$2(root, {
     element: {
       enter: (node) => {
         if (node.name === 'style' || node.name === 'script') {
@@ -40692,7 +40710,7 @@ removeUselessStrokeAndFill$1.fn = (root, params) => {
               fill.value === 'none') ||
               node.attributes.fill === 'none')
           ) {
-            detachNodeFromParent$b(node, parentNode);
+            detachNodeFromParent$c(node, parentNode);
           }
         }
       },
@@ -40754,7 +40772,7 @@ removeViewBox$1.fn = () => {
 
 var cleanupEnableBackground$1 = {};
 
-const { visit } = xast;
+const { visit: visit$1 } = xast;
 
 cleanupEnableBackground$1.type = 'visitor';
 cleanupEnableBackground$1.name = 'cleanupEnableBackground';
@@ -40781,7 +40799,7 @@ cleanupEnableBackground$1.fn = (root) => {
     /^new\s0\s0\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)\s([-+]?\d*\.?\d+([eE][-+]?\d+)?)$/;
 
   let hasFilter = false;
-  visit(root, {
+  visit$1(root, {
     element: {
       enter: (node) => {
         if (node.name === 'filter') {
@@ -41181,7 +41199,7 @@ path.stringifyPathData = stringifyPathData$2;
 const {
   querySelector,
   closestByName,
-  detachNodeFromParent: detachNodeFromParent$a,
+  detachNodeFromParent: detachNodeFromParent$b,
 } = xast;
 const { collectStylesheet: collectStylesheet$2, computeStyle: computeStyle$2 } = style;
 const { parsePathData: parsePathData$2 } = path;
@@ -41259,7 +41277,7 @@ removeHiddenElems$1.fn = (root, params) => {
           // keep if any descendant enables visibility
           querySelector(node, '[visibility=visible]') == null
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41276,7 +41294,7 @@ removeHiddenElems$1.fn = (root, params) => {
           // markers with display: none still rendered
           node.name !== 'marker'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41291,7 +41309,7 @@ removeHiddenElems$1.fn = (root, params) => {
           // transparent element inside clipPath still affect clipped elements
           closestByName(node, 'clipPath') == null
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41307,7 +41325,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.r === '0'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41323,7 +41341,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.rx === '0'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41339,7 +41357,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.ry === '0'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41355,7 +41373,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.width === '0'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41372,7 +41390,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.children.length === 0 &&
           node.attributes.height === '0'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41387,7 +41405,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'pattern' &&
           node.attributes.width === '0'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41402,7 +41420,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'pattern' &&
           node.attributes.height === '0'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41417,7 +41435,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'image' &&
           node.attributes.width === '0'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41432,7 +41450,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'image' &&
           node.attributes.height === '0'
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41443,12 +41461,12 @@ removeHiddenElems$1.fn = (root, params) => {
         // <path d=""/>
         if (pathEmptyD && node.name === 'path') {
           if (node.attributes.d == null) {
-            detachNodeFromParent$a(node, parentNode);
+            detachNodeFromParent$b(node, parentNode);
             return;
           }
           const pathData = parsePathData$2(node.attributes.d);
           if (pathData.length === 0) {
-            detachNodeFromParent$a(node, parentNode);
+            detachNodeFromParent$b(node, parentNode);
             return;
           }
           // keep single point paths for markers
@@ -41457,7 +41475,7 @@ removeHiddenElems$1.fn = (root, params) => {
             computedStyle['marker-start'] == null &&
             computedStyle['marker-end'] == null
           ) {
-            detachNodeFromParent$a(node, parentNode);
+            detachNodeFromParent$b(node, parentNode);
             return;
           }
           return;
@@ -41473,7 +41491,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'polyline' &&
           node.attributes.points == null
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
 
@@ -41487,7 +41505,7 @@ removeHiddenElems$1.fn = (root, params) => {
           node.name === 'polygon' &&
           node.attributes.points == null
         ) {
-          detachNodeFromParent$a(node, parentNode);
+          detachNodeFromParent$b(node, parentNode);
           return;
         }
       },
@@ -41497,7 +41515,7 @@ removeHiddenElems$1.fn = (root, params) => {
 
 var removeEmptyText$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$9 } = xast;
+const { detachNodeFromParent: detachNodeFromParent$a } = xast;
 
 removeEmptyText$1.name = 'removeEmptyText';
 removeEmptyText$1.type = 'visitor';
@@ -41534,11 +41552,11 @@ removeEmptyText$1.fn = (root, params) => {
       enter: (node, parentNode) => {
         // Remove empty text element
         if (text && node.name === 'text' && node.children.length === 0) {
-          detachNodeFromParent$9(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
         }
         // Remove empty tspan element
         if (tspan && node.name === 'tspan' && node.children.length === 0) {
-          detachNodeFromParent$9(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
         }
         // Remove tref with empty xlink:href attribute
         if (
@@ -41546,7 +41564,7 @@ removeEmptyText$1.fn = (root, params) => {
           node.name === 'tref' &&
           node.attributes['xlink:href'] == null
         ) {
-          detachNodeFromParent$9(node, parentNode);
+          detachNodeFromParent$a(node, parentNode);
         }
       },
     },
@@ -41560,7 +41578,7 @@ var convertShapeToPath$1 = {};
  */
 
 const { stringifyPathData: stringifyPathData$1 } = path;
-const { detachNodeFromParent: detachNodeFromParent$8 } = xast;
+const { detachNodeFromParent: detachNodeFromParent$9 } = xast;
 
 convertShapeToPath$1.name = 'convertShapeToPath';
 convertShapeToPath$1.type = 'visitor';
@@ -41654,7 +41672,7 @@ convertShapeToPath$1.fn = (root, params) => {
             Number
           );
           if (coords.length < 4) {
-            detachNodeFromParent$8(node, parentNode);
+            detachNodeFromParent$9(node, parentNode);
             return;
           }
           /**
@@ -41771,19 +41789,16 @@ convertEllipseToCircle$1.fn = () => {
 
 var moveElemsAttrsToGroup$1 = {};
 
+const { visit } = xast;
 const { inheritableAttrs: inheritableAttrs$1, pathElems: pathElems$2 } = _collections;
 
+moveElemsAttrsToGroup$1.type = 'visitor';
 moveElemsAttrsToGroup$1.name = 'moveElemsAttrsToGroup';
-
-moveElemsAttrsToGroup$1.type = 'perItemReverse';
-
 moveElemsAttrsToGroup$1.active = true;
-
-moveElemsAttrsToGroup$1.description = 'moves elements attributes to the existing group wrapper';
+moveElemsAttrsToGroup$1.description = 'Move common attributes of group children to the group';
 
 /**
- * Collapse content's intersected and inheritable
- * attributes to the existing group wrapper.
+ * Move common attributes of group children to the group
  *
  * @example
  * <g attr1="val1">
@@ -41800,101 +41815,108 @@ moveElemsAttrsToGroup$1.description = 'moves elements attributes to the existing
  *    <circle attr3="val3"/>
  * </g>
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
-moveElemsAttrsToGroup$1.fn = function (item) {
-  if (
-    item.type === 'element' &&
-    item.name === 'g' &&
-    item.children.length > 1
-  ) {
-    var intersection = {},
-      hasTransform = false,
-      hasClip =
-        item.attributes['clip-path'] != null || item.attributes.mask != null,
-      intersected = item.children.every(function (inner) {
-        if (
-          inner.type === 'element' &&
-          Object.keys(inner.attributes).length !== 0
-        ) {
-          // don't mess with possible styles (hack until CSS parsing is implemented)
-          if (inner.attributes.class) return false;
-          if (!Object.keys(intersection).length) {
-            intersection = inner.attributes;
-          } else {
-            intersection = intersectInheritableAttrs(
-              intersection,
-              inner.attributes
-            );
+moveElemsAttrsToGroup$1.fn = (root) => {
+  // find if any style element is present
+  let deoptimizedWithStyles = false;
+  visit(root, {
+    element: {
+      enter: (node) => {
+        if (node.name === 'style') {
+          deoptimizedWithStyles = true;
+        }
+      },
+    },
+  });
 
-            if (!intersection) return false;
-          }
-
-          return true;
+  return {
+    element: {
+      exit: (node) => {
+        // process only groups with more than 1 children
+        if (node.name !== 'g' || node.children.length <= 1) {
+          return;
         }
 
-        return false;
-      }),
-      allPath = item.children.every(function (inner) {
-        return inner.isElem(pathElems$2);
-      });
+        // deoptimize the plugin when style elements are present
+        // selectors may rely on id, classes or tag names
+        if (deoptimizedWithStyles) {
+          return;
+        }
 
-    if (intersected) {
-      item.children.forEach(function (g) {
-        for (const [name, value] of Object.entries(intersection)) {
-          if ((!allPath && !hasClip) || name !== 'transform') {
-            delete g.attributes[name];
-
-            if (name === 'transform') {
-              if (!hasTransform) {
-                if (item.attributes.transform != null) {
-                  item.attributes.transform =
-                    item.attributes.transform + ' ' + value;
-                } else {
-                  item.attributes.transform = value;
+        /**
+         * find common attributes in group children
+         * @type {Map<string, string>}
+         */
+        const commonAttributes = new Map();
+        let initial = true;
+        let everyChildIsPath = true;
+        for (const child of node.children) {
+          if (child.type === 'element') {
+            if (pathElems$2.includes(child.name) === false) {
+              everyChildIsPath = false;
+            }
+            if (initial) {
+              initial = false;
+              // collect all inheritable attributes from first child element
+              for (const [name, value] of Object.entries(child.attributes)) {
+                // consider only inheritable attributes
+                if (inheritableAttrs$1.includes(name)) {
+                  commonAttributes.set(name, value);
                 }
-
-                hasTransform = true;
               }
             } else {
-              item.attributes[name] = value;
+              // exclude uncommon attributes from initial list
+              for (const [name, value] of commonAttributes) {
+                if (child.attributes[name] !== value) {
+                  commonAttributes.delete(name);
+                }
+              }
             }
           }
         }
-      });
-    }
-  }
+
+        // preserve transform on children when group has clip-path or mask
+        if (
+          node.attributes['clip-path'] != null ||
+          node.attributes.mask != null
+        ) {
+          commonAttributes.delete('transform');
+        }
+
+        // preserve transform when all children are paths
+        // so the transform could be applied to path data by other plugins
+        if (everyChildIsPath) {
+          commonAttributes.delete('transform');
+        }
+
+        // add common children attributes to group
+        for (const [name, value] of commonAttributes) {
+          if (name === 'transform') {
+            if (node.attributes.transform != null) {
+              node.attributes.transform = `${node.attributes.transform} ${value}`;
+            } else {
+              node.attributes.transform = value;
+            }
+          } else {
+            node.attributes[name] = value;
+          }
+        }
+
+        // delete common attributes from children
+        for (const child of node.children) {
+          if (child.type === 'element') {
+            for (const [name] of commonAttributes) {
+              delete child.attributes[name];
+            }
+          }
+        }
+      },
+    },
+  };
 };
-
-/**
- * Intersect inheritable attributes.
- *
- * @param {Object} a first attrs object
- * @param {Object} b second attrs object
- *
- * @return {Object} intersected attrs object
- */
-function intersectInheritableAttrs(a, b) {
-  var c = {};
-
-  for (const [name, value] of Object.entries(a)) {
-    if (
-      // eslint-disable-next-line no-prototype-builtins
-      b.hasOwnProperty(name) &&
-      inheritableAttrs$1.includes(name) &&
-      value === b[name]
-    ) {
-      c[name] = value;
-    }
-  }
-
-  if (!Object.keys(c).length) return false;
-
-  return c;
-}
 
 var moveGroupAttrsToElems$1 = {};
 
@@ -41961,29 +41983,38 @@ moveGroupAttrsToElems$1.fn = function (item) {
 
 var collapseGroups$1 = {};
 
+/**
+ * @typedef {import('../lib/types').XastNode} XastNode
+ */
+
 const { inheritableAttrs, elemsGroups: elemsGroups$1 } = _collections;
 
+collapseGroups$1.type = 'visitor';
 collapseGroups$1.name = 'collapseGroups';
-
-collapseGroups$1.type = 'perItemReverse';
-
 collapseGroups$1.active = true;
-
 collapseGroups$1.description = 'collapses useless groups';
 
-function hasAnimatedAttr(item, name) {
-  if (item.type === 'element') {
-    return (
-      (elemsGroups$1.animation.includes(item.name) &&
-        item.attributes.attributeName === name) ||
-      (item.children.length !== 0 &&
-        item.children.some((child) => hasAnimatedAttr(child, name)))
-    );
+/**
+ * @type {(node: XastNode, name: string) => boolean}
+ */
+const hasAnimatedAttr = (node, name) => {
+  if (node.type === 'element') {
+    if (
+      elemsGroups$1.animation.includes(node.name) &&
+      node.attributes.attributeName === name
+    ) {
+      return true;
+    }
+    for (const child of node.children) {
+      if (hasAnimatedAttr(child, name)) {
+        return true;
+      }
+    }
   }
   return false;
-}
+};
 
-/*
+/**
  * Collapse useless groups.
  *
  * @example
@@ -42001,68 +42032,89 @@ function hasAnimatedAttr(item, name) {
  *         ⬇
  * <path attr1="val1" d="..."/>
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
-collapseGroups$1.fn = function (item) {
-  // non-empty elements
-  if (
-    item.type === 'element' &&
-    item.name !== 'switch' &&
-    item.children.length !== 0
-  ) {
-    item.children.forEach(function (g, i) {
-      // non-empty groups
-      if (g.type === 'element' && g.name === 'g' && g.children.length !== 0) {
+collapseGroups$1.fn = () => {
+  return {
+    element: {
+      exit: (node, parentNode) => {
+        if (parentNode.type === 'root' || parentNode.name === 'switch') {
+          return;
+        }
+        // non-empty groups
+        if (node.name !== 'g' || node.children.length === 0) {
+          return;
+        }
+
         // move group attibutes to the single child element
-        if (Object.keys(g.attributes).length !== 0 && g.children.length === 1) {
-          var inner = g.children[0];
-
+        if (
+          Object.keys(node.attributes).length !== 0 &&
+          node.children.length === 1
+        ) {
+          const firstChild = node.children[0];
+          // TODO untangle this mess
           if (
-            inner.type === 'element' &&
-            inner.attributes.id == null &&
-            g.attributes.filter == null &&
-            (g.attributes.class == null || inner.attributes.class == null) &&
-            ((g.attributes['clip-path'] == null && g.attributes.mask == null) ||
-              (inner.type === 'element' &&
-                inner.name === 'g' &&
-                g.attributes.transform == null &&
-                inner.attributes.transform == null))
+            firstChild.type === 'element' &&
+            firstChild.attributes.id == null &&
+            node.attributes.filter == null &&
+            (node.attributes.class == null ||
+              firstChild.attributes.class == null) &&
+            ((node.attributes['clip-path'] == null &&
+              node.attributes.mask == null) ||
+              (firstChild.name === 'g' &&
+                node.attributes.transform == null &&
+                firstChild.attributes.transform == null))
           ) {
-            for (const [name, value] of Object.entries(g.attributes)) {
-              if (g.children.some((item) => hasAnimatedAttr(item, name)))
+            for (const [name, value] of Object.entries(node.attributes)) {
+              // avoid copying to not conflict with animated attribute
+              if (hasAnimatedAttr(firstChild, name)) {
                 return;
-
-              if (inner.attributes[name] == null) {
-                inner.attributes[name] = value;
-              } else if (name == 'transform') {
-                inner.attributes[name] = value + ' ' + inner.attributes[name];
-              } else if (inner.attributes[name] === 'inherit') {
-                inner.attributes[name] = value;
+              }
+              if (firstChild.attributes[name] == null) {
+                firstChild.attributes[name] = value;
+              } else if (name === 'transform') {
+                firstChild.attributes[name] =
+                  value + ' ' + firstChild.attributes[name];
+              } else if (firstChild.attributes[name] === 'inherit') {
+                firstChild.attributes[name] = value;
               } else if (
                 inheritableAttrs.includes(name) === false &&
-                inner.attributes[name] !== value
+                firstChild.attributes[name] !== value
               ) {
                 return;
               }
-
-              delete g.attributes[name];
+              delete node.attributes[name];
             }
           }
         }
 
         // collapse groups without attributes
-        if (
-          Object.keys(g.attributes).length === 0 &&
-          !g.children.some((item) => item.isElem(elemsGroups$1.animation))
-        ) {
-          item.spliceContent(i, 1, g.children);
+        if (Object.keys(node.attributes).length === 0) {
+          // animation elements "add" attributes to group
+          // group should be preserved
+          for (const child of node.children) {
+            if (
+              child.type === 'element' &&
+              elemsGroups$1.animation.includes(child.name)
+            ) {
+              return;
+            }
+          }
+          // replace current node with all its children
+          const index = parentNode.children.indexOf(node);
+          parentNode.children.splice(index, 1, ...node.children);
+          // TODO remove in v3
+          for (const child of node.children) {
+            // @ts-ignore parentNode is forbidden for public usage
+            // and will be moved in v3
+            child.parentNode = parentNode;
+          }
         }
-      }
-    });
-  }
+      },
+    },
+  };
 };
 
 var convertPathData$1 = {};
@@ -45091,14 +45143,12 @@ removeEmptyAttrs$1.fn = function (item) {
 
 var removeEmptyContainers$1 = {};
 
+const { detachNodeFromParent: detachNodeFromParent$8 } = xast;
 const { elemsGroups } = _collections;
 
+removeEmptyContainers$1.type = 'visitor';
 removeEmptyContainers$1.name = 'removeEmptyContainers';
-
-removeEmptyContainers$1.type = 'perItemReverse';
-
 removeEmptyContainers$1.active = true;
-
 removeEmptyContainers$1.description = 'removes empty container elements';
 
 /**
@@ -45112,27 +45162,42 @@ removeEmptyContainers$1.description = 'removes empty container elements';
  * @example
  * <g><marker><a/></marker></g>
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
-removeEmptyContainers$1.fn = function (item) {
-  if (item.type === 'element') {
-    return (
-      item.children.length !== 0 ||
-      elemsGroups.container.includes(item.name) === false ||
-      item.name === 'svg' ||
-      // empty patterns may contain reusable configuration
-      (item.name === 'pattern' && Object.keys(item.attributes).length !== 0) ||
-      // The 'g' may not have content, but the filter may cause a rectangle
-      // to be created and filled with pattern.
-      (item.name === 'g' && item.attributes.filter != null) ||
-      // empty <mask> hides masked element
-      (item.name === 'mask' && item.attributes.id != null)
-    );
-  }
-  return true;
+removeEmptyContainers$1.fn = () => {
+  return {
+    element: {
+      exit: (node, parentNode) => {
+        // remove only empty non-svg containers
+        if (
+          node.name === 'svg' ||
+          elemsGroups.container.includes(node.name) === false ||
+          node.children.length !== 0
+        ) {
+          return;
+        }
+        // empty patterns may contain reusable configuration
+        if (
+          node.name === 'pattern' &&
+          Object.keys(node.attributes).length !== 0
+        ) {
+          return;
+        }
+        // The <g> may not have content, but the filter may cause a rectangle
+        // to be created and filled with pattern.
+        if (node.name === 'g' && node.attributes.filter != null) {
+          return;
+        }
+        // empty <mask> hides masked element
+        if (node.name === 'mask' && node.attributes.id != null) {
+          return;
+        }
+        detachNodeFromParent$8(node, parentNode);
+      },
+    },
+  };
 };
 
 var mergePaths$1 = {};
@@ -46327,6 +46392,19 @@ removeAttrs.active = false;
 removeAttrs.description = 'removes specified attributes';
 
 const DEFAULT_SEPARATOR = ':';
+const ENOATTRS = `Warning: The plugin "removeAttrs" requires the "attrs" parameter.
+It should have a pattern to remove, otherwise the plugin is a noop.
+Config example:
+
+plugins: [
+  {
+    name: "removeAttrs",
+    params: {
+      attrs: "(fill|stroke)"
+    }
+  }
+]
+`;
 
 /**
  * Remove attributes
@@ -46398,7 +46476,11 @@ const DEFAULT_SEPARATOR = ':';
  * }>}
  */
 removeAttrs.fn = (root, params) => {
-  // wrap into an array if params is not
+  if (typeof params.attrs == 'undefined') {
+    console.warn(ENOATTRS);
+    return null;
+  }
+
   const elemSeparator =
     typeof params.elemSeparator == 'string'
       ? params.elemSeparator
@@ -47270,6 +47352,8 @@ const resolvePluginConfig$1 = (plugin) => {
   return null;
 };
 config$1.resolvePluginConfig = resolvePluginConfig$1;
+
+var parser = {};
 
 var sax = {};
 
@@ -48687,11 +48771,31 @@ var sax = {};
 })(exports);
 }(sax));
 
+/**
+ * @typedef {import('./types').XastNode} XastNode
+ * @typedef {import('./types').XastInstruction} XastInstruction
+ * @typedef {import('./types').XastDoctype} XastDoctype
+ * @typedef {import('./types').XastComment} XastComment
+ * @typedef {import('./types').XastRoot} XastRoot
+ * @typedef {import('./types').XastElement} XastElement
+ * @typedef {import('./types').XastCdata} XastCdata
+ * @typedef {import('./types').XastText} XastText
+ * @typedef {import('./types').XastParent} XastParent
+ */
+
+// @ts-ignore sax will be replaced with something else later
 const SAX = sax;
 const JSAPI$1 = jsAPI;
 const { textElems: textElems$1 } = _collections;
 
 class SvgoParserError extends Error {
+  /**
+   * @param message {string}
+   * @param line {number}
+   * @param column {number}
+   * @param source {string}
+   * @param file {void | string}
+   */
   constructor(message, line, column, source, file) {
     super(message);
     this.name = 'SvgoParserError';
@@ -48754,103 +48858,160 @@ const config = {
 /**
  * Convert SVG (XML) string to SVG-as-JS object.
  *
- * @param {String} data input data
+ * @type {(data: string, from?: string) => XastRoot}
  */
-var svg2js$1 = function (data, from) {
+const parseSvg$1 = (data, from) => {
   const sax = SAX.parser(config.strict, config);
+  /**
+   * @type {XastRoot}
+   */
   const root = new JSAPI$1({ type: 'root', children: [] });
+  /**
+   * @type {XastParent}
+   */
   let current = root;
-  let stack = [root];
+  /**
+   * @type {Array<XastParent>}
+   */
+  const stack = [root];
 
-  function pushToContent(node) {
+  /**
+   * @type {<T extends XastNode>(node: T) => T}
+   */
+  const pushToContent = (node) => {
     const wrapped = new JSAPI$1(node, current);
     current.children.push(wrapped);
     return wrapped;
-  }
+  };
 
-  sax.ondoctype = function (doctype) {
-    pushToContent({
+  /**
+   * @type {(doctype: string) => void}
+   */
+  sax.ondoctype = (doctype) => {
+    /**
+     * @type {XastDoctype}
+     */
+    const node = {
       type: 'doctype',
       // TODO parse doctype for name, public and system to match xast
       name: 'svg',
       data: {
         doctype,
       },
-    });
-
+    };
+    pushToContent(node);
     const subsetStart = doctype.indexOf('[');
-    let entityMatch;
-
     if (subsetStart >= 0) {
       entityDeclaration.lastIndex = subsetStart;
-
-      while ((entityMatch = entityDeclaration.exec(data)) != null) {
+      let entityMatch = entityDeclaration.exec(data);
+      while (entityMatch != null) {
         sax.ENTITIES[entityMatch[1]] = entityMatch[2] || entityMatch[3];
+        entityMatch = entityDeclaration.exec(data);
       }
     }
   };
 
-  sax.onprocessinginstruction = function (data) {
-    pushToContent({
+  /**
+   * @type {(data: { name: string, body: string }) => void}
+   */
+  sax.onprocessinginstruction = (data) => {
+    /**
+     * @type {XastInstruction}
+     */
+    const node = {
       type: 'instruction',
       name: data.name,
       value: data.body,
-    });
+    };
+    pushToContent(node);
   };
 
-  sax.oncomment = function (comment) {
-    pushToContent({
+  /**
+   * @type {(comment: string) => void}
+   */
+  sax.oncomment = (comment) => {
+    /**
+     * @type {XastComment}
+     */
+    const node = {
       type: 'comment',
       value: comment.trim(),
-    });
+    };
+    pushToContent(node);
   };
 
-  sax.oncdata = function (cdata) {
-    pushToContent({
+  /**
+   * @type {(cdata: string) => void}
+   */
+  sax.oncdata = (cdata) => {
+    /**
+     * @type {XastCdata}
+     */
+    const node = {
       type: 'cdata',
       value: cdata,
-    });
+    };
+    pushToContent(node);
   };
 
-  sax.onopentag = function (data) {
-    var element = {
+  /**
+   * @type {(data: { name: string, attributes: Record<string, { value: string }>}) => void}
+   */
+  sax.onopentag = (data) => {
+    /**
+     * @type {XastElement}
+     */
+    let element = {
       type: 'element',
       name: data.name,
       attributes: {},
       children: [],
     };
-
     for (const [name, attr] of Object.entries(data.attributes)) {
       element.attributes[name] = attr.value;
     }
-
     element = pushToContent(element);
     current = element;
-
     stack.push(element);
   };
 
-  sax.ontext = function (text) {
-    // prevent trimming of meaningful whitespace inside textual tags
-    if (textElems$1.includes(current.name) && !data.prefix) {
-      pushToContent({
-        type: 'text',
-        value: text,
-      });
-    } else if (/\S/.test(text)) {
-      pushToContent({
-        type: 'text',
-        value: text.trim(),
-      });
+  /**
+   * @type {(text: string) => void}
+   */
+  sax.ontext = (text) => {
+    if (current.type === 'element') {
+      // prevent trimming of meaningful whitespace inside textual tags
+      if (textElems$1.includes(current.name)) {
+        /**
+         * @type {XastText}
+         */
+        const node = {
+          type: 'text',
+          value: text,
+        };
+        pushToContent(node);
+      } else if (/\S/.test(text)) {
+        /**
+         * @type {XastText}
+         */
+        const node = {
+          type: 'text',
+          value: text.trim(),
+        };
+        pushToContent(node);
+      }
     }
   };
 
-  sax.onclosetag = function () {
+  sax.onclosetag = () => {
     stack.pop();
     current = stack[stack.length - 1];
   };
 
-  sax.onerror = function (e) {
+  /**
+   * @type {(e: any) => void}
+   */
+  sax.onerror = (e) => {
     const error = new SvgoParserError(
       e.reason,
       e.line + 1,
@@ -48866,6 +49027,7 @@ var svg2js$1 = function (data, from) {
   sax.write(data).close();
   return root;
 };
+parser.parseSvg = parseSvg$1;
 
 const { textElems } = _collections;
 
@@ -49208,7 +49370,7 @@ const {
   resolvePluginConfig,
   extendDefaultPlugins: extendDefaultPlugins$1,
 } = config$1;
-const svg2js = svg2js$1;
+const { parseSvg } = parser;
 const js2svg = js2svg$1;
 const { invokePlugins } = plugins;
 const JSAPI = jsAPI;
@@ -49234,7 +49396,7 @@ const optimize$1 = (input, config) => {
     info.multipassCount = i;
     // TODO throw this error in v3
     try {
-      svgjs = svg2js(input, config.path);
+      svgjs = parseSvg(input, config.path);
     } catch (error) {
       return { error: error.toString(), modernError: error };
     }
@@ -49288,7 +49450,7 @@ const createContentItem$1 = (data) => {
 };
 svgo.createContentItem = createContentItem$1;
 
-const os = require$$2$2;
+const os = require$$3$1;
 const {
   extendDefaultPlugins,
   optimize: optimizeAgnostic,
@@ -49296,6 +49458,9 @@ const {
 } = svgo;
 
 const optimize = (input, config) => {
+  if (config == null) {
+    config = {};
+  }
   if (typeof config !== 'object') {
     throw Error('Config should be an object');
   }
@@ -49304,7 +49469,7 @@ const optimize = (input, config) => {
     js2svg: {
       // platform specific default for end of line
       eol: os.EOL === '\r\n' ? 'crlf' : 'lf',
-      ...(config == null ? null : config.js2svg),
+      ...config.js2svg,
     },
   });
 };

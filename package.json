@@ -1,18 +1,18 @@
 {
   "private": true,
   "devDependencies": {
-    "@prettier/plugin-xml": "^1.0.2",
+    "@prettier/plugin-xml": "^1.1.0",
     "@rollup/plugin-commonjs": "^20.0.0",
     "@rollup/plugin-json": "^4.1.0",
-    "@rollup/plugin-node-resolve": "^13.0.4",
+    "@rollup/plugin-node-resolve": "^13.0.5",
     "eslint": "^7.32.0",
     "eslint-plugin-import": "^2.24.2",
     "husky": "^7.0.2",
     "lint-staged": "^11.1.2",
-    "prettier": "^2.4.0",
-    "rollup": "^2.56.3",
+    "prettier": "^2.4.1",
+    "rollup": "^2.57.0",
     "rollup-plugin-ignore": "^1.0.10",
-    "svgo": "^2.6.0"
+    "svgo": "^2.7.0"
   },
   "lint-staged": {
     "*.js": "eslint --cache --fix",
