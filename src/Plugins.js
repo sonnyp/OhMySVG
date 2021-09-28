@@ -24,9 +24,9 @@ const plugins = Object.entries(svgo_plugins)
   .map(([key, value]) => {
     const name = plugin_names.find((plugin) => plugin.id === key)?.name || key;
     return {
+      ...value,
       id: key,
       name,
-      ...value,
     };
   });
 
