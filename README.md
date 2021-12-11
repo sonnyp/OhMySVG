@@ -40,7 +40,6 @@ flatpak run re.sonny.OhMySVG
 - UI
   - Filename as headedr bar subtitle
   - Already optimized 🎉
-  - use libadwaita
   - basic/advanced plugins
 - support drag'n drop file https://gitlab.gnome.org/GNOME/gtk/-/issues/3094
 - support pasting file
@@ -62,7 +61,7 @@ To pass the tests you have to install a few dependencies
 
 ```sh
 # Install development dependencies
-sudo dnf install --assumeyes npm flatpak make desktop-file-utils gjs gtk4-devel
+sudo dnf install --assumeyes npm flatpak make desktop-file-utils gjs gtk4-devel libadwaita-devel
 npm install
 flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 flatpak install --user --assumeyes --noninteractive flathub org.freedesktop.appstream-glib

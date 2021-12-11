@@ -8491,7 +8491,7 @@ xast.matches = matches$2;
 /**
  * @type {(node: XastChild, name: string) => null | XastChild}
  */
-const closestByName$2 = (node, name) => {
+const closestByName$1 = (node, name) => {
   let currentNode = node;
   while (currentNode) {
     if (currentNode.type === 'element' && currentNode.name === name) {
@@ -8502,10 +8502,10 @@ const closestByName$2 = (node, name) => {
   }
   return null;
 };
-xast.closestByName = closestByName$2;
+xast.closestByName = closestByName$1;
 
-const visitSkip$5 = Symbol();
-xast.visitSkip = visitSkip$5;
+const visitSkip$6 = Symbol();
+xast.visitSkip = visitSkip$6;
 
 /**
  * @type {(node: XastNode, visitor: Visitor, parentNode?: any) => void}
@@ -8515,7 +8515,7 @@ const visit$5 = (node, visitor, parentNode) => {
   if (callbacks && callbacks.enter) {
     // @ts-ignore hard to infer
     const symbol = callbacks.enter(node, parentNode);
-    if (symbol === visitSkip$5) {
+    if (symbol === visitSkip$6) {
       return;
     }
   }
@@ -8544,11 +8544,11 @@ xast.visit = visit$5;
 /**
  * @type {(node: XastChild, parentNode: XastParent) => void}
  */
-const detachNodeFromParent$l = (node, parentNode) => {
+const detachNodeFromParent$m = (node, parentNode) => {
   // avoid splice to not break for loops
   parentNode.children = parentNode.children.filter((child) => child !== node);
 };
-xast.detachNodeFromParent = detachNodeFromParent$l;
+xast.detachNodeFromParent = detachNodeFromParent$m;
 
 const { visit: visit$4 } = xast;
 
@@ -8636,6 +8636,22 @@ const createPreset$1 = ({ name, plugins }) => {
       if (floatPrecision != null) {
         globalOverrides.floatPrecision = floatPrecision;
       }
+      if (overrides) {
+        for (const [pluginName, override] of Object.entries(overrides)) {
+          if (override === true) {
+            console.warn(
+              `You are trying to enable ${pluginName} which is not part of preset.\n` +
+                `Try to put it before or after preset, for example\n\n` +
+                `plugins: [\n` +
+                `  {\n` +
+                `    name: 'preset-default',\n` +
+                `  },\n` +
+                `  'cleanupListOfValues'\n` +
+                `]\n`
+            );
+          }
+        }
+      }
       return invokePlugins$1(ast, info, plugins, overrides, globalOverrides);
     },
   };
@@ -8644,7 +8660,7 @@ plugins.createPreset = createPreset$1;
 
 var removeDoctype$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$k } = xast;
+const { detachNodeFromParent: detachNodeFromParent$l } = xast;
 
 removeDoctype$1.name = 'removeDoctype';
 removeDoctype$1.type = 'visitor';
@@ -8679,7 +8695,7 @@ removeDoctype$1.fn = () => {
   return {
     doctype: {
       enter: (node, parentNode) => {
-        detachNodeFromParent$k(node, parentNode);
+        detachNodeFromParent$l(node, parentNode);
       },
     },
   };
@@ -8687,7 +8703,7 @@ removeDoctype$1.fn = () => {
 
 var removeXMLProcInst$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$j } = xast;
+const { detachNodeFromParent: detachNodeFromParent$k } = xast;
 
 removeXMLProcInst$1.name = 'removeXMLProcInst';
 removeXMLProcInst$1.type = 'visitor';
@@ -8709,7 +8725,7 @@ removeXMLProcInst$1.fn = () => {
     instruction: {
       enter: (node, parentNode) => {
         if (node.name === 'xml') {
-          detachNodeFromParent$j(node, parentNode);
+          detachNodeFromParent$k(node, parentNode);
         }
       },
     },
@@ -8718,7 +8734,7 @@ removeXMLProcInst$1.fn = () => {
 
 var removeComments$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$i } = xast;
+const { detachNodeFromParent: detachNodeFromParent$j } = xast;
 
 removeComments$1.name = 'removeComments';
 removeComments$1.type = 'visitor';
@@ -8741,7 +8757,7 @@ removeComments$1.fn = () => {
     comment: {
       enter: (node, parentNode) => {
         if (node.value.charAt(0) !== '!') {
-          detachNodeFromParent$i(node, parentNode);
+          detachNodeFromParent$j(node, parentNode);
         }
       },
     },
@@ -8750,7 +8766,7 @@ removeComments$1.fn = () => {
 
 var removeMetadata$1 = {};
 
-const { detachNodeFromParent: detachNodeFromParent$h } = xast;
+const { detachNodeFromParent: detachNodeFromParent$i } = xast;
 
 removeMetadata$1.name = 'removeMetadata';
 removeMetadata$1.type = 'visitor';
@@ -8771,7 +8787,7 @@ removeMetadata$1.fn = () => {
     element: {
       enter: (node, parentNode) => {
         if (node.name === 'metadata') {
-          detachNodeFromParent$h(node, parentNode);
+          detachNodeFromParent$i(node, parentNode);
         }
       },
     },
@@ -10952,7 +10968,7 @@ exports.colorsProps = [
 ];
 }(_collections));
 
-const { detachNodeFromParent: detachNodeFromParent$g } = xast;
+const { detachNodeFromParent: detachNodeFromParent$h } = xast;
 const { editorNamespaces } = _collections;
 
 removeEditorsNSData$1.type = 'visitor';
@@ -11011,7 +11027,7 @@ removeEditorsNSData$1.fn = (_root, params) => {
         if (node.name.includes(':')) {
           const [prefix] = node.name.split(':');
           if (prefixes.includes(prefix)) {
-            detachNodeFromParent$g(node, parentNode);
+            detachNodeFromParent$h(node, parentNode);
           }
         }
       },
@@ -34273,9 +34289,9 @@ syntax.exports.version = require$$4.version;
 
 var lib$1 = syntax.exports;
 
-var cssTools$1 = {};
+var cssTools = {};
 
-var stable$2 = {exports: {}};
+var stable$3 = {exports: {}};
 
 (function (module, exports) {
 //! stable.js 0.1.8, https://github.com/Two-Screen/stable
@@ -34384,9 +34400,9 @@ var stable$2 = {exports: {}};
   return stable;
 
 })));
-}(stable$2));
+}(stable$3));
 
-var specificity$3 = function specificity(simpleSelector) {
+var specificity$4 = function specificity(simpleSelector) {
     var A = 0;
     var B = 0;
     var C = 0;
@@ -34445,8 +34461,8 @@ var specificity$3 = function specificity(simpleSelector) {
 
 var csstree$5 = lib$1,
   List$6 = csstree$5.List,
-  stable$1 = stable$2.exports,
-  specificity$2 = specificity$3;
+  stable$2 = stable$3.exports,
+  specificity$3 = specificity$4;
 
 /**
  * Flatten a CSS AST to a selectors list.
@@ -34569,7 +34585,7 @@ function cleanPseudos(selectors) {
  * @param {Array} bSpecificity Specificity of selector B
  * @return {number} Score of selector specificity A compared to selector specificity B
  */
-function compareSpecificity$1(aSpecificity, bSpecificity) {
+function compareSpecificity$2(aSpecificity, bSpecificity) {
   for (var i = 0; i < 4; i += 1) {
     if (aSpecificity[i] < bSpecificity[i]) {
       return -1;
@@ -34589,9 +34605,9 @@ function compareSpecificity$1(aSpecificity, bSpecificity) {
  * @return {number} Score of selector A compared to selector B
  */
 function compareSimpleSelectorNode(aSimpleSelectorNode, bSimpleSelectorNode) {
-  var aSpecificity = specificity$2(aSimpleSelectorNode),
-    bSpecificity = specificity$2(bSimpleSelectorNode);
-  return compareSpecificity$1(aSpecificity, bSpecificity);
+  var aSpecificity = specificity$3(aSimpleSelectorNode),
+    bSpecificity = specificity$3(bSimpleSelectorNode);
+  return compareSpecificity$2(aSpecificity, bSpecificity);
 }
 
 function _bySelectorSpecificity(selectorA, selectorB) {
@@ -34605,7 +34621,7 @@ function _bySelectorSpecificity(selectorA, selectorB) {
  * @return {Array} Stable sorted selectors
  */
 function sortSelectors(selectors) {
-  return stable$1(selectors, _bySelectorSpecificity);
+  return stable$2(selectors, _bySelectorSpecificity);
 }
 
 /**
@@ -34665,24 +34681,24 @@ function setCssStr(elem, css) {
   return css;
 }
 
-cssTools$1.flattenToSelectors = flattenToSelectors;
+cssTools.flattenToSelectors = flattenToSelectors;
 
-cssTools$1.filterByMqs = filterByMqs;
-cssTools$1.filterByPseudos = filterByPseudos;
-cssTools$1.cleanPseudos = cleanPseudos;
+cssTools.filterByMqs = filterByMqs;
+cssTools.filterByPseudos = filterByPseudos;
+cssTools.cleanPseudos = cleanPseudos;
 
-cssTools$1.compareSpecificity = compareSpecificity$1;
-cssTools$1.compareSimpleSelectorNode = compareSimpleSelectorNode;
+cssTools.compareSpecificity = compareSpecificity$2;
+cssTools.compareSimpleSelectorNode = compareSimpleSelectorNode;
 
-cssTools$1.sortSelectors = sortSelectors;
+cssTools.sortSelectors = sortSelectors;
 
-cssTools$1.csstreeToStyleDeclaration = csstreeToStyleDeclaration;
+cssTools.csstreeToStyleDeclaration = csstreeToStyleDeclaration;
 
-cssTools$1.getCssStr = getCssStr;
-cssTools$1.setCssStr = setCssStr;
+cssTools.getCssStr = getCssStr;
+cssTools.setCssStr = setCssStr;
 
 var csstree$4 = lib$1,
-  csstools = cssTools$1;
+  csstools = cssTools;
 
 var CSSStyleDeclaration$1 = function (node) {
   this.parentNode = node;
@@ -35358,7 +35374,7 @@ JSAPI$4.prototype.matches = function (selector) {
  * @typedef {import('../lib/types').XastElement} XastElement
  */
 
-const { visitSkip: visitSkip$4, detachNodeFromParent: detachNodeFromParent$f } = xast;
+const { visitSkip: visitSkip$5, detachNodeFromParent: detachNodeFromParent$g } = xast;
 const JSAPI$3 = jsAPI;
 
 mergeStyles$1.name = 'mergeStyles';
@@ -35386,7 +35402,7 @@ mergeStyles$1.fn = () => {
       enter: (node, parentNode) => {
         // skip <foreignObject> content
         if (node.name === 'foreignObject') {
-          return visitSkip$4;
+          return visitSkip$5;
         }
 
         // collect style elements
@@ -35417,7 +35433,7 @@ mergeStyles$1.fn = () => {
 
         // remove empty style elements
         if (css.trim().length === 0) {
-          detachNodeFromParent$f(node, parentNode);
+          detachNodeFromParent$g(node, parentNode);
           return;
         }
 
@@ -35433,7 +35449,7 @@ mergeStyles$1.fn = () => {
         if (firstStyleElement == null) {
           firstStyleElement = node;
         } else {
-          detachNodeFromParent$f(node, parentNode);
+          detachNodeFromParent$g(node, parentNode);
           firstStyleElement.children = [
             new JSAPI$3(
               { type: styleContentType, value: collectedStyles },
@@ -35448,24 +35464,43 @@ mergeStyles$1.fn = () => {
 
 var inlineStyles$1 = {};
 
+/**
+ * @typedef {import('../lib/types').Specificity} Specificity
+ * @typedef {import('../lib/types').XastElement} XastElement
+ * @typedef {import('../lib/types').XastParent} XastParent
+ */
+
 const csstree$3 = lib$1;
-const { querySelectorAll: querySelectorAll$1, closestByName: closestByName$1 } = xast;
-const cssTools = cssTools$1;
+// @ts-ignore not defined in @types/csso
+const specificity$2 = specificity$4;
+const stable$1 = stable$3.exports;
+const {
+  visitSkip: visitSkip$4,
+  querySelectorAll: querySelectorAll$1,
+  detachNodeFromParent: detachNodeFromParent$f,
+} = xast;
 
+inlineStyles$1.type = 'visitor';
 inlineStyles$1.name = 'inlineStyles';
-
-inlineStyles$1.type = 'full';
-
 inlineStyles$1.active = true;
-
-inlineStyles$1.params = {
-  onlyMatchedOnce: true,
-  removeMatchedSelectors: true,
-  useMqs: ['', 'screen'],
-  usePseudos: [''],
-};
-
 inlineStyles$1.description = 'inline styles (additional options)';
+
+/**
+ * Compares two selector specificities.
+ * extracted from https://github.com/keeganstreet/specificity/blob/master/specificity.js#L211
+ *
+ * @type {(a: Specificity, b: Specificity) => number}
+ */
+const compareSpecificity$1 = (a, b) => {
+  for (var i = 0; i < 4; i += 1) {
+    if (a[i] < b[i]) {
+      return -1;
+    } else if (a[i] > b[i]) {
+      return 1;
+    }
+  }
+  return 0;
+};
 
 /**
  * Moves + merges styles from style elements to element styles
@@ -35486,269 +35521,325 @@ inlineStyles$1.description = 'inline styles (additional options)';
  *     what pseudo-classes/-elements to be used
  *     empty string element for all non-pseudo-classes and/or -elements
  *
- * @param {Object} root document element
- * @param {Object} opts plugin params
- *
  * @author strarsis <strarsis@gmail.com>
+ *
+ * @type {import('../lib/types').Plugin<{
+ *   onlyMatchedOnce?: boolean,
+ *   removeMatchedSelectors?: boolean,
+ *   useMqs?: Array<string>,
+ *   usePseudos?: Array<string>
+ * }>}
  */
-inlineStyles$1.fn = function (root, opts) {
-  // collect <style/>s
-  var styleEls = querySelectorAll$1(root, 'style');
+inlineStyles$1.fn = (root, params) => {
+  const {
+    onlyMatchedOnce = true,
+    removeMatchedSelectors = true,
+    useMqs = ['', 'screen'],
+    usePseudos = [''],
+  } = params;
 
-  //no <styles/>s, nothing to do
-  if (styleEls.length === 0) {
-    return root;
-  }
+  /**
+   * @type {Array<{ node: XastElement, parentNode: XastParent, cssAst: csstree.StyleSheet }>}
+   */
+  const styles = [];
+  /**
+   * @type {Array<{
+   *   node: csstree.Selector,
+   *   item: csstree.ListItem<csstree.CssNode>,
+   *   rule: csstree.Rule,
+   *   matchedElements?: Array<XastElement>
+   * }>}
+   */
+  let selectors = [];
 
-  var styles = [],
-    selectors = [];
-
-  for (var styleEl of styleEls) {
-    // values other than the empty string or text/css are not used
-    if (
-      styleEl.attributes.type != null &&
-      styleEl.attributes.type !== '' &&
-      styleEl.attributes.type !== 'text/css'
-    ) {
-      continue;
-    }
-    // skip empty <style/>s or <foreignObject> content.
-    if (
-      styleEl.children.length === 0 ||
-      closestByName$1(styleEl, 'foreignObject')
-    ) {
-      continue;
-    }
-
-    var cssStr = cssTools.getCssStr(styleEl);
-
-    // collect <style/>s and their css ast
-    var cssAst = {};
-    try {
-      cssAst = csstree$3.parse(cssStr, {
-        parseValue: false,
-        parseCustomProperty: false,
-      });
-    } catch (parseError) {
-      // console.warn('Warning: Parse error of styles of <style/> element, skipped. Error details: ' + parseError);
-      continue;
-    }
-
-    styles.push({
-      styleEl: styleEl,
-      cssAst: cssAst,
-    });
-
-    selectors = selectors.concat(cssTools.flattenToSelectors(cssAst));
-  }
-
-  // filter for mediaqueries to be used or without any mediaquery
-  var selectorsMq = cssTools.filterByMqs(selectors, opts.useMqs);
-
-  // filter for pseudo elements to be used
-  var selectorsPseudo = cssTools.filterByPseudos(selectorsMq, opts.usePseudos);
-
-  // remove PseudoClass from its SimpleSelector for proper matching
-  cssTools.cleanPseudos(selectorsPseudo);
-
-  // stable sort selectors
-  var sortedSelectors = cssTools.sortSelectors(selectorsPseudo).reverse();
-
-  var selector, selectedEl;
-
-  // match selectors
-  for (selector of sortedSelectors) {
-    var selectorStr = csstree$3.generate(selector.item.data),
-      selectedEls = null;
-
-    try {
-      selectedEls = querySelectorAll$1(root, selectorStr);
-    } catch (selectError) {
-      // console.warn('Warning: Syntax error when trying to select \n\n' + selectorStr + '\n\n, skipped. Error details: ' + selectError);
-      continue;
-    }
-
-    if (selectedEls.length === 0) {
-      // nothing selected
-      continue;
-    }
-
-    selector.selectedEls = selectedEls;
-  }
-
-  // apply <style/> styles to matched elements
-  for (selector of sortedSelectors) {
-    if (!selector.selectedEls) {
-      continue;
-    }
-
-    if (
-      opts.onlyMatchedOnce &&
-      selector.selectedEls !== null &&
-      selector.selectedEls.length > 1
-    ) {
-      // skip selectors that match more than once if option onlyMatchedOnce is enabled
-      continue;
-    }
-
-    // apply <style/> to matched elements
-    for (selectedEl of selector.selectedEls) {
-      if (selector.rule === null) {
-        continue;
-      }
-      const styleDeclarationList = csstree$3.parse(
-        selectedEl.attributes.style == null ? '' : selectedEl.attributes.style,
-        {
-          context: 'declarationList',
-          parseValue: false,
+  return {
+    element: {
+      enter: (node, parentNode) => {
+        // skip <foreignObject /> content
+        if (node.name === 'foreignObject') {
+          return visitSkip$4;
         }
-      );
-      const styleDeclarationItems = new Map();
-      csstree$3.walk(styleDeclarationList, {
-        visit: 'Declaration',
-        enter(node, item) {
-          styleDeclarationItems.set(node.property, item);
-        },
-      });
-      // merge declarations
-      csstree$3.walk(selector.rule, {
-        visit: 'Declaration',
-        enter(ruleDeclaration) {
-          // existing inline styles have higher priority
-          // no inline styles, external styles,                                    external styles used
-          // inline styles,    external styles same   priority as inline styles,   inline   styles used
-          // inline styles,    external styles higher priority than inline styles, external styles used
-          const matchedItem = styleDeclarationItems.get(
-            ruleDeclaration.property
-          );
-          const ruleDeclarationItem =
-            styleDeclarationList.children.createItem(ruleDeclaration);
-          if (matchedItem == null) {
-            styleDeclarationList.children.append(ruleDeclarationItem);
-          } else if (
-            matchedItem.data.important !== true &&
-            ruleDeclaration.important === true
-          ) {
-            styleDeclarationList.children.replace(
-              matchedItem,
-              ruleDeclarationItem
-            );
-            styleDeclarationItems.set(
-              ruleDeclaration.property,
-              ruleDeclarationItem
-            );
-          }
-        },
-      });
-      selectedEl.attributes.style = csstree$3.generate(styleDeclarationList);
-    }
-
-    if (
-      opts.removeMatchedSelectors &&
-      selector.selectedEls !== null &&
-      selector.selectedEls.length > 0
-    ) {
-      // clean up matching simple selectors if option removeMatchedSelectors is enabled
-      selector.rule.prelude.children.remove(selector.item);
-    }
-  }
-
-  if (!opts.removeMatchedSelectors) {
-    return root; // no further processing required
-  }
-
-  // clean up matched class + ID attribute values
-  for (selector of sortedSelectors) {
-    if (!selector.selectedEls) {
-      continue;
-    }
-
-    if (
-      opts.onlyMatchedOnce &&
-      selector.selectedEls !== null &&
-      selector.selectedEls.length > 1
-    ) {
-      // skip selectors that match more than once if option onlyMatchedOnce is enabled
-      continue;
-    }
-
-    for (selectedEl of selector.selectedEls) {
-      // class
-      const classList = new Set(
-        selectedEl.attributes.class == null
-          ? null
-          : selectedEl.attributes.class.split(' ')
-      );
-      const firstSubSelector = selector.item.data.children.first();
-      if (firstSubSelector.type === 'ClassSelector') {
-        classList.delete(firstSubSelector.name);
-      }
-      if (classList.size === 0) {
-        delete selectedEl.attributes.class;
-      } else {
-        selectedEl.attributes.class = Array.from(classList).join(' ');
-      }
-
-      // ID
-      if (firstSubSelector.type === 'IdSelector') {
-        if (selectedEl.attributes.id === firstSubSelector.name) {
-          delete selectedEl.attributes.id;
+        // collect only non-empty <style /> elements
+        if (node.name !== 'style' || node.children.length === 0) {
+          return;
         }
-      }
-    }
-  }
-
-  // clean up now empty elements
-  for (var style of styles) {
-    csstree$3.walk(style.cssAst, {
-      visit: 'Rule',
-      enter: function (node, item, list) {
-        // clean up <style/> atrules without any rulesets left
+        // values other than the empty string or text/css are not used
         if (
-          node.type === 'Atrule' &&
-          // only Atrules containing rulesets
-          node.block !== null &&
-          node.block.children.isEmpty()
+          node.attributes.type != null &&
+          node.attributes.type !== '' &&
+          node.attributes.type !== 'text/css'
         ) {
-          list.remove(item);
+          return;
+        }
+        // parse css in style element
+        let cssText = '';
+        for (const child of node.children) {
+          if (child.type === 'text' || child.type === 'cdata') {
+            cssText += child.value;
+          }
+        }
+        /**
+         * @type {null | csstree.CssNode}
+         */
+        let cssAst = null;
+        try {
+          cssAst = csstree$3.parse(cssText, {
+            parseValue: false,
+            parseCustomProperty: false,
+          });
+        } catch {
+          return;
+        }
+        if (cssAst.type === 'StyleSheet') {
+          styles.push({ node, parentNode, cssAst });
+        }
+
+        // collect selectors
+        csstree$3.walk(cssAst, {
+          visit: 'Selector',
+          enter(node, item) {
+            const atrule = this.atrule;
+            const rule = this.rule;
+            if (rule == null) {
+              return;
+            }
+
+            // skip media queries not included into useMqs param
+            let mq = '';
+            if (atrule != null) {
+              mq = atrule.name;
+              if (atrule.prelude != null) {
+                mq += ` ${csstree$3.generate(atrule.prelude)}`;
+              }
+            }
+            if (useMqs.includes(mq) === false) {
+              return;
+            }
+
+            /**
+             * @type {Array<{
+             *   item: csstree.ListItem<csstree.CssNode>,
+             *   list: csstree.List<csstree.CssNode>
+             * }>}
+             */
+            const pseudos = [];
+            if (node.type === 'Selector') {
+              node.children.each((childNode, childItem, childList) => {
+                if (
+                  childNode.type === 'PseudoClassSelector' ||
+                  childNode.type === 'PseudoElementSelector'
+                ) {
+                  pseudos.push({ item: childItem, list: childList });
+                }
+              });
+            }
+
+            // skip pseudo classes and pseudo elements not includes into usePseudos param
+            const pseudoSelectors = csstree$3.generate({
+              type: 'Selector',
+              children: new csstree$3.List().fromArray(
+                pseudos.map((pseudo) => pseudo.item.data)
+              ),
+            });
+            if (usePseudos.includes(pseudoSelectors) === false) {
+              return;
+            }
+
+            // remove pseudo classes and elements to allow querySelector match elements
+            // TODO this is not very accurate since some pseudo classes like first-child
+            // are used for selection
+            for (const pseudo of pseudos) {
+              pseudo.list.remove(pseudo.item);
+            }
+
+            selectors.push({ node, item, rule });
+          },
+        });
+      },
+    },
+
+    root: {
+      exit: () => {
+        if (styles.length === 0) {
+          return;
+        }
+        // stable sort selectors
+        const sortedSelectors = stable$1(selectors, (a, b) => {
+          const aSpecificity = specificity$2(a.item.data);
+          const bSpecificity = specificity$2(b.item.data);
+          return compareSpecificity$1(aSpecificity, bSpecificity);
+        }).reverse();
+
+        for (const selector of sortedSelectors) {
+          // match selectors
+          const selectorText = csstree$3.generate(selector.item.data);
+          /**
+           * @type {Array<XastElement>}
+           */
+          const matchedElements = [];
+          try {
+            for (const node of querySelectorAll$1(root, selectorText)) {
+              if (node.type === 'element') {
+                matchedElements.push(node);
+              }
+            }
+          } catch (selectError) {
+            continue;
+          }
+          // nothing selected
+          if (matchedElements.length === 0) {
+            continue;
+          }
+
+          // apply styles to matched elements
+          // skip selectors that match more than once if option onlyMatchedOnce is enabled
+          if (onlyMatchedOnce && matchedElements.length > 1) {
+            continue;
+          }
+
+          // apply <style/> to matched elements
+          for (const selectedEl of matchedElements) {
+            const styleDeclarationList = csstree$3.parse(
+              selectedEl.attributes.style == null
+                ? ''
+                : selectedEl.attributes.style,
+              {
+                context: 'declarationList',
+                parseValue: false,
+              }
+            );
+            if (styleDeclarationList.type !== 'DeclarationList') {
+              continue;
+            }
+            const styleDeclarationItems = new Map();
+            csstree$3.walk(styleDeclarationList, {
+              visit: 'Declaration',
+              enter(node, item) {
+                styleDeclarationItems.set(node.property, item);
+              },
+            });
+            // merge declarations
+            csstree$3.walk(selector.rule, {
+              visit: 'Declaration',
+              enter(ruleDeclaration) {
+                // existing inline styles have higher priority
+                // no inline styles, external styles,                                    external styles used
+                // inline styles,    external styles same   priority as inline styles,   inline   styles used
+                // inline styles,    external styles higher priority than inline styles, external styles used
+                const matchedItem = styleDeclarationItems.get(
+                  ruleDeclaration.property
+                );
+                const ruleDeclarationItem =
+                  styleDeclarationList.children.createItem(ruleDeclaration);
+                if (matchedItem == null) {
+                  styleDeclarationList.children.append(ruleDeclarationItem);
+                } else if (
+                  matchedItem.data.important !== true &&
+                  ruleDeclaration.important === true
+                ) {
+                  styleDeclarationList.children.replace(
+                    matchedItem,
+                    ruleDeclarationItem
+                  );
+                  styleDeclarationItems.set(
+                    ruleDeclaration.property,
+                    ruleDeclarationItem
+                  );
+                }
+              },
+            });
+            selectedEl.attributes.style =
+              csstree$3.generate(styleDeclarationList);
+          }
+
+          if (
+            removeMatchedSelectors &&
+            matchedElements.length !== 0 &&
+            selector.rule.prelude.type === 'SelectorList'
+          ) {
+            // clean up matching simple selectors if option removeMatchedSelectors is enabled
+            selector.rule.prelude.children.remove(selector.item);
+          }
+          selector.matchedElements = matchedElements;
+        }
+
+        // no further processing required
+        if (removeMatchedSelectors === false) {
           return;
         }
 
-        // clean up <style/> rulesets without any css selectors left
-        if (node.type === 'Rule' && node.prelude.children.isEmpty()) {
-          list.remove(item);
+        // clean up matched class + ID attribute values
+        for (const selector of sortedSelectors) {
+          if (selector.matchedElements == null) {
+            continue;
+          }
+
+          if (onlyMatchedOnce && selector.matchedElements.length > 1) {
+            // skip selectors that match more than once if option onlyMatchedOnce is enabled
+            continue;
+          }
+
+          for (const selectedEl of selector.matchedElements) {
+            // class
+            const classList = new Set(
+              selectedEl.attributes.class == null
+                ? null
+                : selectedEl.attributes.class.split(' ')
+            );
+            const firstSubSelector = selector.node.children.first();
+            if (
+              firstSubSelector != null &&
+              firstSubSelector.type === 'ClassSelector'
+            ) {
+              classList.delete(firstSubSelector.name);
+            }
+            if (classList.size === 0) {
+              delete selectedEl.attributes.class;
+            } else {
+              selectedEl.attributes.class = Array.from(classList).join(' ');
+            }
+
+            // ID
+            if (
+              firstSubSelector != null &&
+              firstSubSelector.type === 'IdSelector'
+            ) {
+              if (selectedEl.attributes.id === firstSubSelector.name) {
+                delete selectedEl.attributes.id;
+              }
+            }
+          }
+        }
+
+        for (const style of styles) {
+          csstree$3.walk(style.cssAst, {
+            visit: 'Rule',
+            enter: function (node, item, list) {
+              // clean up <style/> rulesets without any css selectors left
+              if (
+                node.type === 'Rule' &&
+                node.prelude.type === 'SelectorList' &&
+                node.prelude.children.isEmpty()
+              ) {
+                list.remove(item);
+              }
+            },
+          });
+
+          if (style.cssAst.children.isEmpty()) {
+            // remove emtpy style element
+            detachNodeFromParent$f(style.node, style.parentNode);
+          } else {
+            // update style element if any styles left
+            const firstChild = style.node.children[0];
+            if (firstChild.type === 'text' || firstChild.type === 'cdata') {
+              firstChild.value = csstree$3.generate(style.cssAst);
+            }
+          }
         }
       },
-    });
-
-    if (style.cssAst.children.isEmpty()) {
-      // clean up now emtpy <style/>s
-      var styleParentEl = style.styleEl.parentNode;
-      styleParentEl.spliceContent(
-        styleParentEl.children.indexOf(style.styleEl),
-        1
-      );
-
-      if (
-        styleParentEl.name === 'defs' &&
-        styleParentEl.children.length === 0
-      ) {
-        // also clean up now empty <def/>s
-        var defsParentEl = styleParentEl.parentNode;
-        defsParentEl.spliceContent(
-          defsParentEl.children.indexOf(styleParentEl),
-          1
-        );
-      }
-
-      continue;
-    }
-
-    // update existing, left over <style>s
-    cssTools.setCssStr(style.styleEl, csstree$3.generate(style.cssAst));
-  }
-
-  return root;
+    },
+  };
 };
 
 var minifyStyles$1 = {};
@@ -37120,7 +37211,7 @@ var createDeclarationIndexer$1 = function createDeclarationIndexer() {
 };
 
 var generate$4 = lib$1.generate;
-var specificity$1 = specificity$3;
+var specificity$1 = specificity$4;
 
 var nonFreezePseudoElements = {
     'first-letter': true,
@@ -40048,10 +40139,10 @@ var style = {};
  * @typedef {import('./types').XastChild} XastChild
  */
 
-const stable = stable$2.exports;
+const stable = stable$3.exports;
 const csstree$1 = lib$1;
 // @ts-ignore not defined in @types/csso
-const specificity = specificity$3;
+const specificity = specificity$4;
 const { visit: visit$3, matches } = xast;
 const {
   attrsGroups: attrsGroups$3,
@@ -45111,34 +45202,34 @@ var removeEmptyAttrs$1 = {};
 
 const { attrsGroups } = _collections;
 
+removeEmptyAttrs$1.type = 'visitor';
 removeEmptyAttrs$1.name = 'removeEmptyAttrs';
-
-removeEmptyAttrs$1.type = 'perItem';
-
 removeEmptyAttrs$1.active = true;
-
 removeEmptyAttrs$1.description = 'removes empty attributes';
 
 /**
  * Remove attributes with empty values.
  *
- * @param {Object} item current iteration item
- * @return {Boolean} if false, item will be filtered out
- *
  * @author Kir Belevich
+ *
+ * @type {import('../lib/types').Plugin<void>}
  */
-removeEmptyAttrs$1.fn = function (item) {
-  if (item.type === 'element') {
-    for (const [name, value] of Object.entries(item.attributes)) {
-      if (
-        value === '' &&
-        // empty conditional processing attributes prevents elements from rendering
-        attrsGroups.conditionalProcessing.includes(name) === false
-      ) {
-        delete item.attributes[name];
-      }
-    }
-  }
+removeEmptyAttrs$1.fn = () => {
+  return {
+    element: {
+      enter: (node) => {
+        for (const [name, value] of Object.entries(node.attributes)) {
+          if (
+            value === '' &&
+            // empty conditional processing attributes prevents elements from rendering
+            attrsGroups.conditionalProcessing.includes(name) === false
+          ) {
+            delete node.attributes[name];
+          }
+        }
+      },
+    },
+  };
 };
 
 var removeEmptyContainers$1 = {};
@@ -46251,15 +46342,16 @@ prefixIds.fn = (_root, params, info) => {
             node.attributes[name] != null &&
             node.attributes[name].length !== 0
           ) {
-            // extract id reference from url(...) value
-            const matches = /url\((.*?)\)/gi.exec(node.attributes[name]);
-            if (matches != null) {
-              const value = matches[1];
-              const prefixed = prefixReference(prefix, value);
-              if (prefixed != null) {
-                node.attributes[name] = `url(${prefixed})`;
+            node.attributes[name] = node.attributes[name].replace(
+              /url\((.*?)\)/gi,
+              (match, url) => {
+                const prefixed = prefixReference(prefix, url);
+                if (prefixed == null) {
+                  return match;
+                }
+                return `url(${prefixed})`;
               }
-            }
+            );
           }
         }
 
@@ -46927,6 +47019,7 @@ removeXMLNS.description =
 removeXMLNS.fn = function (item) {
   if (item.type === 'element' && item.name === 'svg') {
     delete item.attributes.xmlns;
+    delete item.attributes['xmlns:xlink'];
   }
 };
 
@@ -49029,9 +49122,47 @@ const parseSvg$1 = (data, from) => {
 };
 parser.parseSvg = parseSvg$1;
 
+var stringifier = {};
+
+/**
+ * @typedef {import('./types').XastParent} XastParent
+ * @typedef {import('./types').XastRoot} XastRoot
+ * @typedef {import('./types').XastElement} XastElement
+ * @typedef {import('./types').XastInstruction} XastInstruction
+ * @typedef {import('./types').XastDoctype} XastDoctype
+ * @typedef {import('./types').XastText} XastText
+ * @typedef {import('./types').XastCdata} XastCdata
+ * @typedef {import('./types').XastComment} XastComment
+ * @typedef {import('./types').StringifyOptions} StringifyOptions
+ */
+
 const { textElems } = _collections;
 
-var defaults = {
+/**
+ * @typedef {{
+ *   width: void | string,
+ *   height: void | string,
+ *   indent: string,
+ *   textContext: null | XastElement,
+ *   indentLevel: number,
+ * }} State
+ */
+
+/**
+ * @typedef {Required<StringifyOptions>} Options
+ */
+
+/**
+ * @type {(char: string) => string}
+ */
+const encodeEntity = (char) => {
+  return entities[char];
+};
+
+/**
+ * @type {Options}
+ */
+const defaults = {
   doctypeStart: '<!DOCTYPE',
   doctypeEnd: '>',
   procInstStart: '<?',
@@ -49060,7 +49191,10 @@ var defaults = {
   finalNewline: false,
 };
 
-var entities = {
+/**
+ * @type {Record<string, string>}
+ */
+const entities = {
   '&': '&amp;',
   "'": '&apos;',
   '"': '&quot;',
@@ -49069,278 +49203,233 @@ var entities = {
 };
 
 /**
- * Convert SVG-as-JS object to SVG (XML) string.
+ * convert XAST to SVG string
  *
- * @param {Object} data input data
- * @param {Object} config config
- *
- * @return {Object} output data
+ * @type {(data: XastRoot, config: StringifyOptions) => {
+ *   data: string,
+ *   info: {
+ *     width: void | string,
+ *     height: void | string
+ *   }
+ * }}
  */
-var js2svg$1 = function (data, config) {
-  return new JS2SVG(config).convert(data);
-};
-
-function JS2SVG(config) {
-  if (config) {
-    this.config = Object.assign({}, defaults, config);
-  } else {
-    this.config = Object.assign({}, defaults);
+const stringifySvg$1 = (data, userOptions = {}) => {
+  /**
+   * @type {Options}
+   */
+  const config = { ...defaults, ...userOptions };
+  const indent = config.indent;
+  let newIndent = '    ';
+  if (typeof indent === 'number' && Number.isNaN(indent) === false) {
+    newIndent = indent < 0 ? '\t' : ' '.repeat(indent);
+  } else if (typeof indent === 'string') {
+    newIndent = indent;
   }
-
-  var indent = this.config.indent;
-  if (typeof indent == 'number' && !isNaN(indent)) {
-    this.config.indent = indent < 0 ? '\t' : ' '.repeat(indent);
-  } else if (typeof indent != 'string') {
-    this.config.indent = '    ';
+  /**
+   * @type {State}
+   */
+  const state = {
+    // TODO remove width and height in v3
+    width: undefined,
+    height: undefined,
+    indent: newIndent,
+    textContext: null,
+    indentLevel: 0,
+  };
+  const eol = config.eol === 'crlf' ? '\r\n' : '\n';
+  if (config.pretty) {
+    config.doctypeEnd += eol;
+    config.procInstEnd += eol;
+    config.commentEnd += eol;
+    config.cdataEnd += eol;
+    config.tagShortEnd += eol;
+    config.tagOpenEnd += eol;
+    config.tagCloseEnd += eol;
+    config.textEnd += eol;
   }
-
-  if (this.config.eol === 'crlf') {
-    this.eol = '\r\n';
-  } else {
-    this.eol = '\n';
+  let svg = stringifyNode(data, config, state);
+  if (config.finalNewline && svg.length > 0 && svg[svg.length - 1] !== '\n') {
+    svg += eol;
   }
-
-  if (this.config.pretty) {
-    this.config.doctypeEnd += this.eol;
-    this.config.procInstEnd += this.eol;
-    this.config.commentEnd += this.eol;
-    this.config.cdataEnd += this.eol;
-    this.config.tagShortEnd += this.eol;
-    this.config.tagOpenEnd += this.eol;
-    this.config.tagCloseEnd += this.eol;
-    this.config.textEnd += this.eol;
-  }
-
-  this.indentLevel = 0;
-  this.textContext = null;
-}
-
-function encodeEntity(char) {
-  return entities[char];
-}
-
-/**
- * Start conversion.
- *
- * @param {Object} data input data
- *
- * @return {String}
- */
-JS2SVG.prototype.convert = function (data) {
-  var svg = '';
-
-  this.indentLevel++;
-
-  for (const item of data.children) {
-    if (item.type === 'element') {
-      svg += this.createElem(item);
-    }
-    if (item.type === 'text') {
-      svg += this.createText(item);
-    }
-    if (item.type === 'doctype') {
-      svg += this.createDoctype(item);
-    }
-    if (item.type === 'instruction') {
-      svg += this.createProcInst(item);
-    }
-    if (item.type === 'comment') {
-      svg += this.createComment(item);
-    }
-    if (item.type === 'cdata') {
-      svg += this.createCDATA(item);
-    }
-  }
-
-  this.indentLevel--;
-
-  if (
-    this.config.finalNewline &&
-    this.indentLevel === 0 &&
-    svg.length > 0 &&
-    svg[svg.length - 1] !== '\n'
-  ) {
-    svg += this.eol;
-  }
-
   return {
     data: svg,
     info: {
-      width: this.width,
-      height: this.height,
+      width: state.width,
+      height: state.height,
     },
   };
 };
+stringifier.stringifySvg = stringifySvg$1;
 
 /**
- * Create indent string in accordance with the current node level.
- *
- * @return {String}
+ * @type {(node: XastParent, config: Options, state: State) => string}
  */
-JS2SVG.prototype.createIndent = function () {
-  var indent = '';
-
-  if (this.config.pretty && !this.textContext) {
-    indent = this.config.indent.repeat(this.indentLevel - 1);
+const stringifyNode = (data, config, state) => {
+  let svg = '';
+  state.indentLevel += 1;
+  for (const item of data.children) {
+    if (item.type === 'element') {
+      svg += stringifyElement(item, config, state);
+    }
+    if (item.type === 'text') {
+      svg += stringifyText(item, config, state);
+    }
+    if (item.type === 'doctype') {
+      svg += stringifyDoctype(item, config);
+    }
+    if (item.type === 'instruction') {
+      svg += stringifyInstruction(item, config);
+    }
+    if (item.type === 'comment') {
+      svg += stringifyComment(item, config);
+    }
+    if (item.type === 'cdata') {
+      svg += stringifyCdata(item, config, state);
+    }
   }
+  state.indentLevel -= 1;
+  return svg;
+};
 
+/**
+ * create indent string in accordance with the current node level.
+ *
+ * @type {(config: Options, state: State) => string}
+ */
+const createIndent = (config, state) => {
+  let indent = '';
+  if (config.pretty && state.textContext == null) {
+    indent = state.indent.repeat(state.indentLevel - 1);
+  }
   return indent;
 };
 
 /**
- * Create doctype tag.
- *
- * @param {String} doctype doctype body string
- *
- * @return {String}
+ * @type {(node: XastDoctype, config: Options) => string}
  */
-JS2SVG.prototype.createDoctype = function (node) {
-  const { doctype } = node.data;
-  return this.config.doctypeStart + doctype + this.config.doctypeEnd;
+const stringifyDoctype = (node, config) => {
+  return config.doctypeStart + node.data.doctype + config.doctypeEnd;
 };
 
 /**
- * Create XML Processing Instruction tag.
- *
- * @param {Object} instruction instruction object
- *
- * @return {String}
+ * @type {(node: XastInstruction, config: Options) => string}
  */
-JS2SVG.prototype.createProcInst = function (node) {
-  const { name, value } = node;
+const stringifyInstruction = (node, config) => {
   return (
-    this.config.procInstStart + name + ' ' + value + this.config.procInstEnd
+    config.procInstStart + node.name + ' ' + node.value + config.procInstEnd
   );
 };
 
 /**
- * Create comment tag.
- *
- * @param {String} comment comment body
- *
- * @return {String}
+ * @type {(node: XastComment, config: Options) => string}
  */
-JS2SVG.prototype.createComment = function (node) {
-  const { value } = node;
-  return this.config.commentStart + value + this.config.commentEnd;
+const stringifyComment = (node, config) => {
+  return config.commentStart + node.value + config.commentEnd;
 };
 
 /**
- * Create CDATA section.
- *
- * @param {String} cdata CDATA body
- *
- * @return {String}
+ * @type {(node: XastCdata, config: Options, state: State) => string}
  */
-JS2SVG.prototype.createCDATA = function (node) {
-  const { value } = node;
+const stringifyCdata = (node, config, state) => {
   return (
-    this.createIndent() + this.config.cdataStart + value + this.config.cdataEnd
+    createIndent(config, state) +
+    config.cdataStart +
+    node.value +
+    config.cdataEnd
   );
 };
 
 /**
- * Create element tag.
- *
- * @param {Object} data element object
- *
- * @return {String}
+ * @type {(node: XastElement, config: Options, state: State) => string}
  */
-JS2SVG.prototype.createElem = function (data) {
+const stringifyElement = (node, config, state) => {
   // beautiful injection for obtaining SVG information :)
   if (
-    data.name === 'svg' &&
-    data.attributes.width != null &&
-    data.attributes.height != null
+    node.name === 'svg' &&
+    node.attributes.width != null &&
+    node.attributes.height != null
   ) {
-    this.width = data.attributes.width;
-    this.height = data.attributes.height;
+    state.width = node.attributes.width;
+    state.height = node.attributes.height;
   }
 
   // empty element and short tag
-  if (data.children.length === 0) {
-    if (this.config.useShortTags) {
+  if (node.children.length === 0) {
+    if (config.useShortTags) {
       return (
-        this.createIndent() +
-        this.config.tagShortStart +
-        data.name +
-        this.createAttrs(data) +
-        this.config.tagShortEnd
+        createIndent(config, state) +
+        config.tagShortStart +
+        node.name +
+        stringifyAttributes(node, config) +
+        config.tagShortEnd
       );
     } else {
       return (
-        this.createIndent() +
-        this.config.tagShortStart +
-        data.name +
-        this.createAttrs(data) +
-        this.config.tagOpenEnd +
-        this.config.tagCloseStart +
-        data.name +
-        this.config.tagCloseEnd
+        createIndent(config, state) +
+        config.tagShortStart +
+        node.name +
+        stringifyAttributes(node, config) +
+        config.tagOpenEnd +
+        config.tagCloseStart +
+        node.name +
+        config.tagCloseEnd
       );
     }
     // non-empty element
   } else {
-    var tagOpenStart = this.config.tagOpenStart,
-      tagOpenEnd = this.config.tagOpenEnd,
-      tagCloseStart = this.config.tagCloseStart,
-      tagCloseEnd = this.config.tagCloseEnd,
-      openIndent = this.createIndent(),
-      closeIndent = this.createIndent(),
-      processedData = '',
-      dataEnd = '';
+    let tagOpenStart = config.tagOpenStart;
+    let tagOpenEnd = config.tagOpenEnd;
+    let tagCloseStart = config.tagCloseStart;
+    let tagCloseEnd = config.tagCloseEnd;
+    let openIndent = createIndent(config, state);
+    let closeIndent = createIndent(config, state);
 
-    if (this.textContext) {
+    if (state.textContext) {
       tagOpenStart = defaults.tagOpenStart;
       tagOpenEnd = defaults.tagOpenEnd;
       tagCloseStart = defaults.tagCloseStart;
       tagCloseEnd = defaults.tagCloseEnd;
       openIndent = '';
-    } else if (data.isElem(textElems)) {
+    } else if (textElems.includes(node.name)) {
       tagOpenEnd = defaults.tagOpenEnd;
       tagCloseStart = defaults.tagCloseStart;
       closeIndent = '';
-      this.textContext = data;
+      state.textContext = node;
     }
 
-    processedData += this.convert(data).data;
+    const children = stringifyNode(node, config, state);
 
-    if (this.textContext == data) {
-      this.textContext = null;
+    if (state.textContext === node) {
+      state.textContext = null;
     }
 
     return (
       openIndent +
       tagOpenStart +
-      data.name +
-      this.createAttrs(data) +
+      node.name +
+      stringifyAttributes(node, config) +
       tagOpenEnd +
-      processedData +
-      dataEnd +
+      children +
       closeIndent +
       tagCloseStart +
-      data.name +
+      node.name +
       tagCloseEnd
     );
   }
 };
 
 /**
- * Create element attributes.
- *
- * @param {Object} elem attributes object
- *
- * @return {String}
+ * @type {(node: XastElement, config: Options) => string}
  */
-JS2SVG.prototype.createAttrs = function (element) {
+const stringifyAttributes = (node, config) => {
   let attrs = '';
-  for (const [name, value] of Object.entries(element.attributes)) {
+  for (const [name, value] of Object.entries(node.attributes)) {
+    // TODO remove attributes without values support in v3
     if (value !== undefined) {
       const encodedValue = value
         .toString()
-        .replace(this.config.regValEntities, this.config.encodeEntity);
-      attrs +=
-        ' ' + name + this.config.attrStart + encodedValue + this.config.attrEnd;
+        .replace(config.regValEntities, config.encodeEntity);
+      attrs += ' ' + name + config.attrStart + encodedValue + config.attrEnd;
     } else {
       attrs += ' ' + name;
     }
@@ -49349,19 +49438,14 @@ JS2SVG.prototype.createAttrs = function (element) {
 };
 
 /**
- * Create text node.
- *
- * @param {String} text text
- *
- * @return {String}
+ * @type {(node: XastText, config: Options, state: State) => string}
  */
-JS2SVG.prototype.createText = function (node) {
-  const { value } = node;
+const stringifyText = (node, config, state) => {
   return (
-    this.createIndent() +
-    this.config.textStart +
-    value.replace(this.config.regEntities, this.config.encodeEntity) +
-    (this.textContext ? '' : this.config.textEnd)
+    createIndent(config, state) +
+    config.textStart +
+    node.value.replace(config.regEntities, config.encodeEntity) +
+    (state.textContext ? '' : config.textEnd)
   );
 };
 
@@ -49371,7 +49455,7 @@ const {
   extendDefaultPlugins: extendDefaultPlugins$1,
 } = config$1;
 const { parseSvg } = parser;
-const js2svg = js2svg$1;
+const { stringifySvg } = stringifier;
 const { invokePlugins } = plugins;
 const JSAPI = jsAPI;
 const { encodeSVGDatauri } = tools;
@@ -49418,10 +49502,7 @@ const optimize$1 = (input, config) => {
       globalOverrides.floatPrecision = config.floatPrecision;
     }
     svgjs = invokePlugins(svgjs, info, resolvedPlugins, null, globalOverrides);
-    svgjs = js2svg(svgjs, config.js2svg);
-    if (svgjs.error) {
-      throw Error(svgjs.error);
-    }
+    svgjs = stringifySvg(svgjs, config.js2svg);
     if (svgjs.data.length < prevResultSize) {
       input = svgjs.data;
       prevResultSize = svgjs.data.length;

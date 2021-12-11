@@ -1,7 +1,7 @@
 {
   "app-id": "re.sonny.OhMySVG",
   "runtime": "org.gnome.Platform",
-  "runtime-version": "40",
+  "runtime-version": "41",
   "sdk": "org.gnome.Sdk",
   "command": "re.sonny.OhMySVG",
   "finish-args": [
@@ -9,10 +9,44 @@
     "--device=dri",
     "--socket=fallback-x11",
     "--socket=wayland",
-    /* Required for FLATPAK_ID */
     "--require-version=1.1.2"
   ],
   "modules": [
+    {
+      "name": "libsass",
+      "buildsystem": "meson",
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/lazka/libsass.git",
+          "commit": "302397c0c8ae2d7ab02f45ea461c2c3d768f248e"
+        }
+      ]
+    },
+    {
+      "name": "sassc",
+      "buildsystem": "meson",
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/lazka/sassc.git",
+          "commit": "82803377c33247265d779af034eceb5949e78354"
+        }
+      ]
+    },
+    {
+      "name": "libadwaita",
+      "buildsystem": "meson",
+      "config-opts": ["-Dtests=false", "-Dexamples=false", "-Dvapi=false"],
+      "cleanup": ["/include", "/lib/pkgconfig"],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://gitlab.gnome.org/GNOME/libadwaita.git",
+          "tag": "1.0.0.alpha.4"
+        }
+      ]
+    },
     {
       "name": "OhMySVG",
       "buildsystem": "meson",
