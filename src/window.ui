@@ -25,6 +25,7 @@
               <object class="GtkMenuButton" id="button_menu">
                 <property name="menu-model">menu_app</property>
                 <property name="icon-name">open-menu-symbolic</property>
+                <property name="primary">true</property>
               </object>
             </child>
           </object>
@@ -276,10 +277,6 @@
       <item>
         <attribute name="label" translatable="yes">_About Oh My SVG</attribute>
         <attribute name="action">app.about</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_Quit</attribute>
-        <attribute name="action">app.quit</attribute>
       </item>
     </section>
   </menu>

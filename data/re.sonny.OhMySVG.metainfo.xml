@@ -6,7 +6,7 @@
   <developer_name>Sonny Piers</developer_name>
   <update_contact>sonny@fastmail.net</update_contact>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>GPL-3.0-or-later</project_license>
+  <project_license>GPL-3.0</project_license>
   <summary>Reduce the size of SVGs</summary>
   <description>
     <p>Oh My SVG let you export unoptimized SVG files into smaller versions.</p>
