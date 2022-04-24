@@ -1,8 +1,14 @@
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function getAugmentedNamespace(n) {
-	if (n.__esModule) return n;
-	var a = Object.defineProperty({}, '__esModule', {value: true});
+  var f = n.default;
+	if (typeof f == "function") {
+		var a = function () {
+			return f.apply(this, arguments);
+		};
+		a.prototype = f.prototype;
+  } else a = {};
+  Object.defineProperty(a, '__esModule', {value: true});
 	Object.keys(n).forEach(function (k) {
 		var d = Object.getOwnPropertyDescriptor(n, k);
 		Object.defineProperty(a, k, d.get ? d : {
@@ -45,61 +51,61 @@ var lib$7 = {};
 var lib$6 = {};
 
 (function (exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Doctype = exports.CDATA = exports.Tag = exports.Style = exports.Script = exports.Comment = exports.Directive = exports.Text = exports.Root = exports.isTag = exports.ElementType = void 0;
-/** Types of elements found in htmlparser2's DOM */
-var ElementType;
-(function (ElementType) {
-    /** Type for the root element of a document */
-    ElementType["Root"] = "root";
-    /** Type for Text */
-    ElementType["Text"] = "text";
-    /** Type for <? ... ?> */
-    ElementType["Directive"] = "directive";
-    /** Type for <!-- ... --> */
-    ElementType["Comment"] = "comment";
-    /** Type for <script> tags */
-    ElementType["Script"] = "script";
-    /** Type for <style> tags */
-    ElementType["Style"] = "style";
-    /** Type for Any tag */
-    ElementType["Tag"] = "tag";
-    /** Type for <![CDATA[ ... ]]> */
-    ElementType["CDATA"] = "cdata";
-    /** Type for <!doctype ...> */
-    ElementType["Doctype"] = "doctype";
-})(ElementType = exports.ElementType || (exports.ElementType = {}));
-/**
- * Tests whether an element is a tag or not.
- *
- * @param elem Element to test
- */
-function isTag(elem) {
-    return (elem.type === ElementType.Tag ||
-        elem.type === ElementType.Script ||
-        elem.type === ElementType.Style);
-}
-exports.isTag = isTag;
-// Exports for backwards compatibility
-/** Type for the root element of a document */
-exports.Root = ElementType.Root;
-/** Type for Text */
-exports.Text = ElementType.Text;
-/** Type for <? ... ?> */
-exports.Directive = ElementType.Directive;
-/** Type for <!-- ... --> */
-exports.Comment = ElementType.Comment;
-/** Type for <script> tags */
-exports.Script = ElementType.Script;
-/** Type for <style> tags */
-exports.Style = ElementType.Style;
-/** Type for Any tag */
-exports.Tag = ElementType.Tag;
-/** Type for <![CDATA[ ... ]]> */
-exports.CDATA = ElementType.CDATA;
-/** Type for <!doctype ...> */
-exports.Doctype = ElementType.Doctype;
-}(lib$6));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.Doctype = exports.CDATA = exports.Tag = exports.Style = exports.Script = exports.Comment = exports.Directive = exports.Text = exports.Root = exports.isTag = exports.ElementType = void 0;
+	/** Types of elements found in htmlparser2's DOM */
+	var ElementType;
+	(function (ElementType) {
+	    /** Type for the root element of a document */
+	    ElementType["Root"] = "root";
+	    /** Type for Text */
+	    ElementType["Text"] = "text";
+	    /** Type for <? ... ?> */
+	    ElementType["Directive"] = "directive";
+	    /** Type for <!-- ... --> */
+	    ElementType["Comment"] = "comment";
+	    /** Type for <script> tags */
+	    ElementType["Script"] = "script";
+	    /** Type for <style> tags */
+	    ElementType["Style"] = "style";
+	    /** Type for Any tag */
+	    ElementType["Tag"] = "tag";
+	    /** Type for <![CDATA[ ... ]]> */
+	    ElementType["CDATA"] = "cdata";
+	    /** Type for <!doctype ...> */
+	    ElementType["Doctype"] = "doctype";
+	})(ElementType = exports.ElementType || (exports.ElementType = {}));
+	/**
+	 * Tests whether an element is a tag or not.
+	 *
+	 * @param elem Element to test
+	 */
+	function isTag(elem) {
+	    return (elem.type === ElementType.Tag ||
+	        elem.type === ElementType.Script ||
+	        elem.type === ElementType.Style);
+	}
+	exports.isTag = isTag;
+	// Exports for backwards compatibility
+	/** Type for the root element of a document */
+	exports.Root = ElementType.Root;
+	/** Type for Text */
+	exports.Text = ElementType.Text;
+	/** Type for <? ... ?> */
+	exports.Directive = ElementType.Directive;
+	/** Type for <!-- ... --> */
+	exports.Comment = ElementType.Comment;
+	/** Type for <script> tags */
+	exports.Script = ElementType.Script;
+	/** Type for <style> tags */
+	exports.Style = ElementType.Style;
+	/** Type for Any tag */
+	exports.Tag = ElementType.Tag;
+	/** Type for <![CDATA[ ... ]]> */
+	exports.CDATA = ElementType.CDATA;
+	/** Type for <!doctype ...> */
+	exports.Doctype = ElementType.Doctype;
+} (lib$6));
 
 var node$1 = {};
 
@@ -494,175 +500,175 @@ function cloneChildren(childs) {
 }
 
 (function (exports) {
-var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (commonjsGlobal && commonjsGlobal.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DomHandler = void 0;
-var domelementtype_1 = lib$6;
-var node_1 = node$1;
-__exportStar(node$1, exports);
-var reWhitespace = /\s+/g;
-// Default options
-var defaultOpts = {
-    normalizeWhitespace: false,
-    withStartIndices: false,
-    withEndIndices: false,
-};
-var DomHandler = /** @class */ (function () {
-    /**
-     * @param callback Called once parsing has completed.
-     * @param options Settings for the handler.
-     * @param elementCB Callback whenever a tag is closed.
-     */
-    function DomHandler(callback, options, elementCB) {
-        /** The elements of the DOM */
-        this.dom = [];
-        /** The root element for the DOM */
-        this.root = new node_1.Document(this.dom);
-        /** Indicated whether parsing has been completed. */
-        this.done = false;
-        /** Stack of open tags. */
-        this.tagStack = [this.root];
-        /** A data node that is still being written to. */
-        this.lastNode = null;
-        /** Reference to the parser instance. Used for location information. */
-        this.parser = null;
-        // Make it possible to skip arguments, for backwards-compatibility
-        if (typeof options === "function") {
-            elementCB = options;
-            options = defaultOpts;
-        }
-        if (typeof callback === "object") {
-            options = callback;
-            callback = undefined;
-        }
-        this.callback = callback !== null && callback !== void 0 ? callback : null;
-        this.options = options !== null && options !== void 0 ? options : defaultOpts;
-        this.elementCB = elementCB !== null && elementCB !== void 0 ? elementCB : null;
-    }
-    DomHandler.prototype.onparserinit = function (parser) {
-        this.parser = parser;
-    };
-    // Resets the handler back to starting state
-    DomHandler.prototype.onreset = function () {
-        var _a;
-        this.dom = [];
-        this.root = new node_1.Document(this.dom);
-        this.done = false;
-        this.tagStack = [this.root];
-        this.lastNode = null;
-        this.parser = (_a = this.parser) !== null && _a !== void 0 ? _a : null;
-    };
-    // Signals the handler that parsing is done
-    DomHandler.prototype.onend = function () {
-        if (this.done)
-            return;
-        this.done = true;
-        this.parser = null;
-        this.handleCallback(null);
-    };
-    DomHandler.prototype.onerror = function (error) {
-        this.handleCallback(error);
-    };
-    DomHandler.prototype.onclosetag = function () {
-        this.lastNode = null;
-        var elem = this.tagStack.pop();
-        if (this.options.withEndIndices) {
-            elem.endIndex = this.parser.endIndex;
-        }
-        if (this.elementCB)
-            this.elementCB(elem);
-    };
-    DomHandler.prototype.onopentag = function (name, attribs) {
-        var type = this.options.xmlMode ? domelementtype_1.ElementType.Tag : undefined;
-        var element = new node_1.Element(name, attribs, undefined, type);
-        this.addNode(element);
-        this.tagStack.push(element);
-    };
-    DomHandler.prototype.ontext = function (data) {
-        var normalizeWhitespace = this.options.normalizeWhitespace;
-        var lastNode = this.lastNode;
-        if (lastNode && lastNode.type === domelementtype_1.ElementType.Text) {
-            if (normalizeWhitespace) {
-                lastNode.data = (lastNode.data + data).replace(reWhitespace, " ");
-            }
-            else {
-                lastNode.data += data;
-            }
-        }
-        else {
-            if (normalizeWhitespace) {
-                data = data.replace(reWhitespace, " ");
-            }
-            var node = new node_1.Text(data);
-            this.addNode(node);
-            this.lastNode = node;
-        }
-    };
-    DomHandler.prototype.oncomment = function (data) {
-        if (this.lastNode && this.lastNode.type === domelementtype_1.ElementType.Comment) {
-            this.lastNode.data += data;
-            return;
-        }
-        var node = new node_1.Comment(data);
-        this.addNode(node);
-        this.lastNode = node;
-    };
-    DomHandler.prototype.oncommentend = function () {
-        this.lastNode = null;
-    };
-    DomHandler.prototype.oncdatastart = function () {
-        var text = new node_1.Text("");
-        var node = new node_1.NodeWithChildren(domelementtype_1.ElementType.CDATA, [text]);
-        this.addNode(node);
-        text.parent = node;
-        this.lastNode = text;
-    };
-    DomHandler.prototype.oncdataend = function () {
-        this.lastNode = null;
-    };
-    DomHandler.prototype.onprocessinginstruction = function (name, data) {
-        var node = new node_1.ProcessingInstruction(name, data);
-        this.addNode(node);
-    };
-    DomHandler.prototype.handleCallback = function (error) {
-        if (typeof this.callback === "function") {
-            this.callback(error, this.dom);
-        }
-        else if (error) {
-            throw error;
-        }
-    };
-    DomHandler.prototype.addNode = function (node) {
-        var parent = this.tagStack[this.tagStack.length - 1];
-        var previousSibling = parent.children[parent.children.length - 1];
-        if (this.options.withStartIndices) {
-            node.startIndex = this.parser.startIndex;
-        }
-        if (this.options.withEndIndices) {
-            node.endIndex = this.parser.endIndex;
-        }
-        parent.children.push(node);
-        if (previousSibling) {
-            node.prev = previousSibling;
-            previousSibling.next = node;
-        }
-        node.parent = parent;
-        this.lastNode = null;
-    };
-    return DomHandler;
-}());
-exports.DomHandler = DomHandler;
-exports.default = DomHandler;
-}(lib$7));
+	var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+	    if (k2 === undefined) k2 = k;
+	    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+	}) : (function(o, m, k, k2) {
+	    if (k2 === undefined) k2 = k;
+	    o[k2] = m[k];
+	}));
+	var __exportStar = (commonjsGlobal && commonjsGlobal.__exportStar) || function(m, exports) {
+	    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.DomHandler = void 0;
+	var domelementtype_1 = lib$6;
+	var node_1 = node$1;
+	__exportStar(node$1, exports);
+	var reWhitespace = /\s+/g;
+	// Default options
+	var defaultOpts = {
+	    normalizeWhitespace: false,
+	    withStartIndices: false,
+	    withEndIndices: false,
+	};
+	var DomHandler = /** @class */ (function () {
+	    /**
+	     * @param callback Called once parsing has completed.
+	     * @param options Settings for the handler.
+	     * @param elementCB Callback whenever a tag is closed.
+	     */
+	    function DomHandler(callback, options, elementCB) {
+	        /** The elements of the DOM */
+	        this.dom = [];
+	        /** The root element for the DOM */
+	        this.root = new node_1.Document(this.dom);
+	        /** Indicated whether parsing has been completed. */
+	        this.done = false;
+	        /** Stack of open tags. */
+	        this.tagStack = [this.root];
+	        /** A data node that is still being written to. */
+	        this.lastNode = null;
+	        /** Reference to the parser instance. Used for location information. */
+	        this.parser = null;
+	        // Make it possible to skip arguments, for backwards-compatibility
+	        if (typeof options === "function") {
+	            elementCB = options;
+	            options = defaultOpts;
+	        }
+	        if (typeof callback === "object") {
+	            options = callback;
+	            callback = undefined;
+	        }
+	        this.callback = callback !== null && callback !== void 0 ? callback : null;
+	        this.options = options !== null && options !== void 0 ? options : defaultOpts;
+	        this.elementCB = elementCB !== null && elementCB !== void 0 ? elementCB : null;
+	    }
+	    DomHandler.prototype.onparserinit = function (parser) {
+	        this.parser = parser;
+	    };
+	    // Resets the handler back to starting state
+	    DomHandler.prototype.onreset = function () {
+	        var _a;
+	        this.dom = [];
+	        this.root = new node_1.Document(this.dom);
+	        this.done = false;
+	        this.tagStack = [this.root];
+	        this.lastNode = null;
+	        this.parser = (_a = this.parser) !== null && _a !== void 0 ? _a : null;
+	    };
+	    // Signals the handler that parsing is done
+	    DomHandler.prototype.onend = function () {
+	        if (this.done)
+	            return;
+	        this.done = true;
+	        this.parser = null;
+	        this.handleCallback(null);
+	    };
+	    DomHandler.prototype.onerror = function (error) {
+	        this.handleCallback(error);
+	    };
+	    DomHandler.prototype.onclosetag = function () {
+	        this.lastNode = null;
+	        var elem = this.tagStack.pop();
+	        if (this.options.withEndIndices) {
+	            elem.endIndex = this.parser.endIndex;
+	        }
+	        if (this.elementCB)
+	            this.elementCB(elem);
+	    };
+	    DomHandler.prototype.onopentag = function (name, attribs) {
+	        var type = this.options.xmlMode ? domelementtype_1.ElementType.Tag : undefined;
+	        var element = new node_1.Element(name, attribs, undefined, type);
+	        this.addNode(element);
+	        this.tagStack.push(element);
+	    };
+	    DomHandler.prototype.ontext = function (data) {
+	        var normalizeWhitespace = this.options.normalizeWhitespace;
+	        var lastNode = this.lastNode;
+	        if (lastNode && lastNode.type === domelementtype_1.ElementType.Text) {
+	            if (normalizeWhitespace) {
+	                lastNode.data = (lastNode.data + data).replace(reWhitespace, " ");
+	            }
+	            else {
+	                lastNode.data += data;
+	            }
+	        }
+	        else {
+	            if (normalizeWhitespace) {
+	                data = data.replace(reWhitespace, " ");
+	            }
+	            var node = new node_1.Text(data);
+	            this.addNode(node);
+	            this.lastNode = node;
+	        }
+	    };
+	    DomHandler.prototype.oncomment = function (data) {
+	        if (this.lastNode && this.lastNode.type === domelementtype_1.ElementType.Comment) {
+	            this.lastNode.data += data;
+	            return;
+	        }
+	        var node = new node_1.Comment(data);
+	        this.addNode(node);
+	        this.lastNode = node;
+	    };
+	    DomHandler.prototype.oncommentend = function () {
+	        this.lastNode = null;
+	    };
+	    DomHandler.prototype.oncdatastart = function () {
+	        var text = new node_1.Text("");
+	        var node = new node_1.NodeWithChildren(domelementtype_1.ElementType.CDATA, [text]);
+	        this.addNode(node);
+	        text.parent = node;
+	        this.lastNode = text;
+	    };
+	    DomHandler.prototype.oncdataend = function () {
+	        this.lastNode = null;
+	    };
+	    DomHandler.prototype.onprocessinginstruction = function (name, data) {
+	        var node = new node_1.ProcessingInstruction(name, data);
+	        this.addNode(node);
+	    };
+	    DomHandler.prototype.handleCallback = function (error) {
+	        if (typeof this.callback === "function") {
+	            this.callback(error, this.dom);
+	        }
+	        else if (error) {
+	            throw error;
+	        }
+	    };
+	    DomHandler.prototype.addNode = function (node) {
+	        var parent = this.tagStack[this.tagStack.length - 1];
+	        var previousSibling = parent.children[parent.children.length - 1];
+	        if (this.options.withStartIndices) {
+	            node.startIndex = this.parser.startIndex;
+	        }
+	        if (this.options.withEndIndices) {
+	            node.endIndex = this.parser.endIndex;
+	        }
+	        parent.children.push(node);
+	        if (previousSibling) {
+	            node.prev = previousSibling;
+	            previousSibling.next = node;
+	        }
+	        node.parent = parent;
+	        this.lastNode = null;
+	    };
+	    return DomHandler;
+	}());
+	exports.DomHandler = DomHandler;
+	exports.default = DomHandler;
+} (lib$7));
 
 var lib$5 = {};
 
@@ -5404,63 +5410,63 @@ function getASCIIEncoder(obj) {
 }
 
 (function (exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.decodeXMLStrict = exports.decodeHTML5Strict = exports.decodeHTML4Strict = exports.decodeHTML5 = exports.decodeHTML4 = exports.decodeHTMLStrict = exports.decodeHTML = exports.decodeXML = exports.encodeHTML5 = exports.encodeHTML4 = exports.escapeUTF8 = exports.escape = exports.encodeNonAsciiHTML = exports.encodeHTML = exports.encodeXML = exports.encode = exports.decodeStrict = exports.decode = void 0;
-var decode_1 = decode;
-var encode_1 = encode;
-/**
- * Decodes a string with entities.
- *
- * @param data String to decode.
- * @param level Optional level to decode at. 0 = XML, 1 = HTML. Default is 0.
- * @deprecated Use `decodeXML` or `decodeHTML` directly.
- */
-function decode$1(data, level) {
-    return (!level || level <= 0 ? decode_1.decodeXML : decode_1.decodeHTML)(data);
-}
-exports.decode = decode$1;
-/**
- * Decodes a string with entities. Does not allow missing trailing semicolons for entities.
- *
- * @param data String to decode.
- * @param level Optional level to decode at. 0 = XML, 1 = HTML. Default is 0.
- * @deprecated Use `decodeHTMLStrict` or `decodeXML` directly.
- */
-function decodeStrict(data, level) {
-    return (!level || level <= 0 ? decode_1.decodeXML : decode_1.decodeHTMLStrict)(data);
-}
-exports.decodeStrict = decodeStrict;
-/**
- * Encodes a string with entities.
- *
- * @param data String to encode.
- * @param level Optional level to encode at. 0 = XML, 1 = HTML. Default is 0.
- * @deprecated Use `encodeHTML`, `encodeXML` or `encodeNonAsciiHTML` directly.
- */
-function encode$1(data, level) {
-    return (!level || level <= 0 ? encode_1.encodeXML : encode_1.encodeHTML)(data);
-}
-exports.encode = encode$1;
-var encode_2 = encode;
-Object.defineProperty(exports, "encodeXML", { enumerable: true, get: function () { return encode_2.encodeXML; } });
-Object.defineProperty(exports, "encodeHTML", { enumerable: true, get: function () { return encode_2.encodeHTML; } });
-Object.defineProperty(exports, "encodeNonAsciiHTML", { enumerable: true, get: function () { return encode_2.encodeNonAsciiHTML; } });
-Object.defineProperty(exports, "escape", { enumerable: true, get: function () { return encode_2.escape; } });
-Object.defineProperty(exports, "escapeUTF8", { enumerable: true, get: function () { return encode_2.escapeUTF8; } });
-// Legacy aliases (deprecated)
-Object.defineProperty(exports, "encodeHTML4", { enumerable: true, get: function () { return encode_2.encodeHTML; } });
-Object.defineProperty(exports, "encodeHTML5", { enumerable: true, get: function () { return encode_2.encodeHTML; } });
-var decode_2 = decode;
-Object.defineProperty(exports, "decodeXML", { enumerable: true, get: function () { return decode_2.decodeXML; } });
-Object.defineProperty(exports, "decodeHTML", { enumerable: true, get: function () { return decode_2.decodeHTML; } });
-Object.defineProperty(exports, "decodeHTMLStrict", { enumerable: true, get: function () { return decode_2.decodeHTMLStrict; } });
-// Legacy aliases (deprecated)
-Object.defineProperty(exports, "decodeHTML4", { enumerable: true, get: function () { return decode_2.decodeHTML; } });
-Object.defineProperty(exports, "decodeHTML5", { enumerable: true, get: function () { return decode_2.decodeHTML; } });
-Object.defineProperty(exports, "decodeHTML4Strict", { enumerable: true, get: function () { return decode_2.decodeHTMLStrict; } });
-Object.defineProperty(exports, "decodeHTML5Strict", { enumerable: true, get: function () { return decode_2.decodeHTMLStrict; } });
-Object.defineProperty(exports, "decodeXMLStrict", { enumerable: true, get: function () { return decode_2.decodeXML; } });
-}(lib$4));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.decodeXMLStrict = exports.decodeHTML5Strict = exports.decodeHTML4Strict = exports.decodeHTML5 = exports.decodeHTML4 = exports.decodeHTMLStrict = exports.decodeHTML = exports.decodeXML = exports.encodeHTML5 = exports.encodeHTML4 = exports.escapeUTF8 = exports.escape = exports.encodeNonAsciiHTML = exports.encodeHTML = exports.encodeXML = exports.encode = exports.decodeStrict = exports.decode = void 0;
+	var decode_1 = decode;
+	var encode_1 = encode;
+	/**
+	 * Decodes a string with entities.
+	 *
+	 * @param data String to decode.
+	 * @param level Optional level to decode at. 0 = XML, 1 = HTML. Default is 0.
+	 * @deprecated Use `decodeXML` or `decodeHTML` directly.
+	 */
+	function decode$1(data, level) {
+	    return (!level || level <= 0 ? decode_1.decodeXML : decode_1.decodeHTML)(data);
+	}
+	exports.decode = decode$1;
+	/**
+	 * Decodes a string with entities. Does not allow missing trailing semicolons for entities.
+	 *
+	 * @param data String to decode.
+	 * @param level Optional level to decode at. 0 = XML, 1 = HTML. Default is 0.
+	 * @deprecated Use `decodeHTMLStrict` or `decodeXML` directly.
+	 */
+	function decodeStrict(data, level) {
+	    return (!level || level <= 0 ? decode_1.decodeXML : decode_1.decodeHTMLStrict)(data);
+	}
+	exports.decodeStrict = decodeStrict;
+	/**
+	 * Encodes a string with entities.
+	 *
+	 * @param data String to encode.
+	 * @param level Optional level to encode at. 0 = XML, 1 = HTML. Default is 0.
+	 * @deprecated Use `encodeHTML`, `encodeXML` or `encodeNonAsciiHTML` directly.
+	 */
+	function encode$1(data, level) {
+	    return (!level || level <= 0 ? encode_1.encodeXML : encode_1.encodeHTML)(data);
+	}
+	exports.encode = encode$1;
+	var encode_2 = encode;
+	Object.defineProperty(exports, "encodeXML", { enumerable: true, get: function () { return encode_2.encodeXML; } });
+	Object.defineProperty(exports, "encodeHTML", { enumerable: true, get: function () { return encode_2.encodeHTML; } });
+	Object.defineProperty(exports, "encodeNonAsciiHTML", { enumerable: true, get: function () { return encode_2.encodeNonAsciiHTML; } });
+	Object.defineProperty(exports, "escape", { enumerable: true, get: function () { return encode_2.escape; } });
+	Object.defineProperty(exports, "escapeUTF8", { enumerable: true, get: function () { return encode_2.escapeUTF8; } });
+	// Legacy aliases (deprecated)
+	Object.defineProperty(exports, "encodeHTML4", { enumerable: true, get: function () { return encode_2.encodeHTML; } });
+	Object.defineProperty(exports, "encodeHTML5", { enumerable: true, get: function () { return encode_2.encodeHTML; } });
+	var decode_2 = decode;
+	Object.defineProperty(exports, "decodeXML", { enumerable: true, get: function () { return decode_2.decodeXML; } });
+	Object.defineProperty(exports, "decodeHTML", { enumerable: true, get: function () { return decode_2.decodeHTML; } });
+	Object.defineProperty(exports, "decodeHTMLStrict", { enumerable: true, get: function () { return decode_2.decodeHTMLStrict; } });
+	// Legacy aliases (deprecated)
+	Object.defineProperty(exports, "decodeHTML4", { enumerable: true, get: function () { return decode_2.decodeHTML; } });
+	Object.defineProperty(exports, "decodeHTML5", { enumerable: true, get: function () { return decode_2.decodeHTML; } });
+	Object.defineProperty(exports, "decodeHTML4Strict", { enumerable: true, get: function () { return decode_2.decodeHTMLStrict; } });
+	Object.defineProperty(exports, "decodeHTML5Strict", { enumerable: true, get: function () { return decode_2.decodeHTMLStrict; } });
+	Object.defineProperty(exports, "decodeXMLStrict", { enumerable: true, get: function () { return decode_2.decodeXML; } });
+} (lib$4));
 
 var foreignNames = {};
 
@@ -6499,32 +6505,32 @@ function uniqueSort(nodes) {
 helpers.uniqueSort = uniqueSort;
 
 (function (exports) {
-var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (commonjsGlobal && commonjsGlobal.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.hasChildren = exports.isDocument = exports.isComment = exports.isText = exports.isCDATA = exports.isTag = void 0;
-__exportStar(stringify$2, exports);
-__exportStar(traversal, exports);
-__exportStar(manipulation, exports);
-__exportStar(querying, exports);
-__exportStar(legacy, exports);
-__exportStar(helpers, exports);
-var domhandler_1 = lib$7;
-Object.defineProperty(exports, "isTag", { enumerable: true, get: function () { return domhandler_1.isTag; } });
-Object.defineProperty(exports, "isCDATA", { enumerable: true, get: function () { return domhandler_1.isCDATA; } });
-Object.defineProperty(exports, "isText", { enumerable: true, get: function () { return domhandler_1.isText; } });
-Object.defineProperty(exports, "isComment", { enumerable: true, get: function () { return domhandler_1.isComment; } });
-Object.defineProperty(exports, "isDocument", { enumerable: true, get: function () { return domhandler_1.isDocument; } });
-Object.defineProperty(exports, "hasChildren", { enumerable: true, get: function () { return domhandler_1.hasChildren; } });
-}(lib$8));
+	var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+	    if (k2 === undefined) k2 = k;
+	    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+	}) : (function(o, m, k, k2) {
+	    if (k2 === undefined) k2 = k;
+	    o[k2] = m[k];
+	}));
+	var __exportStar = (commonjsGlobal && commonjsGlobal.__exportStar) || function(m, exports) {
+	    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.hasChildren = exports.isDocument = exports.isComment = exports.isText = exports.isCDATA = exports.isTag = void 0;
+	__exportStar(stringify$2, exports);
+	__exportStar(traversal, exports);
+	__exportStar(manipulation, exports);
+	__exportStar(querying, exports);
+	__exportStar(legacy, exports);
+	__exportStar(helpers, exports);
+	var domhandler_1 = lib$7;
+	Object.defineProperty(exports, "isTag", { enumerable: true, get: function () { return domhandler_1.isTag; } });
+	Object.defineProperty(exports, "isCDATA", { enumerable: true, get: function () { return domhandler_1.isCDATA; } });
+	Object.defineProperty(exports, "isText", { enumerable: true, get: function () { return domhandler_1.isText; } });
+	Object.defineProperty(exports, "isComment", { enumerable: true, get: function () { return domhandler_1.isComment; } });
+	Object.defineProperty(exports, "isDocument", { enumerable: true, get: function () { return domhandler_1.isDocument; } });
+	Object.defineProperty(exports, "hasChildren", { enumerable: true, get: function () { return domhandler_1.hasChildren; } });
+} (lib$8));
 
 var boolbase = {
 	trueFunc: function trueFunc(){
@@ -6535,19 +6541,19 @@ var boolbase = {
 	}
 };
 
-var compile$3 = {};
+var compile$2 = {};
 
 var lib$3 = {};
 
-var parse$7 = {};
+var parse$6 = {};
 
 var __spreadArray$1 = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
     for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
         to[j] = from[i];
     return to;
 };
-Object.defineProperty(parse$7, "__esModule", { value: true });
-parse$7.isTraversal = void 0;
+Object.defineProperty(parse$6, "__esModule", { value: true });
+parse$6.isTraversal = void 0;
 var reName = /^[^\\#]?(?:\\(?:[\da-f]{1,6}\s?|.)|[\w\-\u00b0-\uFFFF])+/;
 var reEscape = /\\([\da-f]{1,6}\s?|(\s)|.)/gi;
 var actionTypes$1 = new Map([
@@ -6644,7 +6650,7 @@ var caseInsensitiveAttributes = new Set([
 function isTraversal(selector) {
     return traversalNames.has(selector.type);
 }
-parse$7.isTraversal = isTraversal;
+parse$6.isTraversal = isTraversal;
 var stripQuotesFromPseudos = new Set(["contains", "icontains"]);
 var quotes$1 = new Set(['"', "'"]);
 // Unescape function taken from https://github.com/jquery/sizzle/blob/master/src/sizzle.js#L152
@@ -6674,7 +6680,7 @@ function isWhitespace(c) {
  * The first dimension represents selectors separated by commas (eg. `sub1, sub2`),
  * the second contains the relevant tokens for that selector.
  */
-function parse$6(selector, options) {
+function parse$5(selector, options) {
     var subselects = [];
     var endIndex = parseSelector(subselects, "" + selector, options, 0);
     if (endIndex < selector.length) {
@@ -6682,7 +6688,7 @@ function parse$6(selector, options) {
     }
     return subselects;
 }
-parse$7.default = parse$6;
+parse$6.default = parse$5;
 function parseSelector(subselects, selector, options, selectorIndex) {
     var _a, _b;
     if (options === void 0) { options = {}; }
@@ -7073,53 +7079,53 @@ function escapeName(str) {
 }
 
 (function (exports) {
-var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (commonjsGlobal && commonjsGlobal.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
-var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.stringify = exports.parse = void 0;
-__exportStar(parse$7, exports);
-var parse_1 = parse$7;
-Object.defineProperty(exports, "parse", { enumerable: true, get: function () { return __importDefault(parse_1).default; } });
-var stringify_1 = stringify$1;
-Object.defineProperty(exports, "stringify", { enumerable: true, get: function () { return __importDefault(stringify_1).default; } });
-}(lib$3));
+	var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+	    if (k2 === undefined) k2 = k;
+	    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+	}) : (function(o, m, k, k2) {
+	    if (k2 === undefined) k2 = k;
+	    o[k2] = m[k];
+	}));
+	var __exportStar = (commonjsGlobal && commonjsGlobal.__exportStar) || function(m, exports) {
+	    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+	};
+	var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
+	    return (mod && mod.__esModule) ? mod : { "default": mod };
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.stringify = exports.parse = void 0;
+	__exportStar(parse$6, exports);
+	var parse_1 = parse$6;
+	Object.defineProperty(exports, "parse", { enumerable: true, get: function () { return __importDefault(parse_1).default; } });
+	var stringify_1 = stringify$1;
+	Object.defineProperty(exports, "stringify", { enumerable: true, get: function () { return __importDefault(stringify_1).default; } });
+} (lib$3));
 
 var sort = {};
 
 var procedure = {};
 
 (function (exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.isTraversal = exports.procedure = void 0;
-exports.procedure = {
-    universal: 50,
-    tag: 30,
-    attribute: 1,
-    pseudo: 0,
-    "pseudo-element": 0,
-    descendant: -1,
-    child: -1,
-    parent: -1,
-    sibling: -1,
-    adjacent: -1,
-    _flexibleDescendant: -1,
-};
-function isTraversal(t) {
-    return exports.procedure[t.type] < 0;
-}
-exports.isTraversal = isTraversal;
-}(procedure));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.isTraversal = exports.procedure = void 0;
+	exports.procedure = {
+	    universal: 50,
+	    tag: 30,
+	    attribute: 1,
+	    pseudo: 0,
+	    "pseudo-element": 0,
+	    descendant: -1,
+	    child: -1,
+	    parent: -1,
+	    sibling: -1,
+	    adjacent: -1,
+	    _flexibleDescendant: -1,
+	};
+	function isTraversal(t) {
+	    return exports.procedure[t.type] < 0;
+	}
+	exports.isTraversal = isTraversal;
+} (procedure));
 
 Object.defineProperty(sort, "__esModule", { value: true });
 var procedure_1$1 = procedure;
@@ -7211,7 +7217,7 @@ var attributes = {};
 
 Object.defineProperty(attributes, "__esModule", { value: true });
 attributes.attributeRules = void 0;
-var boolbase_1$2 = boolbase;
+var boolbase_1$1 = boolbase;
 /**
  * All reserved characters in a regex, used for escaping.
  *
@@ -7271,7 +7277,7 @@ attributes.attributeRules = {
         var name = _a.name, value = _a.value, ignoreCase = _a.ignoreCase;
         var adapter = _b.adapter;
         if (/\s/.test(value)) {
-            return boolbase_1$2.falseFunc;
+            return boolbase_1$1.falseFunc;
         }
         var regex = new RegExp("(?:^|\\s)" + escapeRegex(value) + "(?:$|\\s)", ignoreCase ? "i" : "");
         return function element(elem) {
@@ -7293,7 +7299,7 @@ attributes.attributeRules = {
         var value = data.value;
         var len = value.length;
         if (len === 0) {
-            return boolbase_1$2.falseFunc;
+            return boolbase_1$1.falseFunc;
         }
         if (data.ignoreCase) {
             value = value.toLowerCase();
@@ -7317,7 +7323,7 @@ attributes.attributeRules = {
         var value = data.value;
         var len = -value.length;
         if (len === 0) {
-            return boolbase_1$2.falseFunc;
+            return boolbase_1$1.falseFunc;
         }
         if (data.ignoreCase) {
             value = value.toLowerCase();
@@ -7337,7 +7343,7 @@ attributes.attributeRules = {
         var adapter = _a.adapter;
         var name = data.name, value = data.value;
         if (value === "") {
-            return boolbase_1$2.falseFunc;
+            return boolbase_1$1.falseFunc;
         }
         if (data.ignoreCase) {
             var regex_1 = new RegExp(escapeRegex(value), "i");
@@ -7386,593 +7392,642 @@ var filters$1 = {};
 
 var lib$2 = {};
 
-var parse$5 = {};
+var parse$4 = {};
 
-// Following http://www.w3.org/TR/css3-selectors/#nth-child-pseudo
-Object.defineProperty(parse$5, "__esModule", { value: true });
-parse$5.parse = void 0;
-// [ ['-'|'+']? INTEGER? {N} [ S* ['-'|'+'] S* INTEGER ]?
-var RE_NTH_ELEMENT = /^([+-]?\d*n)?\s*(?:([+-]?)\s*(\d+))?$/;
-/**
- * Parses an expression.
- *
- * @throws An `Error` if parsing fails.
- * @returns An array containing the integer step size and the integer offset of the nth rule.
- * @example nthCheck.parse("2n+3"); // returns [2, 3]
- */
-function parse$4(formula) {
-    formula = formula.trim().toLowerCase();
-    if (formula === "even") {
-        return [2, 0];
-    }
-    else if (formula === "odd") {
-        return [2, 1];
-    }
-    var parsed = formula.match(RE_NTH_ELEMENT);
-    if (!parsed) {
-        throw new Error("n-th rule couldn't be parsed ('" + formula + "')");
-    }
-    var a;
-    if (parsed[1]) {
-        a = parseInt(parsed[1], 10);
-        if (isNaN(a)) {
-            a = parsed[1].startsWith("-") ? -1 : 1;
-        }
-    }
-    else
-        a = 0;
-    var b = (parsed[2] === "-" ? -1 : 1) *
-        (parsed[3] ? parseInt(parsed[3], 10) : 0);
-    return [a, b];
-}
-parse$5.parse = parse$4;
+var hasRequiredParse;
 
-var compile$2 = {};
+function requireParse () {
+	if (hasRequiredParse) return parse$4;
+	hasRequiredParse = 1;
+	// Following http://www.w3.org/TR/css3-selectors/#nth-child-pseudo
+	Object.defineProperty(parse$4, "__esModule", { value: true });
+	parse$4.parse = void 0;
+	// [ ['-'|'+']? INTEGER? {N} [ S* ['-'|'+'] S* INTEGER ]?
+	var RE_NTH_ELEMENT = /^([+-]?\d*n)?\s*(?:([+-]?)\s*(\d+))?$/;
+	/**
+	 * Parses an expression.
+	 *
+	 * @throws An `Error` if parsing fails.
+	 * @returns An array containing the integer step size and the integer offset of the nth rule.
+	 * @example nthCheck.parse("2n+3"); // returns [2, 3]
+	 */
+	function parse(formula) {
+	    formula = formula.trim().toLowerCase();
+	    if (formula === "even") {
+	        return [2, 0];
+	    }
+	    else if (formula === "odd") {
+	        return [2, 1];
+	    }
+	    var parsed = formula.match(RE_NTH_ELEMENT);
+	    if (!parsed) {
+	        throw new Error("n-th rule couldn't be parsed ('" + formula + "')");
+	    }
+	    var a;
+	    if (parsed[1]) {
+	        a = parseInt(parsed[1], 10);
+	        if (isNaN(a)) {
+	            a = parsed[1].startsWith("-") ? -1 : 1;
+	        }
+	    }
+	    else
+	        a = 0;
+	    var b = (parsed[2] === "-" ? -1 : 1) *
+	        (parsed[3] ? parseInt(parsed[3], 10) : 0);
+	    return [a, b];
+	}
+	parse$4.parse = parse;
+	return parse$4;
+}
 
-Object.defineProperty(compile$2, "__esModule", { value: true });
-compile$2.compile = void 0;
-var boolbase_1$1 = boolbase;
-/**
- * Returns a function that checks if an elements index matches the given rule
- * highly optimized to return the fastest solution.
- *
- * @param parsed A tuple [a, b], as returned by `parse`.
- * @returns A highly optimized function that returns whether an index matches the nth-check.
- * @example
- * const check = nthCheck.compile([2, 3]);
- *
- * check(0); // `false`
- * check(1); // `false`
- * check(2); // `true`
- * check(3); // `false`
- * check(4); // `true`
- * check(5); // `false`
- * check(6); // `true`
- */
-function compile$1(parsed) {
-    var a = parsed[0];
-    // Subtract 1 from `b`, to convert from one- to zero-indexed.
-    var b = parsed[1] - 1;
-    /*
-     * When `b <= 0`, `a * n` won't be lead to any matches for `a < 0`.
-     * Besides, the specification states that no elements are
-     * matched when `a` and `b` are 0.
-     *
-     * `b < 0` here as we subtracted 1 from `b` above.
-     */
-    if (b < 0 && a <= 0)
-        return boolbase_1$1.falseFunc;
-    // When `a` is in the range -1..1, it matches any element (so only `b` is checked).
-    if (a === -1)
-        return function (index) { return index <= b; };
-    if (a === 0)
-        return function (index) { return index === b; };
-    // When `b <= 0` and `a === 1`, they match any element.
-    if (a === 1)
-        return b < 0 ? boolbase_1$1.trueFunc : function (index) { return index >= b; };
-    /*
-     * Otherwise, modulo can be used to check if there is a match.
-     *
-     * Modulo doesn't care about the sign, so let's use `a`s absolute value.
-     */
-    var absA = Math.abs(a);
-    // Get `b mod a`, + a if this is negative.
-    var bMod = ((b % absA) + absA) % absA;
-    return a > 1
-        ? function (index) { return index >= b && index % absA === bMod; }
-        : function (index) { return index <= b && index % absA === bMod; };
-}
-compile$2.compile = compile$1;
+var compile$1 = {};
 
-(function (exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.compile = exports.parse = void 0;
-var parse_1 = parse$5;
-Object.defineProperty(exports, "parse", { enumerable: true, get: function () { return parse_1.parse; } });
-var compile_1 = compile$2;
-Object.defineProperty(exports, "compile", { enumerable: true, get: function () { return compile_1.compile; } });
-/**
- * Parses and compiles a formula to a highly optimized function.
- * Combination of `parse` and `compile`.
- *
- * If the formula doesn't match any elements,
- * it returns [`boolbase`](https://github.com/fb55/boolbase)'s `falseFunc`.
- * Otherwise, a function accepting an _index_ is returned, which returns
- * whether or not the passed _index_ matches the formula.
- *
- * Note: The nth-rule starts counting at `1`, the returned function at `0`.
- *
- * @param formula The formula to compile.
- * @example
- * const check = nthCheck("2n+3");
- *
- * check(0); // `false`
- * check(1); // `false`
- * check(2); // `true`
- * check(3); // `false`
- * check(4); // `true`
- * check(5); // `false`
- * check(6); // `true`
- */
-function nthCheck(formula) {
-    return compile_1.compile(parse_1.parse(formula));
-}
-exports.default = nthCheck;
-}(lib$2));
+var hasRequiredCompile;
 
-(function (exports) {
-var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.filters = void 0;
-var nth_check_1 = __importDefault(lib$2);
-var boolbase_1 = boolbase;
-function getChildFunc(next, adapter) {
-    return function (elem) {
-        var parent = adapter.getParent(elem);
-        return parent != null && adapter.isTag(parent) && next(elem);
-    };
+function requireCompile () {
+	if (hasRequiredCompile) return compile$1;
+	hasRequiredCompile = 1;
+	Object.defineProperty(compile$1, "__esModule", { value: true });
+	compile$1.compile = void 0;
+	var boolbase_1 = boolbase;
+	/**
+	 * Returns a function that checks if an elements index matches the given rule
+	 * highly optimized to return the fastest solution.
+	 *
+	 * @param parsed A tuple [a, b], as returned by `parse`.
+	 * @returns A highly optimized function that returns whether an index matches the nth-check.
+	 * @example
+	 * const check = nthCheck.compile([2, 3]);
+	 *
+	 * check(0); // `false`
+	 * check(1); // `false`
+	 * check(2); // `true`
+	 * check(3); // `false`
+	 * check(4); // `true`
+	 * check(5); // `false`
+	 * check(6); // `true`
+	 */
+	function compile(parsed) {
+	    var a = parsed[0];
+	    // Subtract 1 from `b`, to convert from one- to zero-indexed.
+	    var b = parsed[1] - 1;
+	    /*
+	     * When `b <= 0`, `a * n` won't be lead to any matches for `a < 0`.
+	     * Besides, the specification states that no elements are
+	     * matched when `a` and `b` are 0.
+	     *
+	     * `b < 0` here as we subtracted 1 from `b` above.
+	     */
+	    if (b < 0 && a <= 0)
+	        return boolbase_1.falseFunc;
+	    // When `a` is in the range -1..1, it matches any element (so only `b` is checked).
+	    if (a === -1)
+	        return function (index) { return index <= b; };
+	    if (a === 0)
+	        return function (index) { return index === b; };
+	    // When `b <= 0` and `a === 1`, they match any element.
+	    if (a === 1)
+	        return b < 0 ? boolbase_1.trueFunc : function (index) { return index >= b; };
+	    /*
+	     * Otherwise, modulo can be used to check if there is a match.
+	     *
+	     * Modulo doesn't care about the sign, so let's use `a`s absolute value.
+	     */
+	    var absA = Math.abs(a);
+	    // Get `b mod a`, + a if this is negative.
+	    var bMod = ((b % absA) + absA) % absA;
+	    return a > 1
+	        ? function (index) { return index >= b && index % absA === bMod; }
+	        : function (index) { return index <= b && index % absA === bMod; };
+	}
+	compile$1.compile = compile;
+	return compile$1;
 }
-exports.filters = {
-    contains: function (next, text, _a) {
-        var adapter = _a.adapter;
-        return function contains(elem) {
-            return next(elem) && adapter.getText(elem).includes(text);
-        };
-    },
-    icontains: function (next, text, _a) {
-        var adapter = _a.adapter;
-        var itext = text.toLowerCase();
-        return function icontains(elem) {
-            return (next(elem) &&
-                adapter.getText(elem).toLowerCase().includes(itext));
-        };
-    },
-    // Location specific methods
-    "nth-child": function (next, rule, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        var func = nth_check_1.default(rule);
-        if (func === boolbase_1.falseFunc)
-            return boolbase_1.falseFunc;
-        if (func === boolbase_1.trueFunc)
-            return getChildFunc(next, adapter);
-        return function nthChild(elem) {
-            var siblings = adapter.getSiblings(elem);
-            var pos = 0;
-            for (var i = 0; i < siblings.length; i++) {
-                if (equals(elem, siblings[i]))
-                    break;
-                if (adapter.isTag(siblings[i])) {
-                    pos++;
-                }
-            }
-            return func(pos) && next(elem);
-        };
-    },
-    "nth-last-child": function (next, rule, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        var func = nth_check_1.default(rule);
-        if (func === boolbase_1.falseFunc)
-            return boolbase_1.falseFunc;
-        if (func === boolbase_1.trueFunc)
-            return getChildFunc(next, adapter);
-        return function nthLastChild(elem) {
-            var siblings = adapter.getSiblings(elem);
-            var pos = 0;
-            for (var i = siblings.length - 1; i >= 0; i--) {
-                if (equals(elem, siblings[i]))
-                    break;
-                if (adapter.isTag(siblings[i])) {
-                    pos++;
-                }
-            }
-            return func(pos) && next(elem);
-        };
-    },
-    "nth-of-type": function (next, rule, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        var func = nth_check_1.default(rule);
-        if (func === boolbase_1.falseFunc)
-            return boolbase_1.falseFunc;
-        if (func === boolbase_1.trueFunc)
-            return getChildFunc(next, adapter);
-        return function nthOfType(elem) {
-            var siblings = adapter.getSiblings(elem);
-            var pos = 0;
-            for (var i = 0; i < siblings.length; i++) {
-                var currentSibling = siblings[i];
-                if (equals(elem, currentSibling))
-                    break;
-                if (adapter.isTag(currentSibling) &&
-                    adapter.getName(currentSibling) === adapter.getName(elem)) {
-                    pos++;
-                }
-            }
-            return func(pos) && next(elem);
-        };
-    },
-    "nth-last-of-type": function (next, rule, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        var func = nth_check_1.default(rule);
-        if (func === boolbase_1.falseFunc)
-            return boolbase_1.falseFunc;
-        if (func === boolbase_1.trueFunc)
-            return getChildFunc(next, adapter);
-        return function nthLastOfType(elem) {
-            var siblings = adapter.getSiblings(elem);
-            var pos = 0;
-            for (var i = siblings.length - 1; i >= 0; i--) {
-                var currentSibling = siblings[i];
-                if (equals(elem, currentSibling))
-                    break;
-                if (adapter.isTag(currentSibling) &&
-                    adapter.getName(currentSibling) === adapter.getName(elem)) {
-                    pos++;
-                }
-            }
-            return func(pos) && next(elem);
-        };
-    },
-    // TODO determine the actual root element
-    root: function (next, _rule, _a) {
-        var adapter = _a.adapter;
-        return function (elem) {
-            var parent = adapter.getParent(elem);
-            return (parent == null || !adapter.isTag(parent)) && next(elem);
-        };
-    },
-    scope: function (next, rule, options, context) {
-        var equals = options.equals;
-        if (!context || context.length === 0) {
-            // Equivalent to :root
-            return exports.filters.root(next, rule, options);
-        }
-        if (context.length === 1) {
-            // NOTE: can't be unpacked, as :has uses this for side-effects
-            return function (elem) { return equals(context[0], elem) && next(elem); };
-        }
-        return function (elem) { return context.includes(elem) && next(elem); };
-    },
-    hover: dynamicStatePseudo("isHovered"),
-    visited: dynamicStatePseudo("isVisited"),
-    active: dynamicStatePseudo("isActive"),
-};
-/**
- * Dynamic state pseudos. These depend on optional Adapter methods.
- *
- * @param name The name of the adapter method to call.
- * @returns Pseudo for the `filters` object.
- */
-function dynamicStatePseudo(name) {
-    return function dynamicPseudo(next, _rule, _a) {
-        var adapter = _a.adapter;
-        var func = adapter[name];
-        if (typeof func !== "function") {
-            return boolbase_1.falseFunc;
-        }
-        return function active(elem) {
-            return func(elem) && next(elem);
-        };
-    };
+
+var hasRequiredLib;
+
+function requireLib () {
+	if (hasRequiredLib) return lib$2;
+	hasRequiredLib = 1;
+	(function (exports) {
+		Object.defineProperty(exports, "__esModule", { value: true });
+		exports.compile = exports.parse = void 0;
+		var parse_1 = requireParse();
+		Object.defineProperty(exports, "parse", { enumerable: true, get: function () { return parse_1.parse; } });
+		var compile_1 = requireCompile();
+		Object.defineProperty(exports, "compile", { enumerable: true, get: function () { return compile_1.compile; } });
+		/**
+		 * Parses and compiles a formula to a highly optimized function.
+		 * Combination of `parse` and `compile`.
+		 *
+		 * If the formula doesn't match any elements,
+		 * it returns [`boolbase`](https://github.com/fb55/boolbase)'s `falseFunc`.
+		 * Otherwise, a function accepting an _index_ is returned, which returns
+		 * whether or not the passed _index_ matches the formula.
+		 *
+		 * Note: The nth-rule starts counting at `1`, the returned function at `0`.
+		 *
+		 * @param formula The formula to compile.
+		 * @example
+		 * const check = nthCheck("2n+3");
+		 *
+		 * check(0); // `false`
+		 * check(1); // `false`
+		 * check(2); // `true`
+		 * check(3); // `false`
+		 * check(4); // `true`
+		 * check(5); // `false`
+		 * check(6); // `true`
+		 */
+		function nthCheck(formula) {
+		    return compile_1.compile(parse_1.parse(formula));
+		}
+		exports.default = nthCheck;
+} (lib$2));
+	return lib$2;
 }
-}(filters$1));
+
+var hasRequiredFilters;
+
+function requireFilters () {
+	if (hasRequiredFilters) return filters$1;
+	hasRequiredFilters = 1;
+	(function (exports) {
+		var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
+		    return (mod && mod.__esModule) ? mod : { "default": mod };
+		};
+		Object.defineProperty(exports, "__esModule", { value: true });
+		exports.filters = void 0;
+		var nth_check_1 = __importDefault(requireLib());
+		var boolbase_1 = boolbase;
+		function getChildFunc(next, adapter) {
+		    return function (elem) {
+		        var parent = adapter.getParent(elem);
+		        return parent != null && adapter.isTag(parent) && next(elem);
+		    };
+		}
+		exports.filters = {
+		    contains: function (next, text, _a) {
+		        var adapter = _a.adapter;
+		        return function contains(elem) {
+		            return next(elem) && adapter.getText(elem).includes(text);
+		        };
+		    },
+		    icontains: function (next, text, _a) {
+		        var adapter = _a.adapter;
+		        var itext = text.toLowerCase();
+		        return function icontains(elem) {
+		            return (next(elem) &&
+		                adapter.getText(elem).toLowerCase().includes(itext));
+		        };
+		    },
+		    // Location specific methods
+		    "nth-child": function (next, rule, _a) {
+		        var adapter = _a.adapter, equals = _a.equals;
+		        var func = nth_check_1.default(rule);
+		        if (func === boolbase_1.falseFunc)
+		            return boolbase_1.falseFunc;
+		        if (func === boolbase_1.trueFunc)
+		            return getChildFunc(next, adapter);
+		        return function nthChild(elem) {
+		            var siblings = adapter.getSiblings(elem);
+		            var pos = 0;
+		            for (var i = 0; i < siblings.length; i++) {
+		                if (equals(elem, siblings[i]))
+		                    break;
+		                if (adapter.isTag(siblings[i])) {
+		                    pos++;
+		                }
+		            }
+		            return func(pos) && next(elem);
+		        };
+		    },
+		    "nth-last-child": function (next, rule, _a) {
+		        var adapter = _a.adapter, equals = _a.equals;
+		        var func = nth_check_1.default(rule);
+		        if (func === boolbase_1.falseFunc)
+		            return boolbase_1.falseFunc;
+		        if (func === boolbase_1.trueFunc)
+		            return getChildFunc(next, adapter);
+		        return function nthLastChild(elem) {
+		            var siblings = adapter.getSiblings(elem);
+		            var pos = 0;
+		            for (var i = siblings.length - 1; i >= 0; i--) {
+		                if (equals(elem, siblings[i]))
+		                    break;
+		                if (adapter.isTag(siblings[i])) {
+		                    pos++;
+		                }
+		            }
+		            return func(pos) && next(elem);
+		        };
+		    },
+		    "nth-of-type": function (next, rule, _a) {
+		        var adapter = _a.adapter, equals = _a.equals;
+		        var func = nth_check_1.default(rule);
+		        if (func === boolbase_1.falseFunc)
+		            return boolbase_1.falseFunc;
+		        if (func === boolbase_1.trueFunc)
+		            return getChildFunc(next, adapter);
+		        return function nthOfType(elem) {
+		            var siblings = adapter.getSiblings(elem);
+		            var pos = 0;
+		            for (var i = 0; i < siblings.length; i++) {
+		                var currentSibling = siblings[i];
+		                if (equals(elem, currentSibling))
+		                    break;
+		                if (adapter.isTag(currentSibling) &&
+		                    adapter.getName(currentSibling) === adapter.getName(elem)) {
+		                    pos++;
+		                }
+		            }
+		            return func(pos) && next(elem);
+		        };
+		    },
+		    "nth-last-of-type": function (next, rule, _a) {
+		        var adapter = _a.adapter, equals = _a.equals;
+		        var func = nth_check_1.default(rule);
+		        if (func === boolbase_1.falseFunc)
+		            return boolbase_1.falseFunc;
+		        if (func === boolbase_1.trueFunc)
+		            return getChildFunc(next, adapter);
+		        return function nthLastOfType(elem) {
+		            var siblings = adapter.getSiblings(elem);
+		            var pos = 0;
+		            for (var i = siblings.length - 1; i >= 0; i--) {
+		                var currentSibling = siblings[i];
+		                if (equals(elem, currentSibling))
+		                    break;
+		                if (adapter.isTag(currentSibling) &&
+		                    adapter.getName(currentSibling) === adapter.getName(elem)) {
+		                    pos++;
+		                }
+		            }
+		            return func(pos) && next(elem);
+		        };
+		    },
+		    // TODO determine the actual root element
+		    root: function (next, _rule, _a) {
+		        var adapter = _a.adapter;
+		        return function (elem) {
+		            var parent = adapter.getParent(elem);
+		            return (parent == null || !adapter.isTag(parent)) && next(elem);
+		        };
+		    },
+		    scope: function (next, rule, options, context) {
+		        var equals = options.equals;
+		        if (!context || context.length === 0) {
+		            // Equivalent to :root
+		            return exports.filters.root(next, rule, options);
+		        }
+		        if (context.length === 1) {
+		            // NOTE: can't be unpacked, as :has uses this for side-effects
+		            return function (elem) { return equals(context[0], elem) && next(elem); };
+		        }
+		        return function (elem) { return context.includes(elem) && next(elem); };
+		    },
+		    hover: dynamicStatePseudo("isHovered"),
+		    visited: dynamicStatePseudo("isVisited"),
+		    active: dynamicStatePseudo("isActive"),
+		};
+		/**
+		 * Dynamic state pseudos. These depend on optional Adapter methods.
+		 *
+		 * @param name The name of the adapter method to call.
+		 * @returns Pseudo for the `filters` object.
+		 */
+		function dynamicStatePseudo(name) {
+		    return function dynamicPseudo(next, _rule, _a) {
+		        var adapter = _a.adapter;
+		        var func = adapter[name];
+		        if (typeof func !== "function") {
+		            return boolbase_1.falseFunc;
+		        }
+		        return function active(elem) {
+		            return func(elem) && next(elem);
+		        };
+		    };
+		}
+} (filters$1));
+	return filters$1;
+}
 
 var pseudos = {};
 
-Object.defineProperty(pseudos, "__esModule", { value: true });
-pseudos.verifyPseudoArgs = pseudos.pseudos = void 0;
-// While filters are precompiled, pseudos get called when they are needed
-pseudos.pseudos = {
-    empty: function (elem, _a) {
-        var adapter = _a.adapter;
-        return !adapter.getChildren(elem).some(function (elem) {
-            // FIXME: `getText` call is potentially expensive.
-            return adapter.isTag(elem) || adapter.getText(elem) !== "";
-        });
-    },
-    "first-child": function (elem, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        var firstChild = adapter
-            .getSiblings(elem)
-            .find(function (elem) { return adapter.isTag(elem); });
-        return firstChild != null && equals(elem, firstChild);
-    },
-    "last-child": function (elem, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        var siblings = adapter.getSiblings(elem);
-        for (var i = siblings.length - 1; i >= 0; i--) {
-            if (equals(elem, siblings[i]))
-                return true;
-            if (adapter.isTag(siblings[i]))
-                break;
-        }
-        return false;
-    },
-    "first-of-type": function (elem, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        var siblings = adapter.getSiblings(elem);
-        var elemName = adapter.getName(elem);
-        for (var i = 0; i < siblings.length; i++) {
-            var currentSibling = siblings[i];
-            if (equals(elem, currentSibling))
-                return true;
-            if (adapter.isTag(currentSibling) &&
-                adapter.getName(currentSibling) === elemName) {
-                break;
-            }
-        }
-        return false;
-    },
-    "last-of-type": function (elem, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        var siblings = adapter.getSiblings(elem);
-        var elemName = adapter.getName(elem);
-        for (var i = siblings.length - 1; i >= 0; i--) {
-            var currentSibling = siblings[i];
-            if (equals(elem, currentSibling))
-                return true;
-            if (adapter.isTag(currentSibling) &&
-                adapter.getName(currentSibling) === elemName) {
-                break;
-            }
-        }
-        return false;
-    },
-    "only-of-type": function (elem, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        var elemName = adapter.getName(elem);
-        return adapter
-            .getSiblings(elem)
-            .every(function (sibling) {
-            return equals(elem, sibling) ||
-                !adapter.isTag(sibling) ||
-                adapter.getName(sibling) !== elemName;
-        });
-    },
-    "only-child": function (elem, _a) {
-        var adapter = _a.adapter, equals = _a.equals;
-        return adapter
-            .getSiblings(elem)
-            .every(function (sibling) { return equals(elem, sibling) || !adapter.isTag(sibling); });
-    },
-};
-function verifyPseudoArgs(func, name, subselect) {
-    if (subselect === null) {
-        if (func.length > 2) {
-            throw new Error("pseudo-selector :" + name + " requires an argument");
-        }
-    }
-    else if (func.length === 2) {
-        throw new Error("pseudo-selector :" + name + " doesn't have any arguments");
-    }
+var hasRequiredPseudos;
+
+function requirePseudos () {
+	if (hasRequiredPseudos) return pseudos;
+	hasRequiredPseudos = 1;
+	Object.defineProperty(pseudos, "__esModule", { value: true });
+	pseudos.verifyPseudoArgs = pseudos.pseudos = void 0;
+	// While filters are precompiled, pseudos get called when they are needed
+	pseudos.pseudos = {
+	    empty: function (elem, _a) {
+	        var adapter = _a.adapter;
+	        return !adapter.getChildren(elem).some(function (elem) {
+	            // FIXME: `getText` call is potentially expensive.
+	            return adapter.isTag(elem) || adapter.getText(elem) !== "";
+	        });
+	    },
+	    "first-child": function (elem, _a) {
+	        var adapter = _a.adapter, equals = _a.equals;
+	        var firstChild = adapter
+	            .getSiblings(elem)
+	            .find(function (elem) { return adapter.isTag(elem); });
+	        return firstChild != null && equals(elem, firstChild);
+	    },
+	    "last-child": function (elem, _a) {
+	        var adapter = _a.adapter, equals = _a.equals;
+	        var siblings = adapter.getSiblings(elem);
+	        for (var i = siblings.length - 1; i >= 0; i--) {
+	            if (equals(elem, siblings[i]))
+	                return true;
+	            if (adapter.isTag(siblings[i]))
+	                break;
+	        }
+	        return false;
+	    },
+	    "first-of-type": function (elem, _a) {
+	        var adapter = _a.adapter, equals = _a.equals;
+	        var siblings = adapter.getSiblings(elem);
+	        var elemName = adapter.getName(elem);
+	        for (var i = 0; i < siblings.length; i++) {
+	            var currentSibling = siblings[i];
+	            if (equals(elem, currentSibling))
+	                return true;
+	            if (adapter.isTag(currentSibling) &&
+	                adapter.getName(currentSibling) === elemName) {
+	                break;
+	            }
+	        }
+	        return false;
+	    },
+	    "last-of-type": function (elem, _a) {
+	        var adapter = _a.adapter, equals = _a.equals;
+	        var siblings = adapter.getSiblings(elem);
+	        var elemName = adapter.getName(elem);
+	        for (var i = siblings.length - 1; i >= 0; i--) {
+	            var currentSibling = siblings[i];
+	            if (equals(elem, currentSibling))
+	                return true;
+	            if (adapter.isTag(currentSibling) &&
+	                adapter.getName(currentSibling) === elemName) {
+	                break;
+	            }
+	        }
+	        return false;
+	    },
+	    "only-of-type": function (elem, _a) {
+	        var adapter = _a.adapter, equals = _a.equals;
+	        var elemName = adapter.getName(elem);
+	        return adapter
+	            .getSiblings(elem)
+	            .every(function (sibling) {
+	            return equals(elem, sibling) ||
+	                !adapter.isTag(sibling) ||
+	                adapter.getName(sibling) !== elemName;
+	        });
+	    },
+	    "only-child": function (elem, _a) {
+	        var adapter = _a.adapter, equals = _a.equals;
+	        return adapter
+	            .getSiblings(elem)
+	            .every(function (sibling) { return equals(elem, sibling) || !adapter.isTag(sibling); });
+	    },
+	};
+	function verifyPseudoArgs(func, name, subselect) {
+	    if (subselect === null) {
+	        if (func.length > 2) {
+	            throw new Error("pseudo-selector :" + name + " requires an argument");
+	        }
+	    }
+	    else if (func.length === 2) {
+	        throw new Error("pseudo-selector :" + name + " doesn't have any arguments");
+	    }
+	}
+	pseudos.verifyPseudoArgs = verifyPseudoArgs;
+	return pseudos;
 }
-pseudos.verifyPseudoArgs = verifyPseudoArgs;
 
 var aliases = {};
 
-Object.defineProperty(aliases, "__esModule", { value: true });
-aliases.aliases = void 0;
-/**
- * Aliases are pseudos that are expressed as selectors.
- */
-aliases.aliases = {
-    // Links
-    "any-link": ":is(a, area, link)[href]",
-    link: ":any-link:not(:visited)",
-    // Forms
-    // https://html.spec.whatwg.org/multipage/scripting.html#disabled-elements
-    disabled: ":is(\n        :is(button, input, select, textarea, optgroup, option)[disabled],\n        optgroup[disabled] > option,\n        fieldset[disabled]:not(fieldset[disabled] legend:first-of-type *)\n    )",
-    enabled: ":not(:disabled)",
-    checked: ":is(:is(input[type=radio], input[type=checkbox])[checked], option:selected)",
-    required: ":is(input, select, textarea)[required]",
-    optional: ":is(input, select, textarea):not([required])",
-    // JQuery extensions
-    // https://html.spec.whatwg.org/multipage/form-elements.html#concept-option-selectedness
-    selected: "option:is([selected], select:not([multiple]):not(:has(> option[selected])) > :first-of-type)",
-    checkbox: "[type=checkbox]",
-    file: "[type=file]",
-    password: "[type=password]",
-    radio: "[type=radio]",
-    reset: "[type=reset]",
-    image: "[type=image]",
-    submit: "[type=submit]",
-    parent: ":not(:empty)",
-    header: ":is(h1, h2, h3, h4, h5, h6)",
-    button: ":is(button, input[type=button])",
-    input: ":is(input, textarea, select, button)",
-    text: "input:is(:not([type!='']), [type=text])",
-};
+var hasRequiredAliases;
+
+function requireAliases () {
+	if (hasRequiredAliases) return aliases;
+	hasRequiredAliases = 1;
+	Object.defineProperty(aliases, "__esModule", { value: true });
+	aliases.aliases = void 0;
+	/**
+	 * Aliases are pseudos that are expressed as selectors.
+	 */
+	aliases.aliases = {
+	    // Links
+	    "any-link": ":is(a, area, link)[href]",
+	    link: ":any-link:not(:visited)",
+	    // Forms
+	    // https://html.spec.whatwg.org/multipage/scripting.html#disabled-elements
+	    disabled: ":is(\n        :is(button, input, select, textarea, optgroup, option)[disabled],\n        optgroup[disabled] > option,\n        fieldset[disabled]:not(fieldset[disabled] legend:first-of-type *)\n    )",
+	    enabled: ":not(:disabled)",
+	    checked: ":is(:is(input[type=radio], input[type=checkbox])[checked], option:selected)",
+	    required: ":is(input, select, textarea)[required]",
+	    optional: ":is(input, select, textarea):not([required])",
+	    // JQuery extensions
+	    // https://html.spec.whatwg.org/multipage/form-elements.html#concept-option-selectedness
+	    selected: "option:is([selected], select:not([multiple]):not(:has(> option[selected])) > :first-of-type)",
+	    checkbox: "[type=checkbox]",
+	    file: "[type=file]",
+	    password: "[type=password]",
+	    radio: "[type=radio]",
+	    reset: "[type=reset]",
+	    image: "[type=image]",
+	    submit: "[type=submit]",
+	    parent: ":not(:empty)",
+	    header: ":is(h1, h2, h3, h4, h5, h6)",
+	    button: ":is(button, input[type=button])",
+	    input: ":is(input, textarea, select, button)",
+	    text: "input:is(:not([type!='']), [type=text])",
+	};
+	return aliases;
+}
 
 var subselects = {};
 
 (function (exports) {
-var __spreadArray = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
-    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
-        to[j] = from[i];
-    return to;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.subselects = exports.getNextSiblings = exports.ensureIsTag = exports.PLACEHOLDER_ELEMENT = void 0;
-var boolbase_1 = boolbase;
-var procedure_1 = procedure;
-/** Used as a placeholder for :has. Will be replaced with the actual element. */
-exports.PLACEHOLDER_ELEMENT = {};
-function ensureIsTag(next, adapter) {
-    if (next === boolbase_1.falseFunc)
-        return boolbase_1.falseFunc;
-    return function (elem) { return adapter.isTag(elem) && next(elem); };
-}
-exports.ensureIsTag = ensureIsTag;
-function getNextSiblings(elem, adapter) {
-    var siblings = adapter.getSiblings(elem);
-    if (siblings.length <= 1)
-        return [];
-    var elemIndex = siblings.indexOf(elem);
-    if (elemIndex < 0 || elemIndex === siblings.length - 1)
-        return [];
-    return siblings.slice(elemIndex + 1).filter(adapter.isTag);
-}
-exports.getNextSiblings = getNextSiblings;
-var is = function (next, token, options, context, compileToken) {
-    var opts = {
-        xmlMode: !!options.xmlMode,
-        adapter: options.adapter,
-        equals: options.equals,
-    };
-    var func = compileToken(token, opts, context);
-    return function (elem) { return func(elem) && next(elem); };
-};
-/*
- * :not, :has, :is and :matches have to compile selectors
- * doing this in src/pseudos.ts would lead to circular dependencies,
- * so we add them here
- */
-exports.subselects = {
-    is: is,
-    /**
-     * `:matches` is an alias for `:is`.
-     */
-    matches: is,
-    not: function (next, token, options, context, compileToken) {
-        var opts = {
-            xmlMode: !!options.xmlMode,
-            adapter: options.adapter,
-            equals: options.equals,
-        };
-        var func = compileToken(token, opts, context);
-        if (func === boolbase_1.falseFunc)
-            return next;
-        if (func === boolbase_1.trueFunc)
-            return boolbase_1.falseFunc;
-        return function not(elem) {
-            return !func(elem) && next(elem);
-        };
-    },
-    has: function (next, subselect, options, _context, compileToken) {
-        var adapter = options.adapter;
-        var opts = {
-            xmlMode: !!options.xmlMode,
-            adapter: adapter,
-            equals: options.equals,
-        };
-        // @ts-expect-error Uses an array as a pointer to the current element (side effects)
-        var context = subselect.some(function (s) {
-            return s.some(procedure_1.isTraversal);
-        })
-            ? [exports.PLACEHOLDER_ELEMENT]
-            : undefined;
-        var compiled = compileToken(subselect, opts, context);
-        if (compiled === boolbase_1.falseFunc)
-            return boolbase_1.falseFunc;
-        if (compiled === boolbase_1.trueFunc) {
-            return function (elem) {
-                return adapter.getChildren(elem).some(adapter.isTag) && next(elem);
-            };
-        }
-        var hasElement = ensureIsTag(compiled, adapter);
-        var _a = compiled.shouldTestNextSiblings, shouldTestNextSiblings = _a === void 0 ? false : _a;
-        /*
-         * `shouldTestNextSiblings` will only be true if the query starts with
-         * a traversal (sibling or adjacent). That means we will always have a context.
-         */
-        if (context) {
-            return function (elem) {
-                context[0] = elem;
-                var childs = adapter.getChildren(elem);
-                var nextElements = shouldTestNextSiblings
-                    ? __spreadArray(__spreadArray([], childs), getNextSiblings(elem, adapter)) : childs;
-                return (next(elem) && adapter.existsOne(hasElement, nextElements));
-            };
-        }
-        return function (elem) {
-            return next(elem) &&
-                adapter.existsOne(hasElement, adapter.getChildren(elem));
-        };
-    },
-};
-}(subselects));
+	var __spreadArray = (commonjsGlobal && commonjsGlobal.__spreadArray) || function (to, from) {
+	    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
+	        to[j] = from[i];
+	    return to;
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.subselects = exports.getNextSiblings = exports.ensureIsTag = exports.PLACEHOLDER_ELEMENT = void 0;
+	var boolbase_1 = boolbase;
+	var procedure_1 = procedure;
+	/** Used as a placeholder for :has. Will be replaced with the actual element. */
+	exports.PLACEHOLDER_ELEMENT = {};
+	function ensureIsTag(next, adapter) {
+	    if (next === boolbase_1.falseFunc)
+	        return boolbase_1.falseFunc;
+	    return function (elem) { return adapter.isTag(elem) && next(elem); };
+	}
+	exports.ensureIsTag = ensureIsTag;
+	function getNextSiblings(elem, adapter) {
+	    var siblings = adapter.getSiblings(elem);
+	    if (siblings.length <= 1)
+	        return [];
+	    var elemIndex = siblings.indexOf(elem);
+	    if (elemIndex < 0 || elemIndex === siblings.length - 1)
+	        return [];
+	    return siblings.slice(elemIndex + 1).filter(adapter.isTag);
+	}
+	exports.getNextSiblings = getNextSiblings;
+	var is = function (next, token, options, context, compileToken) {
+	    var opts = {
+	        xmlMode: !!options.xmlMode,
+	        adapter: options.adapter,
+	        equals: options.equals,
+	    };
+	    var func = compileToken(token, opts, context);
+	    return function (elem) { return func(elem) && next(elem); };
+	};
+	/*
+	 * :not, :has, :is and :matches have to compile selectors
+	 * doing this in src/pseudos.ts would lead to circular dependencies,
+	 * so we add them here
+	 */
+	exports.subselects = {
+	    is: is,
+	    /**
+	     * `:matches` is an alias for `:is`.
+	     */
+	    matches: is,
+	    not: function (next, token, options, context, compileToken) {
+	        var opts = {
+	            xmlMode: !!options.xmlMode,
+	            adapter: options.adapter,
+	            equals: options.equals,
+	        };
+	        var func = compileToken(token, opts, context);
+	        if (func === boolbase_1.falseFunc)
+	            return next;
+	        if (func === boolbase_1.trueFunc)
+	            return boolbase_1.falseFunc;
+	        return function not(elem) {
+	            return !func(elem) && next(elem);
+	        };
+	    },
+	    has: function (next, subselect, options, _context, compileToken) {
+	        var adapter = options.adapter;
+	        var opts = {
+	            xmlMode: !!options.xmlMode,
+	            adapter: adapter,
+	            equals: options.equals,
+	        };
+	        // @ts-expect-error Uses an array as a pointer to the current element (side effects)
+	        var context = subselect.some(function (s) {
+	            return s.some(procedure_1.isTraversal);
+	        })
+	            ? [exports.PLACEHOLDER_ELEMENT]
+	            : undefined;
+	        var compiled = compileToken(subselect, opts, context);
+	        if (compiled === boolbase_1.falseFunc)
+	            return boolbase_1.falseFunc;
+	        if (compiled === boolbase_1.trueFunc) {
+	            return function (elem) {
+	                return adapter.getChildren(elem).some(adapter.isTag) && next(elem);
+	            };
+	        }
+	        var hasElement = ensureIsTag(compiled, adapter);
+	        var _a = compiled.shouldTestNextSiblings, shouldTestNextSiblings = _a === void 0 ? false : _a;
+	        /*
+	         * `shouldTestNextSiblings` will only be true if the query starts with
+	         * a traversal (sibling or adjacent). That means we will always have a context.
+	         */
+	        if (context) {
+	            return function (elem) {
+	                context[0] = elem;
+	                var childs = adapter.getChildren(elem);
+	                var nextElements = shouldTestNextSiblings
+	                    ? __spreadArray(__spreadArray([], childs), getNextSiblings(elem, adapter)) : childs;
+	                return (next(elem) && adapter.existsOne(hasElement, nextElements));
+	            };
+	        }
+	        return function (elem) {
+	            return next(elem) &&
+	                adapter.existsOne(hasElement, adapter.getChildren(elem));
+	        };
+	    },
+	};
+} (subselects));
 
-(function (exports) {
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.compilePseudoSelector = exports.aliases = exports.pseudos = exports.filters = void 0;
-/*
- * Pseudo selectors
- *
- * Pseudo selectors are available in three forms:
- *
- * 1. Filters are called when the selector is compiled and return a function
- *  that has to return either false, or the results of `next()`.
- * 2. Pseudos are called on execution. They have to return a boolean.
- * 3. Subselects work like filters, but have an embedded selector that will be run separately.
- *
- * Filters are great if you want to do some pre-processing, or change the call order
- * of `next()` and your code.
- * Pseudos should be used to implement simple checks.
- */
-var boolbase_1 = boolbase;
-var css_what_1 = lib$3;
-var filters_1 = filters$1;
-Object.defineProperty(exports, "filters", { enumerable: true, get: function () { return filters_1.filters; } });
-var pseudos_1 = pseudos;
-Object.defineProperty(exports, "pseudos", { enumerable: true, get: function () { return pseudos_1.pseudos; } });
-var aliases_1 = aliases;
-Object.defineProperty(exports, "aliases", { enumerable: true, get: function () { return aliases_1.aliases; } });
-var subselects_1 = subselects;
-function compilePseudoSelector(next, selector, options, context, compileToken) {
-    var name = selector.name, data = selector.data;
-    if (Array.isArray(data)) {
-        return subselects_1.subselects[name](next, data, options, context, compileToken);
-    }
-    if (name in aliases_1.aliases) {
-        if (data != null) {
-            throw new Error("Pseudo " + name + " doesn't have any arguments");
-        }
-        // The alias has to be parsed here, to make sure options are respected.
-        var alias = css_what_1.parse(aliases_1.aliases[name], options);
-        return subselects_1.subselects.is(next, alias, options, context, compileToken);
-    }
-    if (name in filters_1.filters) {
-        return filters_1.filters[name](next, data, options, context);
-    }
-    if (name in pseudos_1.pseudos) {
-        var pseudo_1 = pseudos_1.pseudos[name];
-        pseudos_1.verifyPseudoArgs(pseudo_1, name, data);
-        return pseudo_1 === boolbase_1.falseFunc
-            ? boolbase_1.falseFunc
-            : next === boolbase_1.trueFunc
-                ? function (elem) { return pseudo_1(elem, options, data); }
-                : function (elem) { return pseudo_1(elem, options, data) && next(elem); };
-    }
-    throw new Error("unmatched pseudo-class :" + name);
+var hasRequiredPseudoSelectors;
+
+function requirePseudoSelectors () {
+	if (hasRequiredPseudoSelectors) return pseudoSelectors;
+	hasRequiredPseudoSelectors = 1;
+	(function (exports) {
+		Object.defineProperty(exports, "__esModule", { value: true });
+		exports.compilePseudoSelector = exports.aliases = exports.pseudos = exports.filters = void 0;
+		/*
+		 * Pseudo selectors
+		 *
+		 * Pseudo selectors are available in three forms:
+		 *
+		 * 1. Filters are called when the selector is compiled and return a function
+		 *  that has to return either false, or the results of `next()`.
+		 * 2. Pseudos are called on execution. They have to return a boolean.
+		 * 3. Subselects work like filters, but have an embedded selector that will be run separately.
+		 *
+		 * Filters are great if you want to do some pre-processing, or change the call order
+		 * of `next()` and your code.
+		 * Pseudos should be used to implement simple checks.
+		 */
+		var boolbase_1 = boolbase;
+		var css_what_1 = lib$3;
+		var filters_1 = requireFilters();
+		Object.defineProperty(exports, "filters", { enumerable: true, get: function () { return filters_1.filters; } });
+		var pseudos_1 = requirePseudos();
+		Object.defineProperty(exports, "pseudos", { enumerable: true, get: function () { return pseudos_1.pseudos; } });
+		var aliases_1 = requireAliases();
+		Object.defineProperty(exports, "aliases", { enumerable: true, get: function () { return aliases_1.aliases; } });
+		var subselects_1 = subselects;
+		function compilePseudoSelector(next, selector, options, context, compileToken) {
+		    var name = selector.name, data = selector.data;
+		    if (Array.isArray(data)) {
+		        return subselects_1.subselects[name](next, data, options, context, compileToken);
+		    }
+		    if (name in aliases_1.aliases) {
+		        if (data != null) {
+		            throw new Error("Pseudo " + name + " doesn't have any arguments");
+		        }
+		        // The alias has to be parsed here, to make sure options are respected.
+		        var alias = css_what_1.parse(aliases_1.aliases[name], options);
+		        return subselects_1.subselects.is(next, alias, options, context, compileToken);
+		    }
+		    if (name in filters_1.filters) {
+		        return filters_1.filters[name](next, data, options, context);
+		    }
+		    if (name in pseudos_1.pseudos) {
+		        var pseudo_1 = pseudos_1.pseudos[name];
+		        pseudos_1.verifyPseudoArgs(pseudo_1, name, data);
+		        return pseudo_1 === boolbase_1.falseFunc
+		            ? boolbase_1.falseFunc
+		            : next === boolbase_1.trueFunc
+		                ? function (elem) { return pseudo_1(elem, options, data); }
+		                : function (elem) { return pseudo_1(elem, options, data) && next(elem); };
+		    }
+		    throw new Error("unmatched pseudo-class :" + name);
+		}
+		exports.compilePseudoSelector = compilePseudoSelector;
+} (pseudoSelectors));
+	return pseudoSelectors;
 }
-exports.compilePseudoSelector = compilePseudoSelector;
-}(pseudoSelectors));
 
 Object.defineProperty(general, "__esModule", { value: true });
 general.compileGeneralSelector = void 0;
 var attributes_1 = attributes;
-var pseudo_selectors_1 = pseudoSelectors;
+var pseudo_selectors_1 = requirePseudoSelectors();
 /*
  * All available rules
  */
@@ -8076,8 +8131,8 @@ general.compileGeneralSelector = compileGeneralSelector;
 var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-Object.defineProperty(compile$3, "__esModule", { value: true });
-compile$3.compileToken = compile$3.compileUnsafe = compile$3.compile = void 0;
+Object.defineProperty(compile$2, "__esModule", { value: true });
+compile$2.compileToken = compile$2.compileUnsafe = compile$2.compile = void 0;
 var css_what_1 = lib$3;
 var boolbase_1 = boolbase;
 var sort_1 = __importDefault(sort);
@@ -8095,12 +8150,12 @@ function compile(selector, options, context) {
     var next = compileUnsafe(selector, options, context);
     return subselects_1.ensureIsTag(next, options.adapter);
 }
-compile$3.compile = compile;
+compile$2.compile = compile;
 function compileUnsafe(selector, options, context) {
     var token = typeof selector === "string" ? css_what_1.parse(selector, options) : selector;
     return compileToken(token, options, context);
 }
-compile$3.compileUnsafe = compileUnsafe;
+compile$2.compileUnsafe = compileUnsafe;
 function includesScopePseudo(t) {
     return (t.type === "pseudo" &&
         (t.name === "scope" ||
@@ -8163,7 +8218,7 @@ function compileToken(token, options, context) {
     query.shouldTestNextSiblings = shouldTestNextSiblings;
     return query;
 }
-compile$3.compileToken = compileToken;
+compile$2.compileToken = compileToken;
 function compileRules(rules, options, context) {
     var _a;
     return rules.reduce(function (previous, rule) {
@@ -8185,150 +8240,150 @@ function reduceRules(a, b) {
 }
 
 (function (exports) {
-var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (commonjsGlobal && commonjsGlobal.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (commonjsGlobal && commonjsGlobal.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.aliases = exports.pseudos = exports.filters = exports.is = exports.selectOne = exports.selectAll = exports.prepareContext = exports._compileToken = exports._compileUnsafe = exports.compile = void 0;
-var DomUtils = __importStar(lib$8);
-var boolbase_1 = boolbase;
-var compile_1 = compile$3;
-var subselects_1 = subselects;
-var defaultEquals = function (a, b) { return a === b; };
-var defaultOptions = {
-    adapter: DomUtils,
-    equals: defaultEquals,
-};
-function convertOptionFormats(options) {
-    var _a, _b, _c, _d;
-    /*
-     * We force one format of options to the other one.
-     */
-    // @ts-expect-error Default options may have incompatible `Node` / `ElementNode`.
-    var opts = options !== null && options !== void 0 ? options : defaultOptions;
-    // @ts-expect-error Same as above.
-    (_a = opts.adapter) !== null && _a !== void 0 ? _a : (opts.adapter = DomUtils);
-    // @ts-expect-error `equals` does not exist on `Options`
-    (_b = opts.equals) !== null && _b !== void 0 ? _b : (opts.equals = (_d = (_c = opts.adapter) === null || _c === void 0 ? void 0 : _c.equals) !== null && _d !== void 0 ? _d : defaultEquals);
-    return opts;
-}
-function wrapCompile(func) {
-    return function addAdapter(selector, options, context) {
-        var opts = convertOptionFormats(options);
-        return func(selector, opts, context);
-    };
-}
-/**
- * Compiles the query, returns a function.
- */
-exports.compile = wrapCompile(compile_1.compile);
-exports._compileUnsafe = wrapCompile(compile_1.compileUnsafe);
-exports._compileToken = wrapCompile(compile_1.compileToken);
-function getSelectorFunc(searchFunc) {
-    return function select(query, elements, options) {
-        var opts = convertOptionFormats(options);
-        if (typeof query !== "function") {
-            query = compile_1.compileUnsafe(query, opts, elements);
-        }
-        var filteredElements = prepareContext(elements, opts.adapter, query.shouldTestNextSiblings);
-        return searchFunc(query, filteredElements, opts);
-    };
-}
-function prepareContext(elems, adapter, shouldTestNextSiblings) {
-    if (shouldTestNextSiblings === void 0) { shouldTestNextSiblings = false; }
-    /*
-     * Add siblings if the query requires them.
-     * See https://github.com/fb55/css-select/pull/43#issuecomment-225414692
-     */
-    if (shouldTestNextSiblings) {
-        elems = appendNextSiblings(elems, adapter);
-    }
-    return Array.isArray(elems)
-        ? adapter.removeSubsets(elems)
-        : adapter.getChildren(elems);
-}
-exports.prepareContext = prepareContext;
-function appendNextSiblings(elem, adapter) {
-    // Order matters because jQuery seems to check the children before the siblings
-    var elems = Array.isArray(elem) ? elem.slice(0) : [elem];
-    for (var i = 0; i < elems.length; i++) {
-        var nextSiblings = subselects_1.getNextSiblings(elems[i], adapter);
-        elems.push.apply(elems, nextSiblings);
-    }
-    return elems;
-}
-/**
- * @template Node The generic Node type for the DOM adapter being used.
- * @template ElementNode The Node type for elements for the DOM adapter being used.
- * @param elems Elements to query. If it is an element, its children will be queried..
- * @param query can be either a CSS selector string or a compiled query function.
- * @param [options] options for querying the document.
- * @see compile for supported selector queries.
- * @returns All matching elements.
- *
- */
-exports.selectAll = getSelectorFunc(function (query, elems, options) {
-    return query === boolbase_1.falseFunc || !elems || elems.length === 0
-        ? []
-        : options.adapter.findAll(query, elems);
-});
-/**
- * @template Node The generic Node type for the DOM adapter being used.
- * @template ElementNode The Node type for elements for the DOM adapter being used.
- * @param elems Elements to query. If it is an element, its children will be queried..
- * @param query can be either a CSS selector string or a compiled query function.
- * @param [options] options for querying the document.
- * @see compile for supported selector queries.
- * @returns the first match, or null if there was no match.
- */
-exports.selectOne = getSelectorFunc(function (query, elems, options) {
-    return query === boolbase_1.falseFunc || !elems || elems.length === 0
-        ? null
-        : options.adapter.findOne(query, elems);
-});
-/**
- * Tests whether or not an element is matched by query.
- *
- * @template Node The generic Node type for the DOM adapter being used.
- * @template ElementNode The Node type for elements for the DOM adapter being used.
- * @param elem The element to test if it matches the query.
- * @param query can be either a CSS selector string or a compiled query function.
- * @param [options] options for querying the document.
- * @see compile for supported selector queries.
- * @returns
- */
-function is(elem, query, options) {
-    var opts = convertOptionFormats(options);
-    return (typeof query === "function" ? query : compile_1.compile(query, opts))(elem);
-}
-exports.is = is;
-/**
- * Alias for selectAll(query, elems, options).
- * @see [compile] for supported selector queries.
- */
-exports.default = exports.selectAll;
-// Export filters, pseudos and aliases to allow users to supply their own.
-var pseudo_selectors_1 = pseudoSelectors;
-Object.defineProperty(exports, "filters", { enumerable: true, get: function () { return pseudo_selectors_1.filters; } });
-Object.defineProperty(exports, "pseudos", { enumerable: true, get: function () { return pseudo_selectors_1.pseudos; } });
-Object.defineProperty(exports, "aliases", { enumerable: true, get: function () { return pseudo_selectors_1.aliases; } });
-}(lib$9));
+	var __createBinding = (commonjsGlobal && commonjsGlobal.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+	    if (k2 === undefined) k2 = k;
+	    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+	}) : (function(o, m, k, k2) {
+	    if (k2 === undefined) k2 = k;
+	    o[k2] = m[k];
+	}));
+	var __setModuleDefault = (commonjsGlobal && commonjsGlobal.__setModuleDefault) || (Object.create ? (function(o, v) {
+	    Object.defineProperty(o, "default", { enumerable: true, value: v });
+	}) : function(o, v) {
+	    o["default"] = v;
+	});
+	var __importStar = (commonjsGlobal && commonjsGlobal.__importStar) || function (mod) {
+	    if (mod && mod.__esModule) return mod;
+	    var result = {};
+	    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+	    __setModuleDefault(result, mod);
+	    return result;
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.aliases = exports.pseudos = exports.filters = exports.is = exports.selectOne = exports.selectAll = exports.prepareContext = exports._compileToken = exports._compileUnsafe = exports.compile = void 0;
+	var DomUtils = __importStar(lib$8);
+	var boolbase_1 = boolbase;
+	var compile_1 = compile$2;
+	var subselects_1 = subselects;
+	var defaultEquals = function (a, b) { return a === b; };
+	var defaultOptions = {
+	    adapter: DomUtils,
+	    equals: defaultEquals,
+	};
+	function convertOptionFormats(options) {
+	    var _a, _b, _c, _d;
+	    /*
+	     * We force one format of options to the other one.
+	     */
+	    // @ts-expect-error Default options may have incompatible `Node` / `ElementNode`.
+	    var opts = options !== null && options !== void 0 ? options : defaultOptions;
+	    // @ts-expect-error Same as above.
+	    (_a = opts.adapter) !== null && _a !== void 0 ? _a : (opts.adapter = DomUtils);
+	    // @ts-expect-error `equals` does not exist on `Options`
+	    (_b = opts.equals) !== null && _b !== void 0 ? _b : (opts.equals = (_d = (_c = opts.adapter) === null || _c === void 0 ? void 0 : _c.equals) !== null && _d !== void 0 ? _d : defaultEquals);
+	    return opts;
+	}
+	function wrapCompile(func) {
+	    return function addAdapter(selector, options, context) {
+	        var opts = convertOptionFormats(options);
+	        return func(selector, opts, context);
+	    };
+	}
+	/**
+	 * Compiles the query, returns a function.
+	 */
+	exports.compile = wrapCompile(compile_1.compile);
+	exports._compileUnsafe = wrapCompile(compile_1.compileUnsafe);
+	exports._compileToken = wrapCompile(compile_1.compileToken);
+	function getSelectorFunc(searchFunc) {
+	    return function select(query, elements, options) {
+	        var opts = convertOptionFormats(options);
+	        if (typeof query !== "function") {
+	            query = compile_1.compileUnsafe(query, opts, elements);
+	        }
+	        var filteredElements = prepareContext(elements, opts.adapter, query.shouldTestNextSiblings);
+	        return searchFunc(query, filteredElements, opts);
+	    };
+	}
+	function prepareContext(elems, adapter, shouldTestNextSiblings) {
+	    if (shouldTestNextSiblings === void 0) { shouldTestNextSiblings = false; }
+	    /*
+	     * Add siblings if the query requires them.
+	     * See https://github.com/fb55/css-select/pull/43#issuecomment-225414692
+	     */
+	    if (shouldTestNextSiblings) {
+	        elems = appendNextSiblings(elems, adapter);
+	    }
+	    return Array.isArray(elems)
+	        ? adapter.removeSubsets(elems)
+	        : adapter.getChildren(elems);
+	}
+	exports.prepareContext = prepareContext;
+	function appendNextSiblings(elem, adapter) {
+	    // Order matters because jQuery seems to check the children before the siblings
+	    var elems = Array.isArray(elem) ? elem.slice(0) : [elem];
+	    for (var i = 0; i < elems.length; i++) {
+	        var nextSiblings = subselects_1.getNextSiblings(elems[i], adapter);
+	        elems.push.apply(elems, nextSiblings);
+	    }
+	    return elems;
+	}
+	/**
+	 * @template Node The generic Node type for the DOM adapter being used.
+	 * @template ElementNode The Node type for elements for the DOM adapter being used.
+	 * @param elems Elements to query. If it is an element, its children will be queried..
+	 * @param query can be either a CSS selector string or a compiled query function.
+	 * @param [options] options for querying the document.
+	 * @see compile for supported selector queries.
+	 * @returns All matching elements.
+	 *
+	 */
+	exports.selectAll = getSelectorFunc(function (query, elems, options) {
+	    return query === boolbase_1.falseFunc || !elems || elems.length === 0
+	        ? []
+	        : options.adapter.findAll(query, elems);
+	});
+	/**
+	 * @template Node The generic Node type for the DOM adapter being used.
+	 * @template ElementNode The Node type for elements for the DOM adapter being used.
+	 * @param elems Elements to query. If it is an element, its children will be queried..
+	 * @param query can be either a CSS selector string or a compiled query function.
+	 * @param [options] options for querying the document.
+	 * @see compile for supported selector queries.
+	 * @returns the first match, or null if there was no match.
+	 */
+	exports.selectOne = getSelectorFunc(function (query, elems, options) {
+	    return query === boolbase_1.falseFunc || !elems || elems.length === 0
+	        ? null
+	        : options.adapter.findOne(query, elems);
+	});
+	/**
+	 * Tests whether or not an element is matched by query.
+	 *
+	 * @template Node The generic Node type for the DOM adapter being used.
+	 * @template ElementNode The Node type for elements for the DOM adapter being used.
+	 * @param elem The element to test if it matches the query.
+	 * @param query can be either a CSS selector string or a compiled query function.
+	 * @param [options] options for querying the document.
+	 * @see compile for supported selector queries.
+	 * @returns
+	 */
+	function is(elem, query, options) {
+	    var opts = convertOptionFormats(options);
+	    return (typeof query === "function" ? query : compile_1.compile(query, opts))(elem);
+	}
+	exports.is = is;
+	/**
+	 * Alias for selectAll(query, elems, options).
+	 * @see [compile] for supported selector queries.
+	 */
+	exports.default = exports.selectAll;
+	// Export filters, pseudos and aliases to allow users to supply their own.
+	var pseudo_selectors_1 = requirePseudoSelectors();
+	Object.defineProperty(exports, "filters", { enumerable: true, get: function () { return pseudo_selectors_1.filters; } });
+	Object.defineProperty(exports, "pseudos", { enumerable: true, get: function () { return pseudo_selectors_1.pseudos; } });
+	Object.defineProperty(exports, "aliases", { enumerable: true, get: function () { return pseudo_selectors_1.aliases; } });
+} (lib$9));
 
 const isTag = (node) => {
   return node.type === 'element';
@@ -8800,2173 +8855,2173 @@ var _collections = {};
 
 (function (exports) {
 
-// https://www.w3.org/TR/SVG11/intro.html#Definitions
+	// https://www.w3.org/TR/SVG11/intro.html#Definitions
 
-/**
- * @type {Record<string, Array<string>>}
- */
-exports.elemsGroups = {
-  animation: [
-    'animate',
-    'animateColor',
-    'animateMotion',
-    'animateTransform',
-    'set',
-  ],
-  descriptive: ['desc', 'metadata', 'title'],
-  shape: ['circle', 'ellipse', 'line', 'path', 'polygon', 'polyline', 'rect'],
-  structural: ['defs', 'g', 'svg', 'symbol', 'use'],
-  paintServer: [
-    'solidColor',
-    'linearGradient',
-    'radialGradient',
-    'meshGradient',
-    'pattern',
-    'hatch',
-  ],
-  nonRendering: [
-    'linearGradient',
-    'radialGradient',
-    'pattern',
-    'clipPath',
-    'mask',
-    'marker',
-    'symbol',
-    'filter',
-    'solidColor',
-  ],
-  container: [
-    'a',
-    'defs',
-    'g',
-    'marker',
-    'mask',
-    'missing-glyph',
-    'pattern',
-    'svg',
-    'switch',
-    'symbol',
-    'foreignObject',
-  ],
-  textContent: [
-    'altGlyph',
-    'altGlyphDef',
-    'altGlyphItem',
-    'glyph',
-    'glyphRef',
-    'textPath',
-    'text',
-    'tref',
-    'tspan',
-  ],
-  textContentChild: ['altGlyph', 'textPath', 'tref', 'tspan'],
-  lightSource: [
-    'feDiffuseLighting',
-    'feSpecularLighting',
-    'feDistantLight',
-    'fePointLight',
-    'feSpotLight',
-  ],
-  filterPrimitive: [
-    'feBlend',
-    'feColorMatrix',
-    'feComponentTransfer',
-    'feComposite',
-    'feConvolveMatrix',
-    'feDiffuseLighting',
-    'feDisplacementMap',
-    'feDropShadow',
-    'feFlood',
-    'feFuncA',
-    'feFuncB',
-    'feFuncG',
-    'feFuncR',
-    'feGaussianBlur',
-    'feImage',
-    'feMerge',
-    'feMergeNode',
-    'feMorphology',
-    'feOffset',
-    'feSpecularLighting',
-    'feTile',
-    'feTurbulence',
-  ],
-};
+	/**
+	 * @type {Record<string, Array<string>>}
+	 */
+	exports.elemsGroups = {
+	  animation: [
+	    'animate',
+	    'animateColor',
+	    'animateMotion',
+	    'animateTransform',
+	    'set',
+	  ],
+	  descriptive: ['desc', 'metadata', 'title'],
+	  shape: ['circle', 'ellipse', 'line', 'path', 'polygon', 'polyline', 'rect'],
+	  structural: ['defs', 'g', 'svg', 'symbol', 'use'],
+	  paintServer: [
+	    'solidColor',
+	    'linearGradient',
+	    'radialGradient',
+	    'meshGradient',
+	    'pattern',
+	    'hatch',
+	  ],
+	  nonRendering: [
+	    'linearGradient',
+	    'radialGradient',
+	    'pattern',
+	    'clipPath',
+	    'mask',
+	    'marker',
+	    'symbol',
+	    'filter',
+	    'solidColor',
+	  ],
+	  container: [
+	    'a',
+	    'defs',
+	    'g',
+	    'marker',
+	    'mask',
+	    'missing-glyph',
+	    'pattern',
+	    'svg',
+	    'switch',
+	    'symbol',
+	    'foreignObject',
+	  ],
+	  textContent: [
+	    'altGlyph',
+	    'altGlyphDef',
+	    'altGlyphItem',
+	    'glyph',
+	    'glyphRef',
+	    'textPath',
+	    'text',
+	    'tref',
+	    'tspan',
+	  ],
+	  textContentChild: ['altGlyph', 'textPath', 'tref', 'tspan'],
+	  lightSource: [
+	    'feDiffuseLighting',
+	    'feSpecularLighting',
+	    'feDistantLight',
+	    'fePointLight',
+	    'feSpotLight',
+	  ],
+	  filterPrimitive: [
+	    'feBlend',
+	    'feColorMatrix',
+	    'feComponentTransfer',
+	    'feComposite',
+	    'feConvolveMatrix',
+	    'feDiffuseLighting',
+	    'feDisplacementMap',
+	    'feDropShadow',
+	    'feFlood',
+	    'feFuncA',
+	    'feFuncB',
+	    'feFuncG',
+	    'feFuncR',
+	    'feGaussianBlur',
+	    'feImage',
+	    'feMerge',
+	    'feMergeNode',
+	    'feMorphology',
+	    'feOffset',
+	    'feSpecularLighting',
+	    'feTile',
+	    'feTurbulence',
+	  ],
+	};
 
-exports.textElems = exports.elemsGroups.textContent.concat('title');
+	exports.textElems = exports.elemsGroups.textContent.concat('title');
 
-exports.pathElems = ['path', 'glyph', 'missing-glyph'];
+	exports.pathElems = ['path', 'glyph', 'missing-glyph'];
 
-// https://www.w3.org/TR/SVG11/intro.html#Definitions
-/**
- * @type {Record<string, Array<string>>}
- */
-exports.attrsGroups = {
-  animationAddition: ['additive', 'accumulate'],
-  animationAttributeTarget: ['attributeType', 'attributeName'],
-  animationEvent: ['onbegin', 'onend', 'onrepeat', 'onload'],
-  animationTiming: [
-    'begin',
-    'dur',
-    'end',
-    'min',
-    'max',
-    'restart',
-    'repeatCount',
-    'repeatDur',
-    'fill',
-  ],
-  animationValue: [
-    'calcMode',
-    'values',
-    'keyTimes',
-    'keySplines',
-    'from',
-    'to',
-    'by',
-  ],
-  conditionalProcessing: [
-    'requiredFeatures',
-    'requiredExtensions',
-    'systemLanguage',
-  ],
-  core: ['id', 'tabindex', 'xml:base', 'xml:lang', 'xml:space'],
-  graphicalEvent: [
-    'onfocusin',
-    'onfocusout',
-    'onactivate',
-    'onclick',
-    'onmousedown',
-    'onmouseup',
-    'onmouseover',
-    'onmousemove',
-    'onmouseout',
-    'onload',
-  ],
-  presentation: [
-    'alignment-baseline',
-    'baseline-shift',
-    'clip',
-    'clip-path',
-    'clip-rule',
-    'color',
-    'color-interpolation',
-    'color-interpolation-filters',
-    'color-profile',
-    'color-rendering',
-    'cursor',
-    'direction',
-    'display',
-    'dominant-baseline',
-    'enable-background',
-    'fill',
-    'fill-opacity',
-    'fill-rule',
-    'filter',
-    'flood-color',
-    'flood-opacity',
-    'font-family',
-    'font-size',
-    'font-size-adjust',
-    'font-stretch',
-    'font-style',
-    'font-variant',
-    'font-weight',
-    'glyph-orientation-horizontal',
-    'glyph-orientation-vertical',
-    'image-rendering',
-    'letter-spacing',
-    'lighting-color',
-    'marker-end',
-    'marker-mid',
-    'marker-start',
-    'mask',
-    'opacity',
-    'overflow',
-    'paint-order',
-    'pointer-events',
-    'shape-rendering',
-    'stop-color',
-    'stop-opacity',
-    'stroke',
-    'stroke-dasharray',
-    'stroke-dashoffset',
-    'stroke-linecap',
-    'stroke-linejoin',
-    'stroke-miterlimit',
-    'stroke-opacity',
-    'stroke-width',
-    'text-anchor',
-    'text-decoration',
-    'text-overflow',
-    'text-rendering',
-    'transform',
-    'transform-origin',
-    'unicode-bidi',
-    'vector-effect',
-    'visibility',
-    'word-spacing',
-    'writing-mode',
-  ],
-  xlink: [
-    'xlink:href',
-    'xlink:show',
-    'xlink:actuate',
-    'xlink:type',
-    'xlink:role',
-    'xlink:arcrole',
-    'xlink:title',
-  ],
-  documentEvent: [
-    'onunload',
-    'onabort',
-    'onerror',
-    'onresize',
-    'onscroll',
-    'onzoom',
-  ],
-  filterPrimitive: ['x', 'y', 'width', 'height', 'result'],
-  transferFunction: [
-    'type',
-    'tableValues',
-    'slope',
-    'intercept',
-    'amplitude',
-    'exponent',
-    'offset',
-  ],
-};
+	// https://www.w3.org/TR/SVG11/intro.html#Definitions
+	/**
+	 * @type {Record<string, Array<string>>}
+	 */
+	exports.attrsGroups = {
+	  animationAddition: ['additive', 'accumulate'],
+	  animationAttributeTarget: ['attributeType', 'attributeName'],
+	  animationEvent: ['onbegin', 'onend', 'onrepeat', 'onload'],
+	  animationTiming: [
+	    'begin',
+	    'dur',
+	    'end',
+	    'min',
+	    'max',
+	    'restart',
+	    'repeatCount',
+	    'repeatDur',
+	    'fill',
+	  ],
+	  animationValue: [
+	    'calcMode',
+	    'values',
+	    'keyTimes',
+	    'keySplines',
+	    'from',
+	    'to',
+	    'by',
+	  ],
+	  conditionalProcessing: [
+	    'requiredFeatures',
+	    'requiredExtensions',
+	    'systemLanguage',
+	  ],
+	  core: ['id', 'tabindex', 'xml:base', 'xml:lang', 'xml:space'],
+	  graphicalEvent: [
+	    'onfocusin',
+	    'onfocusout',
+	    'onactivate',
+	    'onclick',
+	    'onmousedown',
+	    'onmouseup',
+	    'onmouseover',
+	    'onmousemove',
+	    'onmouseout',
+	    'onload',
+	  ],
+	  presentation: [
+	    'alignment-baseline',
+	    'baseline-shift',
+	    'clip',
+	    'clip-path',
+	    'clip-rule',
+	    'color',
+	    'color-interpolation',
+	    'color-interpolation-filters',
+	    'color-profile',
+	    'color-rendering',
+	    'cursor',
+	    'direction',
+	    'display',
+	    'dominant-baseline',
+	    'enable-background',
+	    'fill',
+	    'fill-opacity',
+	    'fill-rule',
+	    'filter',
+	    'flood-color',
+	    'flood-opacity',
+	    'font-family',
+	    'font-size',
+	    'font-size-adjust',
+	    'font-stretch',
+	    'font-style',
+	    'font-variant',
+	    'font-weight',
+	    'glyph-orientation-horizontal',
+	    'glyph-orientation-vertical',
+	    'image-rendering',
+	    'letter-spacing',
+	    'lighting-color',
+	    'marker-end',
+	    'marker-mid',
+	    'marker-start',
+	    'mask',
+	    'opacity',
+	    'overflow',
+	    'paint-order',
+	    'pointer-events',
+	    'shape-rendering',
+	    'stop-color',
+	    'stop-opacity',
+	    'stroke',
+	    'stroke-dasharray',
+	    'stroke-dashoffset',
+	    'stroke-linecap',
+	    'stroke-linejoin',
+	    'stroke-miterlimit',
+	    'stroke-opacity',
+	    'stroke-width',
+	    'text-anchor',
+	    'text-decoration',
+	    'text-overflow',
+	    'text-rendering',
+	    'transform',
+	    'transform-origin',
+	    'unicode-bidi',
+	    'vector-effect',
+	    'visibility',
+	    'word-spacing',
+	    'writing-mode',
+	  ],
+	  xlink: [
+	    'xlink:href',
+	    'xlink:show',
+	    'xlink:actuate',
+	    'xlink:type',
+	    'xlink:role',
+	    'xlink:arcrole',
+	    'xlink:title',
+	  ],
+	  documentEvent: [
+	    'onunload',
+	    'onabort',
+	    'onerror',
+	    'onresize',
+	    'onscroll',
+	    'onzoom',
+	  ],
+	  filterPrimitive: ['x', 'y', 'width', 'height', 'result'],
+	  transferFunction: [
+	    'type',
+	    'tableValues',
+	    'slope',
+	    'intercept',
+	    'amplitude',
+	    'exponent',
+	    'offset',
+	  ],
+	};
 
-/**
- * @type {Record<string, Record<string, string>>}
- */
-exports.attrsGroupsDefaults = {
-  core: { 'xml:space': 'default' },
-  presentation: {
-    clip: 'auto',
-    'clip-path': 'none',
-    'clip-rule': 'nonzero',
-    mask: 'none',
-    opacity: '1',
-    'stop-color': '#000',
-    'stop-opacity': '1',
-    'fill-opacity': '1',
-    'fill-rule': 'nonzero',
-    fill: '#000',
-    stroke: 'none',
-    'stroke-width': '1',
-    'stroke-linecap': 'butt',
-    'stroke-linejoin': 'miter',
-    'stroke-miterlimit': '4',
-    'stroke-dasharray': 'none',
-    'stroke-dashoffset': '0',
-    'stroke-opacity': '1',
-    'paint-order': 'normal',
-    'vector-effect': 'none',
-    display: 'inline',
-    visibility: 'visible',
-    'marker-start': 'none',
-    'marker-mid': 'none',
-    'marker-end': 'none',
-    'color-interpolation': 'sRGB',
-    'color-interpolation-filters': 'linearRGB',
-    'color-rendering': 'auto',
-    'shape-rendering': 'auto',
-    'text-rendering': 'auto',
-    'image-rendering': 'auto',
-    'font-style': 'normal',
-    'font-variant': 'normal',
-    'font-weight': 'normal',
-    'font-stretch': 'normal',
-    'font-size': 'medium',
-    'font-size-adjust': 'none',
-    kerning: 'auto',
-    'letter-spacing': 'normal',
-    'word-spacing': 'normal',
-    'text-decoration': 'none',
-    'text-anchor': 'start',
-    'text-overflow': 'clip',
-    'writing-mode': 'lr-tb',
-    'glyph-orientation-vertical': 'auto',
-    'glyph-orientation-horizontal': '0deg',
-    direction: 'ltr',
-    'unicode-bidi': 'normal',
-    'dominant-baseline': 'auto',
-    'alignment-baseline': 'baseline',
-    'baseline-shift': 'baseline',
-  },
-  transferFunction: {
-    slope: '1',
-    intercept: '0',
-    amplitude: '1',
-    exponent: '1',
-    offset: '0',
-  },
-};
+	/**
+	 * @type {Record<string, Record<string, string>>}
+	 */
+	exports.attrsGroupsDefaults = {
+	  core: { 'xml:space': 'default' },
+	  presentation: {
+	    clip: 'auto',
+	    'clip-path': 'none',
+	    'clip-rule': 'nonzero',
+	    mask: 'none',
+	    opacity: '1',
+	    'stop-color': '#000',
+	    'stop-opacity': '1',
+	    'fill-opacity': '1',
+	    'fill-rule': 'nonzero',
+	    fill: '#000',
+	    stroke: 'none',
+	    'stroke-width': '1',
+	    'stroke-linecap': 'butt',
+	    'stroke-linejoin': 'miter',
+	    'stroke-miterlimit': '4',
+	    'stroke-dasharray': 'none',
+	    'stroke-dashoffset': '0',
+	    'stroke-opacity': '1',
+	    'paint-order': 'normal',
+	    'vector-effect': 'none',
+	    display: 'inline',
+	    visibility: 'visible',
+	    'marker-start': 'none',
+	    'marker-mid': 'none',
+	    'marker-end': 'none',
+	    'color-interpolation': 'sRGB',
+	    'color-interpolation-filters': 'linearRGB',
+	    'color-rendering': 'auto',
+	    'shape-rendering': 'auto',
+	    'text-rendering': 'auto',
+	    'image-rendering': 'auto',
+	    'font-style': 'normal',
+	    'font-variant': 'normal',
+	    'font-weight': 'normal',
+	    'font-stretch': 'normal',
+	    'font-size': 'medium',
+	    'font-size-adjust': 'none',
+	    kerning: 'auto',
+	    'letter-spacing': 'normal',
+	    'word-spacing': 'normal',
+	    'text-decoration': 'none',
+	    'text-anchor': 'start',
+	    'text-overflow': 'clip',
+	    'writing-mode': 'lr-tb',
+	    'glyph-orientation-vertical': 'auto',
+	    'glyph-orientation-horizontal': '0deg',
+	    direction: 'ltr',
+	    'unicode-bidi': 'normal',
+	    'dominant-baseline': 'auto',
+	    'alignment-baseline': 'baseline',
+	    'baseline-shift': 'baseline',
+	  },
+	  transferFunction: {
+	    slope: '1',
+	    intercept: '0',
+	    amplitude: '1',
+	    exponent: '1',
+	    offset: '0',
+	  },
+	};
 
-// https://www.w3.org/TR/SVG11/eltindex.html
-/**
- * @type {Record<string, {
- *   attrsGroups: Array<string>,
- *   attrs?: Array<string>,
- *   defaults?: Record<string, string>,
- *   contentGroups?: Array<string>,
- *   content?: Array<string>,
- * }>}
- */
-exports.elems = {
-  a: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-      'xlink',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'target',
-    ],
-    defaults: {
-      target: '_self',
-    },
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-      // not spec compliant
-      'tspan',
-    ],
-  },
-  altGlyph: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-      'xlink',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'x',
-      'y',
-      'dx',
-      'dy',
-      'glyphRef',
-      'format',
-      'rotate',
-    ],
-  },
-  altGlyphDef: {
-    attrsGroups: ['core'],
-    content: ['glyphRef'],
-  },
-  altGlyphItem: {
-    attrsGroups: ['core'],
-    content: ['glyphRef', 'altGlyphItem'],
-  },
-  animate: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'animationAddition',
-      'animationAttributeTarget',
-      'animationEvent',
-      'animationTiming',
-      'animationValue',
-      'presentation',
-      'xlink',
-    ],
-    attrs: ['externalResourcesRequired'],
-    contentGroups: ['descriptive'],
-  },
-  animateColor: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'animationEvent',
-      'xlink',
-      'animationAttributeTarget',
-      'animationTiming',
-      'animationValue',
-      'animationAddition',
-      'presentation',
-    ],
-    attrs: ['externalResourcesRequired'],
-    contentGroups: ['descriptive'],
-  },
-  animateMotion: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'animationEvent',
-      'xlink',
-      'animationTiming',
-      'animationValue',
-      'animationAddition',
-    ],
-    attrs: [
-      'externalResourcesRequired',
-      'path',
-      'keyPoints',
-      'rotate',
-      'origin',
-    ],
-    defaults: {
-      rotate: '0',
-    },
-    contentGroups: ['descriptive'],
-    content: ['mpath'],
-  },
-  animateTransform: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'animationEvent',
-      'xlink',
-      'animationAttributeTarget',
-      'animationTiming',
-      'animationValue',
-      'animationAddition',
-    ],
-    attrs: ['externalResourcesRequired', 'type'],
-    contentGroups: ['descriptive'],
-  },
-  circle: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'cx',
-      'cy',
-      'r',
-    ],
-    defaults: {
-      cx: '0',
-      cy: '0',
-    },
-    contentGroups: ['animation', 'descriptive'],
-  },
-  clipPath: {
-    attrsGroups: ['conditionalProcessing', 'core', 'presentation'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'clipPathUnits',
-    ],
-    defaults: {
-      clipPathUnits: 'userSpaceOnUse',
-    },
-    contentGroups: ['animation', 'descriptive', 'shape'],
-    content: ['text', 'use'],
-  },
-  'color-profile': {
-    attrsGroups: ['core', 'xlink'],
-    attrs: ['local', 'name', 'rendering-intent'],
-    defaults: {
-      name: 'sRGB',
-      'rendering-intent': 'auto',
-    },
-    contentGroups: ['descriptive'],
-  },
-  cursor: {
-    attrsGroups: ['core', 'conditionalProcessing', 'xlink'],
-    attrs: ['externalResourcesRequired', 'x', 'y'],
-    defaults: {
-      x: '0',
-      y: '0',
-    },
-    contentGroups: ['descriptive'],
-  },
-  defs: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: ['class', 'style', 'externalResourcesRequired', 'transform'],
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  desc: {
-    attrsGroups: ['core'],
-    attrs: ['class', 'style'],
-  },
-  ellipse: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'cx',
-      'cy',
-      'rx',
-      'ry',
-    ],
-    defaults: {
-      cx: '0',
-      cy: '0',
-    },
-    contentGroups: ['animation', 'descriptive'],
-  },
-  feBlend: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: [
-      'class',
-      'style',
-      // TODO: in - 'If no value is provided and this is the first filter primitive,
-      // then this filter primitive will use SourceGraphic as its input'
-      'in',
-      'in2',
-      'mode',
-    ],
-    defaults: {
-      mode: 'normal',
-    },
-    content: ['animate', 'set'],
-  },
-  feColorMatrix: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: ['class', 'style', 'in', 'type', 'values'],
-    defaults: {
-      type: 'matrix',
-    },
-    content: ['animate', 'set'],
-  },
-  feComponentTransfer: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: ['class', 'style', 'in'],
-    content: ['feFuncA', 'feFuncB', 'feFuncG', 'feFuncR'],
-  },
-  feComposite: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: ['class', 'style', 'in', 'in2', 'operator', 'k1', 'k2', 'k3', 'k4'],
-    defaults: {
-      operator: 'over',
-      k1: '0',
-      k2: '0',
-      k3: '0',
-      k4: '0',
-    },
-    content: ['animate', 'set'],
-  },
-  feConvolveMatrix: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: [
-      'class',
-      'style',
-      'in',
-      'order',
-      'kernelMatrix',
-      // TODO: divisor - 'The default value is the sum of all values in kernelMatrix,
-      // with the exception that if the sum is zero, then the divisor is set to 1'
-      'divisor',
-      'bias',
-      // TODO: targetX - 'By default, the convolution matrix is centered in X over each
-      // pixel of the input image (i.e., targetX = floor ( orderX / 2 ))'
-      'targetX',
-      'targetY',
-      'edgeMode',
-      // TODO: kernelUnitLength - 'The first number is the <dx> value. The second number
-      // is the <dy> value. If the <dy> value is not specified, it defaults to the same value as <dx>'
-      'kernelUnitLength',
-      'preserveAlpha',
-    ],
-    defaults: {
-      order: '3',
-      bias: '0',
-      edgeMode: 'duplicate',
-      preserveAlpha: 'false',
-    },
-    content: ['animate', 'set'],
-  },
-  feDiffuseLighting: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: [
-      'class',
-      'style',
-      'in',
-      'surfaceScale',
-      'diffuseConstant',
-      'kernelUnitLength',
-    ],
-    defaults: {
-      surfaceScale: '1',
-      diffuseConstant: '1',
-    },
-    contentGroups: ['descriptive'],
-    content: [
-      // TODO: 'exactly one light source element, in any order'
-      'feDistantLight',
-      'fePointLight',
-      'feSpotLight',
-    ],
-  },
-  feDisplacementMap: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: [
-      'class',
-      'style',
-      'in',
-      'in2',
-      'scale',
-      'xChannelSelector',
-      'yChannelSelector',
-    ],
-    defaults: {
-      scale: '0',
-      xChannelSelector: 'A',
-      yChannelSelector: 'A',
-    },
-    content: ['animate', 'set'],
-  },
-  feDistantLight: {
-    attrsGroups: ['core'],
-    attrs: ['azimuth', 'elevation'],
-    defaults: {
-      azimuth: '0',
-      elevation: '0',
-    },
-    content: ['animate', 'set'],
-  },
-  feFlood: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: ['class', 'style'],
-    content: ['animate', 'animateColor', 'set'],
-  },
-  feFuncA: {
-    attrsGroups: ['core', 'transferFunction'],
-    content: ['set', 'animate'],
-  },
-  feFuncB: {
-    attrsGroups: ['core', 'transferFunction'],
-    content: ['set', 'animate'],
-  },
-  feFuncG: {
-    attrsGroups: ['core', 'transferFunction'],
-    content: ['set', 'animate'],
-  },
-  feFuncR: {
-    attrsGroups: ['core', 'transferFunction'],
-    content: ['set', 'animate'],
-  },
-  feGaussianBlur: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: ['class', 'style', 'in', 'stdDeviation'],
-    defaults: {
-      stdDeviation: '0',
-    },
-    content: ['set', 'animate'],
-  },
-  feImage: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive', 'xlink'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'preserveAspectRatio',
-      'href',
-      'xlink:href',
-    ],
-    defaults: {
-      preserveAspectRatio: 'xMidYMid meet',
-    },
-    content: ['animate', 'animateTransform', 'set'],
-  },
-  feMerge: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: ['class', 'style'],
-    content: ['feMergeNode'],
-  },
-  feMergeNode: {
-    attrsGroups: ['core'],
-    attrs: ['in'],
-    content: ['animate', 'set'],
-  },
-  feMorphology: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: ['class', 'style', 'in', 'operator', 'radius'],
-    defaults: {
-      operator: 'erode',
-      radius: '0',
-    },
-    content: ['animate', 'set'],
-  },
-  feOffset: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: ['class', 'style', 'in', 'dx', 'dy'],
-    defaults: {
-      dx: '0',
-      dy: '0',
-    },
-    content: ['animate', 'set'],
-  },
-  fePointLight: {
-    attrsGroups: ['core'],
-    attrs: ['x', 'y', 'z'],
-    defaults: {
-      x: '0',
-      y: '0',
-      z: '0',
-    },
-    content: ['animate', 'set'],
-  },
-  feSpecularLighting: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: [
-      'class',
-      'style',
-      'in',
-      'surfaceScale',
-      'specularConstant',
-      'specularExponent',
-      'kernelUnitLength',
-    ],
-    defaults: {
-      surfaceScale: '1',
-      specularConstant: '1',
-      specularExponent: '1',
-    },
-    contentGroups: [
-      'descriptive',
-      // TODO: exactly one 'light source element'
-      'lightSource',
-    ],
-  },
-  feSpotLight: {
-    attrsGroups: ['core'],
-    attrs: [
-      'x',
-      'y',
-      'z',
-      'pointsAtX',
-      'pointsAtY',
-      'pointsAtZ',
-      'specularExponent',
-      'limitingConeAngle',
-    ],
-    defaults: {
-      x: '0',
-      y: '0',
-      z: '0',
-      pointsAtX: '0',
-      pointsAtY: '0',
-      pointsAtZ: '0',
-      specularExponent: '1',
-    },
-    content: ['animate', 'set'],
-  },
-  feTile: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: ['class', 'style', 'in'],
-    content: ['animate', 'set'],
-  },
-  feTurbulence: {
-    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
-    attrs: [
-      'class',
-      'style',
-      'baseFrequency',
-      'numOctaves',
-      'seed',
-      'stitchTiles',
-      'type',
-    ],
-    defaults: {
-      baseFrequency: '0',
-      numOctaves: '1',
-      seed: '0',
-      stitchTiles: 'noStitch',
-      type: 'turbulence',
-    },
-    content: ['animate', 'set'],
-  },
-  filter: {
-    attrsGroups: ['core', 'presentation', 'xlink'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'x',
-      'y',
-      'width',
-      'height',
-      'filterRes',
-      'filterUnits',
-      'primitiveUnits',
-      'href',
-      'xlink:href',
-    ],
-    defaults: {
-      primitiveUnits: 'userSpaceOnUse',
-      x: '-10%',
-      y: '-10%',
-      width: '120%',
-      height: '120%',
-    },
-    contentGroups: ['descriptive', 'filterPrimitive'],
-    content: ['animate', 'set'],
-  },
-  font: {
-    attrsGroups: ['core', 'presentation'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'horiz-origin-x',
-      'horiz-origin-y',
-      'horiz-adv-x',
-      'vert-origin-x',
-      'vert-origin-y',
-      'vert-adv-y',
-    ],
-    defaults: {
-      'horiz-origin-x': '0',
-      'horiz-origin-y': '0',
-    },
-    contentGroups: ['descriptive'],
-    content: ['font-face', 'glyph', 'hkern', 'missing-glyph', 'vkern'],
-  },
-  'font-face': {
-    attrsGroups: ['core'],
-    attrs: [
-      'font-family',
-      'font-style',
-      'font-variant',
-      'font-weight',
-      'font-stretch',
-      'font-size',
-      'unicode-range',
-      'units-per-em',
-      'panose-1',
-      'stemv',
-      'stemh',
-      'slope',
-      'cap-height',
-      'x-height',
-      'accent-height',
-      'ascent',
-      'descent',
-      'widths',
-      'bbox',
-      'ideographic',
-      'alphabetic',
-      'mathematical',
-      'hanging',
-      'v-ideographic',
-      'v-alphabetic',
-      'v-mathematical',
-      'v-hanging',
-      'underline-position',
-      'underline-thickness',
-      'strikethrough-position',
-      'strikethrough-thickness',
-      'overline-position',
-      'overline-thickness',
-    ],
-    defaults: {
-      'font-style': 'all',
-      'font-variant': 'normal',
-      'font-weight': 'all',
-      'font-stretch': 'normal',
-      'unicode-range': 'U+0-10FFFF',
-      'units-per-em': '1000',
-      'panose-1': '0 0 0 0 0 0 0 0 0 0',
-      slope: '0',
-    },
-    contentGroups: ['descriptive'],
-    content: [
-      // TODO: "at most one 'font-face-src' element"
-      'font-face-src',
-    ],
-  },
-  // TODO: empty content
-  'font-face-format': {
-    attrsGroups: ['core'],
-    attrs: ['string'],
-  },
-  'font-face-name': {
-    attrsGroups: ['core'],
-    attrs: ['name'],
-  },
-  'font-face-src': {
-    attrsGroups: ['core'],
-    content: ['font-face-name', 'font-face-uri'],
-  },
-  'font-face-uri': {
-    attrsGroups: ['core', 'xlink'],
-    attrs: ['href', 'xlink:href'],
-    content: ['font-face-format'],
-  },
-  foreignObject: {
-    attrsGroups: [
-      'core',
-      'conditionalProcessing',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'x',
-      'y',
-      'width',
-      'height',
-    ],
-    defaults: {
-      x: '0',
-      y: '0',
-    },
-  },
-  g: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: ['class', 'style', 'externalResourcesRequired', 'transform'],
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  glyph: {
-    attrsGroups: ['core', 'presentation'],
-    attrs: [
-      'class',
-      'style',
-      'd',
-      'horiz-adv-x',
-      'vert-origin-x',
-      'vert-origin-y',
-      'vert-adv-y',
-      'unicode',
-      'glyph-name',
-      'orientation',
-      'arabic-form',
-      'lang',
-    ],
-    defaults: {
-      'arabic-form': 'initial',
-    },
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  glyphRef: {
-    attrsGroups: ['core', 'presentation'],
-    attrs: [
-      'class',
-      'style',
-      'd',
-      'horiz-adv-x',
-      'vert-origin-x',
-      'vert-origin-y',
-      'vert-adv-y',
-    ],
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  hatch: {
-    attrsGroups: ['core', 'presentation', 'xlink'],
-    attrs: [
-      'class',
-      'style',
-      'x',
-      'y',
-      'pitch',
-      'rotate',
-      'hatchUnits',
-      'hatchContentUnits',
-      'transform',
-    ],
-    defaults: {
-      hatchUnits: 'objectBoundingBox',
-      hatchContentUnits: 'userSpaceOnUse',
-      x: '0',
-      y: '0',
-      pitch: '0',
-      rotate: '0',
-    },
-    contentGroups: ['animation', 'descriptive'],
-    content: ['hatchPath'],
-  },
-  hatchPath: {
-    attrsGroups: ['core', 'presentation', 'xlink'],
-    attrs: ['class', 'style', 'd', 'offset'],
-    defaults: {
-      offset: '0',
-    },
-    contentGroups: ['animation', 'descriptive'],
-  },
-  hkern: {
-    attrsGroups: ['core'],
-    attrs: ['u1', 'g1', 'u2', 'g2', 'k'],
-  },
-  image: {
-    attrsGroups: [
-      'core',
-      'conditionalProcessing',
-      'graphicalEvent',
-      'xlink',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'preserveAspectRatio',
-      'transform',
-      'x',
-      'y',
-      'width',
-      'height',
-      'href',
-      'xlink:href',
-    ],
-    defaults: {
-      x: '0',
-      y: '0',
-      preserveAspectRatio: 'xMidYMid meet',
-    },
-    contentGroups: ['animation', 'descriptive'],
-  },
-  line: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'x1',
-      'y1',
-      'x2',
-      'y2',
-    ],
-    defaults: {
-      x1: '0',
-      y1: '0',
-      x2: '0',
-      y2: '0',
-    },
-    contentGroups: ['animation', 'descriptive'],
-  },
-  linearGradient: {
-    attrsGroups: ['core', 'presentation', 'xlink'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'x1',
-      'y1',
-      'x2',
-      'y2',
-      'gradientUnits',
-      'gradientTransform',
-      'spreadMethod',
-      'href',
-      'xlink:href',
-    ],
-    defaults: {
-      x1: '0',
-      y1: '0',
-      x2: '100%',
-      y2: '0',
-      spreadMethod: 'pad',
-    },
-    contentGroups: ['descriptive'],
-    content: ['animate', 'animateTransform', 'set', 'stop'],
-  },
-  marker: {
-    attrsGroups: ['core', 'presentation'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'viewBox',
-      'preserveAspectRatio',
-      'refX',
-      'refY',
-      'markerUnits',
-      'markerWidth',
-      'markerHeight',
-      'orient',
-    ],
-    defaults: {
-      markerUnits: 'strokeWidth',
-      refX: '0',
-      refY: '0',
-      markerWidth: '3',
-      markerHeight: '3',
-    },
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  mask: {
-    attrsGroups: ['conditionalProcessing', 'core', 'presentation'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'x',
-      'y',
-      'width',
-      'height',
-      'mask-type',
-      'maskUnits',
-      'maskContentUnits',
-    ],
-    defaults: {
-      maskUnits: 'objectBoundingBox',
-      maskContentUnits: 'userSpaceOnUse',
-      x: '-10%',
-      y: '-10%',
-      width: '120%',
-      height: '120%',
-    },
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  metadata: {
-    attrsGroups: ['core'],
-  },
-  'missing-glyph': {
-    attrsGroups: ['core', 'presentation'],
-    attrs: [
-      'class',
-      'style',
-      'd',
-      'horiz-adv-x',
-      'vert-origin-x',
-      'vert-origin-y',
-      'vert-adv-y',
-    ],
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  mpath: {
-    attrsGroups: ['core', 'xlink'],
-    attrs: ['externalResourcesRequired', 'href', 'xlink:href'],
-    contentGroups: ['descriptive'],
-  },
-  path: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'd',
-      'pathLength',
-    ],
-    contentGroups: ['animation', 'descriptive'],
-  },
-  pattern: {
-    attrsGroups: ['conditionalProcessing', 'core', 'presentation', 'xlink'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'viewBox',
-      'preserveAspectRatio',
-      'x',
-      'y',
-      'width',
-      'height',
-      'patternUnits',
-      'patternContentUnits',
-      'patternTransform',
-      'href',
-      'xlink:href',
-    ],
-    defaults: {
-      patternUnits: 'objectBoundingBox',
-      patternContentUnits: 'userSpaceOnUse',
-      x: '0',
-      y: '0',
-      width: '0',
-      height: '0',
-      preserveAspectRatio: 'xMidYMid meet',
-    },
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'paintServer',
-      'shape',
-      'structural',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  polygon: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'points',
-    ],
-    contentGroups: ['animation', 'descriptive'],
-  },
-  polyline: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'points',
-    ],
-    contentGroups: ['animation', 'descriptive'],
-  },
-  radialGradient: {
-    attrsGroups: ['core', 'presentation', 'xlink'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'cx',
-      'cy',
-      'r',
-      'fx',
-      'fy',
-      'fr',
-      'gradientUnits',
-      'gradientTransform',
-      'spreadMethod',
-      'href',
-      'xlink:href',
-    ],
-    defaults: {
-      gradientUnits: 'objectBoundingBox',
-      cx: '50%',
-      cy: '50%',
-      r: '50%',
-    },
-    contentGroups: ['descriptive'],
-    content: ['animate', 'animateTransform', 'set', 'stop'],
-  },
-  meshGradient: {
-    attrsGroups: ['core', 'presentation', 'xlink'],
-    attrs: ['class', 'style', 'x', 'y', 'gradientUnits', 'transform'],
-    contentGroups: ['descriptive', 'paintServer', 'animation'],
-    content: ['meshRow'],
-  },
-  meshRow: {
-    attrsGroups: ['core', 'presentation'],
-    attrs: ['class', 'style'],
-    contentGroups: ['descriptive'],
-    content: ['meshPatch'],
-  },
-  meshPatch: {
-    attrsGroups: ['core', 'presentation'],
-    attrs: ['class', 'style'],
-    contentGroups: ['descriptive'],
-    content: ['stop'],
-  },
-  rect: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'x',
-      'y',
-      'width',
-      'height',
-      'rx',
-      'ry',
-    ],
-    defaults: {
-      x: '0',
-      y: '0',
-    },
-    contentGroups: ['animation', 'descriptive'],
-  },
-  script: {
-    attrsGroups: ['core', 'xlink'],
-    attrs: ['externalResourcesRequired', 'type', 'href', 'xlink:href'],
-  },
-  set: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'animation',
-      'xlink',
-      'animationAttributeTarget',
-      'animationTiming',
-    ],
-    attrs: ['externalResourcesRequired', 'to'],
-    contentGroups: ['descriptive'],
-  },
-  solidColor: {
-    attrsGroups: ['core', 'presentation'],
-    attrs: ['class', 'style'],
-    contentGroups: ['paintServer'],
-  },
-  stop: {
-    attrsGroups: ['core', 'presentation'],
-    attrs: ['class', 'style', 'offset', 'path'],
-    content: ['animate', 'animateColor', 'set'],
-  },
-  style: {
-    attrsGroups: ['core'],
-    attrs: ['type', 'media', 'title'],
-    defaults: {
-      type: 'text/css',
-    },
-  },
-  svg: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'documentEvent',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'x',
-      'y',
-      'width',
-      'height',
-      'viewBox',
-      'preserveAspectRatio',
-      'zoomAndPan',
-      'version',
-      'baseProfile',
-      'contentScriptType',
-      'contentStyleType',
-    ],
-    defaults: {
-      x: '0',
-      y: '0',
-      width: '100%',
-      height: '100%',
-      preserveAspectRatio: 'xMidYMid meet',
-      zoomAndPan: 'magnify',
-      version: '1.1',
-      baseProfile: 'none',
-      contentScriptType: 'application/ecmascript',
-      contentStyleType: 'text/css',
-    },
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  switch: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: ['class', 'style', 'externalResourcesRequired', 'transform'],
-    contentGroups: ['animation', 'descriptive', 'shape'],
-    content: [
-      'a',
-      'foreignObject',
-      'g',
-      'image',
-      'svg',
-      'switch',
-      'text',
-      'use',
-    ],
-  },
-  symbol: {
-    attrsGroups: ['core', 'graphicalEvent', 'presentation'],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'preserveAspectRatio',
-      'viewBox',
-      'refX',
-      'refY',
-    ],
-    defaults: {
-      refX: '0',
-      refY: '0',
-    },
-    contentGroups: [
-      'animation',
-      'descriptive',
-      'shape',
-      'structural',
-      'paintServer',
-    ],
-    content: [
-      'a',
-      'altGlyphDef',
-      'clipPath',
-      'color-profile',
-      'cursor',
-      'filter',
-      'font',
-      'font-face',
-      'foreignObject',
-      'image',
-      'marker',
-      'mask',
-      'pattern',
-      'script',
-      'style',
-      'switch',
-      'text',
-      'view',
-    ],
-  },
-  text: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'lengthAdjust',
-      'x',
-      'y',
-      'dx',
-      'dy',
-      'rotate',
-      'textLength',
-    ],
-    defaults: {
-      x: '0',
-      y: '0',
-      lengthAdjust: 'spacing',
-    },
-    contentGroups: ['animation', 'descriptive', 'textContentChild'],
-    content: ['a'],
-  },
-  textPath: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-      'xlink',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'href',
-      'xlink:href',
-      'startOffset',
-      'method',
-      'spacing',
-      'd',
-    ],
-    defaults: {
-      startOffset: '0',
-      method: 'align',
-      spacing: 'exact',
-    },
-    contentGroups: ['descriptive'],
-    content: [
-      'a',
-      'altGlyph',
-      'animate',
-      'animateColor',
-      'set',
-      'tref',
-      'tspan',
-    ],
-  },
-  title: {
-    attrsGroups: ['core'],
-    attrs: ['class', 'style'],
-  },
-  tref: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-      'xlink',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'href',
-      'xlink:href',
-    ],
-    contentGroups: ['descriptive'],
-    content: ['animate', 'animateColor', 'set'],
-  },
-  tspan: {
-    attrsGroups: [
-      'conditionalProcessing',
-      'core',
-      'graphicalEvent',
-      'presentation',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'x',
-      'y',
-      'dx',
-      'dy',
-      'rotate',
-      'textLength',
-      'lengthAdjust',
-    ],
-    contentGroups: ['descriptive'],
-    content: [
-      'a',
-      'altGlyph',
-      'animate',
-      'animateColor',
-      'set',
-      'tref',
-      'tspan',
-    ],
-  },
-  use: {
-    attrsGroups: [
-      'core',
-      'conditionalProcessing',
-      'graphicalEvent',
-      'presentation',
-      'xlink',
-    ],
-    attrs: [
-      'class',
-      'style',
-      'externalResourcesRequired',
-      'transform',
-      'x',
-      'y',
-      'width',
-      'height',
-      'href',
-      'xlink:href',
-    ],
-    defaults: {
-      x: '0',
-      y: '0',
-    },
-    contentGroups: ['animation', 'descriptive'],
-  },
-  view: {
-    attrsGroups: ['core'],
-    attrs: [
-      'externalResourcesRequired',
-      'viewBox',
-      'preserveAspectRatio',
-      'zoomAndPan',
-      'viewTarget',
-    ],
-    contentGroups: ['descriptive'],
-  },
-  vkern: {
-    attrsGroups: ['core'],
-    attrs: ['u1', 'g1', 'u2', 'g2', 'k'],
-  },
-};
+	// https://www.w3.org/TR/SVG11/eltindex.html
+	/**
+	 * @type {Record<string, {
+	 *   attrsGroups: Array<string>,
+	 *   attrs?: Array<string>,
+	 *   defaults?: Record<string, string>,
+	 *   contentGroups?: Array<string>,
+	 *   content?: Array<string>,
+	 * }>}
+	 */
+	exports.elems = {
+	  a: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	      'xlink',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'target',
+	    ],
+	    defaults: {
+	      target: '_self',
+	    },
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	      // not spec compliant
+	      'tspan',
+	    ],
+	  },
+	  altGlyph: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	      'xlink',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'x',
+	      'y',
+	      'dx',
+	      'dy',
+	      'glyphRef',
+	      'format',
+	      'rotate',
+	    ],
+	  },
+	  altGlyphDef: {
+	    attrsGroups: ['core'],
+	    content: ['glyphRef'],
+	  },
+	  altGlyphItem: {
+	    attrsGroups: ['core'],
+	    content: ['glyphRef', 'altGlyphItem'],
+	  },
+	  animate: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'animationAddition',
+	      'animationAttributeTarget',
+	      'animationEvent',
+	      'animationTiming',
+	      'animationValue',
+	      'presentation',
+	      'xlink',
+	    ],
+	    attrs: ['externalResourcesRequired'],
+	    contentGroups: ['descriptive'],
+	  },
+	  animateColor: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'animationEvent',
+	      'xlink',
+	      'animationAttributeTarget',
+	      'animationTiming',
+	      'animationValue',
+	      'animationAddition',
+	      'presentation',
+	    ],
+	    attrs: ['externalResourcesRequired'],
+	    contentGroups: ['descriptive'],
+	  },
+	  animateMotion: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'animationEvent',
+	      'xlink',
+	      'animationTiming',
+	      'animationValue',
+	      'animationAddition',
+	    ],
+	    attrs: [
+	      'externalResourcesRequired',
+	      'path',
+	      'keyPoints',
+	      'rotate',
+	      'origin',
+	    ],
+	    defaults: {
+	      rotate: '0',
+	    },
+	    contentGroups: ['descriptive'],
+	    content: ['mpath'],
+	  },
+	  animateTransform: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'animationEvent',
+	      'xlink',
+	      'animationAttributeTarget',
+	      'animationTiming',
+	      'animationValue',
+	      'animationAddition',
+	    ],
+	    attrs: ['externalResourcesRequired', 'type'],
+	    contentGroups: ['descriptive'],
+	  },
+	  circle: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'cx',
+	      'cy',
+	      'r',
+	    ],
+	    defaults: {
+	      cx: '0',
+	      cy: '0',
+	    },
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  clipPath: {
+	    attrsGroups: ['conditionalProcessing', 'core', 'presentation'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'clipPathUnits',
+	    ],
+	    defaults: {
+	      clipPathUnits: 'userSpaceOnUse',
+	    },
+	    contentGroups: ['animation', 'descriptive', 'shape'],
+	    content: ['text', 'use'],
+	  },
+	  'color-profile': {
+	    attrsGroups: ['core', 'xlink'],
+	    attrs: ['local', 'name', 'rendering-intent'],
+	    defaults: {
+	      name: 'sRGB',
+	      'rendering-intent': 'auto',
+	    },
+	    contentGroups: ['descriptive'],
+	  },
+	  cursor: {
+	    attrsGroups: ['core', 'conditionalProcessing', 'xlink'],
+	    attrs: ['externalResourcesRequired', 'x', 'y'],
+	    defaults: {
+	      x: '0',
+	      y: '0',
+	    },
+	    contentGroups: ['descriptive'],
+	  },
+	  defs: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: ['class', 'style', 'externalResourcesRequired', 'transform'],
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  desc: {
+	    attrsGroups: ['core'],
+	    attrs: ['class', 'style'],
+	  },
+	  ellipse: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'cx',
+	      'cy',
+	      'rx',
+	      'ry',
+	    ],
+	    defaults: {
+	      cx: '0',
+	      cy: '0',
+	    },
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  feBlend: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: [
+	      'class',
+	      'style',
+	      // TODO: in - 'If no value is provided and this is the first filter primitive,
+	      // then this filter primitive will use SourceGraphic as its input'
+	      'in',
+	      'in2',
+	      'mode',
+	    ],
+	    defaults: {
+	      mode: 'normal',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  feColorMatrix: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: ['class', 'style', 'in', 'type', 'values'],
+	    defaults: {
+	      type: 'matrix',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  feComponentTransfer: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: ['class', 'style', 'in'],
+	    content: ['feFuncA', 'feFuncB', 'feFuncG', 'feFuncR'],
+	  },
+	  feComposite: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: ['class', 'style', 'in', 'in2', 'operator', 'k1', 'k2', 'k3', 'k4'],
+	    defaults: {
+	      operator: 'over',
+	      k1: '0',
+	      k2: '0',
+	      k3: '0',
+	      k4: '0',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  feConvolveMatrix: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'in',
+	      'order',
+	      'kernelMatrix',
+	      // TODO: divisor - 'The default value is the sum of all values in kernelMatrix,
+	      // with the exception that if the sum is zero, then the divisor is set to 1'
+	      'divisor',
+	      'bias',
+	      // TODO: targetX - 'By default, the convolution matrix is centered in X over each
+	      // pixel of the input image (i.e., targetX = floor ( orderX / 2 ))'
+	      'targetX',
+	      'targetY',
+	      'edgeMode',
+	      // TODO: kernelUnitLength - 'The first number is the <dx> value. The second number
+	      // is the <dy> value. If the <dy> value is not specified, it defaults to the same value as <dx>'
+	      'kernelUnitLength',
+	      'preserveAlpha',
+	    ],
+	    defaults: {
+	      order: '3',
+	      bias: '0',
+	      edgeMode: 'duplicate',
+	      preserveAlpha: 'false',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  feDiffuseLighting: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'in',
+	      'surfaceScale',
+	      'diffuseConstant',
+	      'kernelUnitLength',
+	    ],
+	    defaults: {
+	      surfaceScale: '1',
+	      diffuseConstant: '1',
+	    },
+	    contentGroups: ['descriptive'],
+	    content: [
+	      // TODO: 'exactly one light source element, in any order'
+	      'feDistantLight',
+	      'fePointLight',
+	      'feSpotLight',
+	    ],
+	  },
+	  feDisplacementMap: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'in',
+	      'in2',
+	      'scale',
+	      'xChannelSelector',
+	      'yChannelSelector',
+	    ],
+	    defaults: {
+	      scale: '0',
+	      xChannelSelector: 'A',
+	      yChannelSelector: 'A',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  feDistantLight: {
+	    attrsGroups: ['core'],
+	    attrs: ['azimuth', 'elevation'],
+	    defaults: {
+	      azimuth: '0',
+	      elevation: '0',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  feFlood: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: ['class', 'style'],
+	    content: ['animate', 'animateColor', 'set'],
+	  },
+	  feFuncA: {
+	    attrsGroups: ['core', 'transferFunction'],
+	    content: ['set', 'animate'],
+	  },
+	  feFuncB: {
+	    attrsGroups: ['core', 'transferFunction'],
+	    content: ['set', 'animate'],
+	  },
+	  feFuncG: {
+	    attrsGroups: ['core', 'transferFunction'],
+	    content: ['set', 'animate'],
+	  },
+	  feFuncR: {
+	    attrsGroups: ['core', 'transferFunction'],
+	    content: ['set', 'animate'],
+	  },
+	  feGaussianBlur: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: ['class', 'style', 'in', 'stdDeviation'],
+	    defaults: {
+	      stdDeviation: '0',
+	    },
+	    content: ['set', 'animate'],
+	  },
+	  feImage: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive', 'xlink'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'preserveAspectRatio',
+	      'href',
+	      'xlink:href',
+	    ],
+	    defaults: {
+	      preserveAspectRatio: 'xMidYMid meet',
+	    },
+	    content: ['animate', 'animateTransform', 'set'],
+	  },
+	  feMerge: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: ['class', 'style'],
+	    content: ['feMergeNode'],
+	  },
+	  feMergeNode: {
+	    attrsGroups: ['core'],
+	    attrs: ['in'],
+	    content: ['animate', 'set'],
+	  },
+	  feMorphology: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: ['class', 'style', 'in', 'operator', 'radius'],
+	    defaults: {
+	      operator: 'erode',
+	      radius: '0',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  feOffset: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: ['class', 'style', 'in', 'dx', 'dy'],
+	    defaults: {
+	      dx: '0',
+	      dy: '0',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  fePointLight: {
+	    attrsGroups: ['core'],
+	    attrs: ['x', 'y', 'z'],
+	    defaults: {
+	      x: '0',
+	      y: '0',
+	      z: '0',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  feSpecularLighting: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'in',
+	      'surfaceScale',
+	      'specularConstant',
+	      'specularExponent',
+	      'kernelUnitLength',
+	    ],
+	    defaults: {
+	      surfaceScale: '1',
+	      specularConstant: '1',
+	      specularExponent: '1',
+	    },
+	    contentGroups: [
+	      'descriptive',
+	      // TODO: exactly one 'light source element'
+	      'lightSource',
+	    ],
+	  },
+	  feSpotLight: {
+	    attrsGroups: ['core'],
+	    attrs: [
+	      'x',
+	      'y',
+	      'z',
+	      'pointsAtX',
+	      'pointsAtY',
+	      'pointsAtZ',
+	      'specularExponent',
+	      'limitingConeAngle',
+	    ],
+	    defaults: {
+	      x: '0',
+	      y: '0',
+	      z: '0',
+	      pointsAtX: '0',
+	      pointsAtY: '0',
+	      pointsAtZ: '0',
+	      specularExponent: '1',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  feTile: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: ['class', 'style', 'in'],
+	    content: ['animate', 'set'],
+	  },
+	  feTurbulence: {
+	    attrsGroups: ['core', 'presentation', 'filterPrimitive'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'baseFrequency',
+	      'numOctaves',
+	      'seed',
+	      'stitchTiles',
+	      'type',
+	    ],
+	    defaults: {
+	      baseFrequency: '0',
+	      numOctaves: '1',
+	      seed: '0',
+	      stitchTiles: 'noStitch',
+	      type: 'turbulence',
+	    },
+	    content: ['animate', 'set'],
+	  },
+	  filter: {
+	    attrsGroups: ['core', 'presentation', 'xlink'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'x',
+	      'y',
+	      'width',
+	      'height',
+	      'filterRes',
+	      'filterUnits',
+	      'primitiveUnits',
+	      'href',
+	      'xlink:href',
+	    ],
+	    defaults: {
+	      primitiveUnits: 'userSpaceOnUse',
+	      x: '-10%',
+	      y: '-10%',
+	      width: '120%',
+	      height: '120%',
+	    },
+	    contentGroups: ['descriptive', 'filterPrimitive'],
+	    content: ['animate', 'set'],
+	  },
+	  font: {
+	    attrsGroups: ['core', 'presentation'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'horiz-origin-x',
+	      'horiz-origin-y',
+	      'horiz-adv-x',
+	      'vert-origin-x',
+	      'vert-origin-y',
+	      'vert-adv-y',
+	    ],
+	    defaults: {
+	      'horiz-origin-x': '0',
+	      'horiz-origin-y': '0',
+	    },
+	    contentGroups: ['descriptive'],
+	    content: ['font-face', 'glyph', 'hkern', 'missing-glyph', 'vkern'],
+	  },
+	  'font-face': {
+	    attrsGroups: ['core'],
+	    attrs: [
+	      'font-family',
+	      'font-style',
+	      'font-variant',
+	      'font-weight',
+	      'font-stretch',
+	      'font-size',
+	      'unicode-range',
+	      'units-per-em',
+	      'panose-1',
+	      'stemv',
+	      'stemh',
+	      'slope',
+	      'cap-height',
+	      'x-height',
+	      'accent-height',
+	      'ascent',
+	      'descent',
+	      'widths',
+	      'bbox',
+	      'ideographic',
+	      'alphabetic',
+	      'mathematical',
+	      'hanging',
+	      'v-ideographic',
+	      'v-alphabetic',
+	      'v-mathematical',
+	      'v-hanging',
+	      'underline-position',
+	      'underline-thickness',
+	      'strikethrough-position',
+	      'strikethrough-thickness',
+	      'overline-position',
+	      'overline-thickness',
+	    ],
+	    defaults: {
+	      'font-style': 'all',
+	      'font-variant': 'normal',
+	      'font-weight': 'all',
+	      'font-stretch': 'normal',
+	      'unicode-range': 'U+0-10FFFF',
+	      'units-per-em': '1000',
+	      'panose-1': '0 0 0 0 0 0 0 0 0 0',
+	      slope: '0',
+	    },
+	    contentGroups: ['descriptive'],
+	    content: [
+	      // TODO: "at most one 'font-face-src' element"
+	      'font-face-src',
+	    ],
+	  },
+	  // TODO: empty content
+	  'font-face-format': {
+	    attrsGroups: ['core'],
+	    attrs: ['string'],
+	  },
+	  'font-face-name': {
+	    attrsGroups: ['core'],
+	    attrs: ['name'],
+	  },
+	  'font-face-src': {
+	    attrsGroups: ['core'],
+	    content: ['font-face-name', 'font-face-uri'],
+	  },
+	  'font-face-uri': {
+	    attrsGroups: ['core', 'xlink'],
+	    attrs: ['href', 'xlink:href'],
+	    content: ['font-face-format'],
+	  },
+	  foreignObject: {
+	    attrsGroups: [
+	      'core',
+	      'conditionalProcessing',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'x',
+	      'y',
+	      'width',
+	      'height',
+	    ],
+	    defaults: {
+	      x: '0',
+	      y: '0',
+	    },
+	  },
+	  g: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: ['class', 'style', 'externalResourcesRequired', 'transform'],
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  glyph: {
+	    attrsGroups: ['core', 'presentation'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'd',
+	      'horiz-adv-x',
+	      'vert-origin-x',
+	      'vert-origin-y',
+	      'vert-adv-y',
+	      'unicode',
+	      'glyph-name',
+	      'orientation',
+	      'arabic-form',
+	      'lang',
+	    ],
+	    defaults: {
+	      'arabic-form': 'initial',
+	    },
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  glyphRef: {
+	    attrsGroups: ['core', 'presentation'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'd',
+	      'horiz-adv-x',
+	      'vert-origin-x',
+	      'vert-origin-y',
+	      'vert-adv-y',
+	    ],
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  hatch: {
+	    attrsGroups: ['core', 'presentation', 'xlink'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'x',
+	      'y',
+	      'pitch',
+	      'rotate',
+	      'hatchUnits',
+	      'hatchContentUnits',
+	      'transform',
+	    ],
+	    defaults: {
+	      hatchUnits: 'objectBoundingBox',
+	      hatchContentUnits: 'userSpaceOnUse',
+	      x: '0',
+	      y: '0',
+	      pitch: '0',
+	      rotate: '0',
+	    },
+	    contentGroups: ['animation', 'descriptive'],
+	    content: ['hatchPath'],
+	  },
+	  hatchPath: {
+	    attrsGroups: ['core', 'presentation', 'xlink'],
+	    attrs: ['class', 'style', 'd', 'offset'],
+	    defaults: {
+	      offset: '0',
+	    },
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  hkern: {
+	    attrsGroups: ['core'],
+	    attrs: ['u1', 'g1', 'u2', 'g2', 'k'],
+	  },
+	  image: {
+	    attrsGroups: [
+	      'core',
+	      'conditionalProcessing',
+	      'graphicalEvent',
+	      'xlink',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'preserveAspectRatio',
+	      'transform',
+	      'x',
+	      'y',
+	      'width',
+	      'height',
+	      'href',
+	      'xlink:href',
+	    ],
+	    defaults: {
+	      x: '0',
+	      y: '0',
+	      preserveAspectRatio: 'xMidYMid meet',
+	    },
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  line: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'x1',
+	      'y1',
+	      'x2',
+	      'y2',
+	    ],
+	    defaults: {
+	      x1: '0',
+	      y1: '0',
+	      x2: '0',
+	      y2: '0',
+	    },
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  linearGradient: {
+	    attrsGroups: ['core', 'presentation', 'xlink'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'x1',
+	      'y1',
+	      'x2',
+	      'y2',
+	      'gradientUnits',
+	      'gradientTransform',
+	      'spreadMethod',
+	      'href',
+	      'xlink:href',
+	    ],
+	    defaults: {
+	      x1: '0',
+	      y1: '0',
+	      x2: '100%',
+	      y2: '0',
+	      spreadMethod: 'pad',
+	    },
+	    contentGroups: ['descriptive'],
+	    content: ['animate', 'animateTransform', 'set', 'stop'],
+	  },
+	  marker: {
+	    attrsGroups: ['core', 'presentation'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'viewBox',
+	      'preserveAspectRatio',
+	      'refX',
+	      'refY',
+	      'markerUnits',
+	      'markerWidth',
+	      'markerHeight',
+	      'orient',
+	    ],
+	    defaults: {
+	      markerUnits: 'strokeWidth',
+	      refX: '0',
+	      refY: '0',
+	      markerWidth: '3',
+	      markerHeight: '3',
+	    },
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  mask: {
+	    attrsGroups: ['conditionalProcessing', 'core', 'presentation'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'x',
+	      'y',
+	      'width',
+	      'height',
+	      'mask-type',
+	      'maskUnits',
+	      'maskContentUnits',
+	    ],
+	    defaults: {
+	      maskUnits: 'objectBoundingBox',
+	      maskContentUnits: 'userSpaceOnUse',
+	      x: '-10%',
+	      y: '-10%',
+	      width: '120%',
+	      height: '120%',
+	    },
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  metadata: {
+	    attrsGroups: ['core'],
+	  },
+	  'missing-glyph': {
+	    attrsGroups: ['core', 'presentation'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'd',
+	      'horiz-adv-x',
+	      'vert-origin-x',
+	      'vert-origin-y',
+	      'vert-adv-y',
+	    ],
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  mpath: {
+	    attrsGroups: ['core', 'xlink'],
+	    attrs: ['externalResourcesRequired', 'href', 'xlink:href'],
+	    contentGroups: ['descriptive'],
+	  },
+	  path: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'd',
+	      'pathLength',
+	    ],
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  pattern: {
+	    attrsGroups: ['conditionalProcessing', 'core', 'presentation', 'xlink'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'viewBox',
+	      'preserveAspectRatio',
+	      'x',
+	      'y',
+	      'width',
+	      'height',
+	      'patternUnits',
+	      'patternContentUnits',
+	      'patternTransform',
+	      'href',
+	      'xlink:href',
+	    ],
+	    defaults: {
+	      patternUnits: 'objectBoundingBox',
+	      patternContentUnits: 'userSpaceOnUse',
+	      x: '0',
+	      y: '0',
+	      width: '0',
+	      height: '0',
+	      preserveAspectRatio: 'xMidYMid meet',
+	    },
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'paintServer',
+	      'shape',
+	      'structural',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  polygon: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'points',
+	    ],
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  polyline: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'points',
+	    ],
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  radialGradient: {
+	    attrsGroups: ['core', 'presentation', 'xlink'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'cx',
+	      'cy',
+	      'r',
+	      'fx',
+	      'fy',
+	      'fr',
+	      'gradientUnits',
+	      'gradientTransform',
+	      'spreadMethod',
+	      'href',
+	      'xlink:href',
+	    ],
+	    defaults: {
+	      gradientUnits: 'objectBoundingBox',
+	      cx: '50%',
+	      cy: '50%',
+	      r: '50%',
+	    },
+	    contentGroups: ['descriptive'],
+	    content: ['animate', 'animateTransform', 'set', 'stop'],
+	  },
+	  meshGradient: {
+	    attrsGroups: ['core', 'presentation', 'xlink'],
+	    attrs: ['class', 'style', 'x', 'y', 'gradientUnits', 'transform'],
+	    contentGroups: ['descriptive', 'paintServer', 'animation'],
+	    content: ['meshRow'],
+	  },
+	  meshRow: {
+	    attrsGroups: ['core', 'presentation'],
+	    attrs: ['class', 'style'],
+	    contentGroups: ['descriptive'],
+	    content: ['meshPatch'],
+	  },
+	  meshPatch: {
+	    attrsGroups: ['core', 'presentation'],
+	    attrs: ['class', 'style'],
+	    contentGroups: ['descriptive'],
+	    content: ['stop'],
+	  },
+	  rect: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'x',
+	      'y',
+	      'width',
+	      'height',
+	      'rx',
+	      'ry',
+	    ],
+	    defaults: {
+	      x: '0',
+	      y: '0',
+	    },
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  script: {
+	    attrsGroups: ['core', 'xlink'],
+	    attrs: ['externalResourcesRequired', 'type', 'href', 'xlink:href'],
+	  },
+	  set: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'animation',
+	      'xlink',
+	      'animationAttributeTarget',
+	      'animationTiming',
+	    ],
+	    attrs: ['externalResourcesRequired', 'to'],
+	    contentGroups: ['descriptive'],
+	  },
+	  solidColor: {
+	    attrsGroups: ['core', 'presentation'],
+	    attrs: ['class', 'style'],
+	    contentGroups: ['paintServer'],
+	  },
+	  stop: {
+	    attrsGroups: ['core', 'presentation'],
+	    attrs: ['class', 'style', 'offset', 'path'],
+	    content: ['animate', 'animateColor', 'set'],
+	  },
+	  style: {
+	    attrsGroups: ['core'],
+	    attrs: ['type', 'media', 'title'],
+	    defaults: {
+	      type: 'text/css',
+	    },
+	  },
+	  svg: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'documentEvent',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'x',
+	      'y',
+	      'width',
+	      'height',
+	      'viewBox',
+	      'preserveAspectRatio',
+	      'zoomAndPan',
+	      'version',
+	      'baseProfile',
+	      'contentScriptType',
+	      'contentStyleType',
+	    ],
+	    defaults: {
+	      x: '0',
+	      y: '0',
+	      width: '100%',
+	      height: '100%',
+	      preserveAspectRatio: 'xMidYMid meet',
+	      zoomAndPan: 'magnify',
+	      version: '1.1',
+	      baseProfile: 'none',
+	      contentScriptType: 'application/ecmascript',
+	      contentStyleType: 'text/css',
+	    },
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  switch: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: ['class', 'style', 'externalResourcesRequired', 'transform'],
+	    contentGroups: ['animation', 'descriptive', 'shape'],
+	    content: [
+	      'a',
+	      'foreignObject',
+	      'g',
+	      'image',
+	      'svg',
+	      'switch',
+	      'text',
+	      'use',
+	    ],
+	  },
+	  symbol: {
+	    attrsGroups: ['core', 'graphicalEvent', 'presentation'],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'preserveAspectRatio',
+	      'viewBox',
+	      'refX',
+	      'refY',
+	    ],
+	    defaults: {
+	      refX: '0',
+	      refY: '0',
+	    },
+	    contentGroups: [
+	      'animation',
+	      'descriptive',
+	      'shape',
+	      'structural',
+	      'paintServer',
+	    ],
+	    content: [
+	      'a',
+	      'altGlyphDef',
+	      'clipPath',
+	      'color-profile',
+	      'cursor',
+	      'filter',
+	      'font',
+	      'font-face',
+	      'foreignObject',
+	      'image',
+	      'marker',
+	      'mask',
+	      'pattern',
+	      'script',
+	      'style',
+	      'switch',
+	      'text',
+	      'view',
+	    ],
+	  },
+	  text: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'lengthAdjust',
+	      'x',
+	      'y',
+	      'dx',
+	      'dy',
+	      'rotate',
+	      'textLength',
+	    ],
+	    defaults: {
+	      x: '0',
+	      y: '0',
+	      lengthAdjust: 'spacing',
+	    },
+	    contentGroups: ['animation', 'descriptive', 'textContentChild'],
+	    content: ['a'],
+	  },
+	  textPath: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	      'xlink',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'href',
+	      'xlink:href',
+	      'startOffset',
+	      'method',
+	      'spacing',
+	      'd',
+	    ],
+	    defaults: {
+	      startOffset: '0',
+	      method: 'align',
+	      spacing: 'exact',
+	    },
+	    contentGroups: ['descriptive'],
+	    content: [
+	      'a',
+	      'altGlyph',
+	      'animate',
+	      'animateColor',
+	      'set',
+	      'tref',
+	      'tspan',
+	    ],
+	  },
+	  title: {
+	    attrsGroups: ['core'],
+	    attrs: ['class', 'style'],
+	  },
+	  tref: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	      'xlink',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'href',
+	      'xlink:href',
+	    ],
+	    contentGroups: ['descriptive'],
+	    content: ['animate', 'animateColor', 'set'],
+	  },
+	  tspan: {
+	    attrsGroups: [
+	      'conditionalProcessing',
+	      'core',
+	      'graphicalEvent',
+	      'presentation',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'x',
+	      'y',
+	      'dx',
+	      'dy',
+	      'rotate',
+	      'textLength',
+	      'lengthAdjust',
+	    ],
+	    contentGroups: ['descriptive'],
+	    content: [
+	      'a',
+	      'altGlyph',
+	      'animate',
+	      'animateColor',
+	      'set',
+	      'tref',
+	      'tspan',
+	    ],
+	  },
+	  use: {
+	    attrsGroups: [
+	      'core',
+	      'conditionalProcessing',
+	      'graphicalEvent',
+	      'presentation',
+	      'xlink',
+	    ],
+	    attrs: [
+	      'class',
+	      'style',
+	      'externalResourcesRequired',
+	      'transform',
+	      'x',
+	      'y',
+	      'width',
+	      'height',
+	      'href',
+	      'xlink:href',
+	    ],
+	    defaults: {
+	      x: '0',
+	      y: '0',
+	    },
+	    contentGroups: ['animation', 'descriptive'],
+	  },
+	  view: {
+	    attrsGroups: ['core'],
+	    attrs: [
+	      'externalResourcesRequired',
+	      'viewBox',
+	      'preserveAspectRatio',
+	      'zoomAndPan',
+	      'viewTarget',
+	    ],
+	    contentGroups: ['descriptive'],
+	  },
+	  vkern: {
+	    attrsGroups: ['core'],
+	    attrs: ['u1', 'g1', 'u2', 'g2', 'k'],
+	  },
+	};
 
-// https://wiki.inkscape.org/wiki/index.php/Inkscape-specific_XML_attributes
-exports.editorNamespaces = [
-  'http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd',
-  'http://inkscape.sourceforge.net/DTD/sodipodi-0.dtd',
-  'http://www.inkscape.org/namespaces/inkscape',
-  'http://www.bohemiancoding.com/sketch/ns',
-  'http://ns.adobe.com/AdobeIllustrator/10.0/',
-  'http://ns.adobe.com/Graphs/1.0/',
-  'http://ns.adobe.com/AdobeSVGViewerExtensions/3.0/',
-  'http://ns.adobe.com/Variables/1.0/',
-  'http://ns.adobe.com/SaveForWeb/1.0/',
-  'http://ns.adobe.com/Extensibility/1.0/',
-  'http://ns.adobe.com/Flows/1.0/',
-  'http://ns.adobe.com/ImageReplacement/1.0/',
-  'http://ns.adobe.com/GenericCustomNamespace/1.0/',
-  'http://ns.adobe.com/XPath/1.0/',
-  'http://schemas.microsoft.com/visio/2003/SVGExtensions/',
-  'http://taptrix.com/vectorillustrator/svg_extensions',
-  'http://www.figma.com/figma/ns',
-  'http://purl.org/dc/elements/1.1/',
-  'http://creativecommons.org/ns#',
-  'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-  'http://www.serif.com/',
-  'http://www.vector.evaxdesign.sk',
-];
+	// https://wiki.inkscape.org/wiki/index.php/Inkscape-specific_XML_attributes
+	exports.editorNamespaces = [
+	  'http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd',
+	  'http://inkscape.sourceforge.net/DTD/sodipodi-0.dtd',
+	  'http://www.inkscape.org/namespaces/inkscape',
+	  'http://www.bohemiancoding.com/sketch/ns',
+	  'http://ns.adobe.com/AdobeIllustrator/10.0/',
+	  'http://ns.adobe.com/Graphs/1.0/',
+	  'http://ns.adobe.com/AdobeSVGViewerExtensions/3.0/',
+	  'http://ns.adobe.com/Variables/1.0/',
+	  'http://ns.adobe.com/SaveForWeb/1.0/',
+	  'http://ns.adobe.com/Extensibility/1.0/',
+	  'http://ns.adobe.com/Flows/1.0/',
+	  'http://ns.adobe.com/ImageReplacement/1.0/',
+	  'http://ns.adobe.com/GenericCustomNamespace/1.0/',
+	  'http://ns.adobe.com/XPath/1.0/',
+	  'http://schemas.microsoft.com/visio/2003/SVGExtensions/',
+	  'http://taptrix.com/vectorillustrator/svg_extensions',
+	  'http://www.figma.com/figma/ns',
+	  'http://purl.org/dc/elements/1.1/',
+	  'http://creativecommons.org/ns#',
+	  'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+	  'http://www.serif.com/',
+	  'http://www.vector.evaxdesign.sk',
+	];
 
-// https://www.w3.org/TR/SVG11/linking.html#processingIRI
-exports.referencesProps = [
-  'clip-path',
-  'color-profile',
-  'fill',
-  'filter',
-  'marker-start',
-  'marker-mid',
-  'marker-end',
-  'mask',
-  'stroke',
-  'style',
-];
+	// https://www.w3.org/TR/SVG11/linking.html#processingIRI
+	exports.referencesProps = [
+	  'clip-path',
+	  'color-profile',
+	  'fill',
+	  'filter',
+	  'marker-start',
+	  'marker-mid',
+	  'marker-end',
+	  'mask',
+	  'stroke',
+	  'style',
+	];
 
-// https://www.w3.org/TR/SVG11/propidx.html
-exports.inheritableAttrs = [
-  'clip-rule',
-  'color',
-  'color-interpolation',
-  'color-interpolation-filters',
-  'color-profile',
-  'color-rendering',
-  'cursor',
-  'direction',
-  'dominant-baseline',
-  'fill',
-  'fill-opacity',
-  'fill-rule',
-  'font',
-  'font-family',
-  'font-size',
-  'font-size-adjust',
-  'font-stretch',
-  'font-style',
-  'font-variant',
-  'font-weight',
-  'glyph-orientation-horizontal',
-  'glyph-orientation-vertical',
-  'image-rendering',
-  'letter-spacing',
-  'marker',
-  'marker-end',
-  'marker-mid',
-  'marker-start',
-  'paint-order',
-  'pointer-events',
-  'shape-rendering',
-  'stroke',
-  'stroke-dasharray',
-  'stroke-dashoffset',
-  'stroke-linecap',
-  'stroke-linejoin',
-  'stroke-miterlimit',
-  'stroke-opacity',
-  'stroke-width',
-  'text-anchor',
-  'text-rendering',
-  'transform',
-  'visibility',
-  'word-spacing',
-  'writing-mode',
-];
+	// https://www.w3.org/TR/SVG11/propidx.html
+	exports.inheritableAttrs = [
+	  'clip-rule',
+	  'color',
+	  'color-interpolation',
+	  'color-interpolation-filters',
+	  'color-profile',
+	  'color-rendering',
+	  'cursor',
+	  'direction',
+	  'dominant-baseline',
+	  'fill',
+	  'fill-opacity',
+	  'fill-rule',
+	  'font',
+	  'font-family',
+	  'font-size',
+	  'font-size-adjust',
+	  'font-stretch',
+	  'font-style',
+	  'font-variant',
+	  'font-weight',
+	  'glyph-orientation-horizontal',
+	  'glyph-orientation-vertical',
+	  'image-rendering',
+	  'letter-spacing',
+	  'marker',
+	  'marker-end',
+	  'marker-mid',
+	  'marker-start',
+	  'paint-order',
+	  'pointer-events',
+	  'shape-rendering',
+	  'stroke',
+	  'stroke-dasharray',
+	  'stroke-dashoffset',
+	  'stroke-linecap',
+	  'stroke-linejoin',
+	  'stroke-miterlimit',
+	  'stroke-opacity',
+	  'stroke-width',
+	  'text-anchor',
+	  'text-rendering',
+	  'transform',
+	  'visibility',
+	  'word-spacing',
+	  'writing-mode',
+	];
 
-exports.presentationNonInheritableGroupAttrs = [
-  'display',
-  'clip-path',
-  'filter',
-  'mask',
-  'opacity',
-  'text-decoration',
-  'transform',
-  'unicode-bidi',
-];
+	exports.presentationNonInheritableGroupAttrs = [
+	  'display',
+	  'clip-path',
+	  'filter',
+	  'mask',
+	  'opacity',
+	  'text-decoration',
+	  'transform',
+	  'unicode-bidi',
+	];
 
-/**
- * https://www.w3.org/TR/SVG11/single-page.html#types-ColorKeywords
- *
- * @type {Record<string, string>}
- */
-exports.colorsNames = {
-  aliceblue: '#f0f8ff',
-  antiquewhite: '#faebd7',
-  aqua: '#0ff',
-  aquamarine: '#7fffd4',
-  azure: '#f0ffff',
-  beige: '#f5f5dc',
-  bisque: '#ffe4c4',
-  black: '#000',
-  blanchedalmond: '#ffebcd',
-  blue: '#00f',
-  blueviolet: '#8a2be2',
-  brown: '#a52a2a',
-  burlywood: '#deb887',
-  cadetblue: '#5f9ea0',
-  chartreuse: '#7fff00',
-  chocolate: '#d2691e',
-  coral: '#ff7f50',
-  cornflowerblue: '#6495ed',
-  cornsilk: '#fff8dc',
-  crimson: '#dc143c',
-  cyan: '#0ff',
-  darkblue: '#00008b',
-  darkcyan: '#008b8b',
-  darkgoldenrod: '#b8860b',
-  darkgray: '#a9a9a9',
-  darkgreen: '#006400',
-  darkgrey: '#a9a9a9',
-  darkkhaki: '#bdb76b',
-  darkmagenta: '#8b008b',
-  darkolivegreen: '#556b2f',
-  darkorange: '#ff8c00',
-  darkorchid: '#9932cc',
-  darkred: '#8b0000',
-  darksalmon: '#e9967a',
-  darkseagreen: '#8fbc8f',
-  darkslateblue: '#483d8b',
-  darkslategray: '#2f4f4f',
-  darkslategrey: '#2f4f4f',
-  darkturquoise: '#00ced1',
-  darkviolet: '#9400d3',
-  deeppink: '#ff1493',
-  deepskyblue: '#00bfff',
-  dimgray: '#696969',
-  dimgrey: '#696969',
-  dodgerblue: '#1e90ff',
-  firebrick: '#b22222',
-  floralwhite: '#fffaf0',
-  forestgreen: '#228b22',
-  fuchsia: '#f0f',
-  gainsboro: '#dcdcdc',
-  ghostwhite: '#f8f8ff',
-  gold: '#ffd700',
-  goldenrod: '#daa520',
-  gray: '#808080',
-  green: '#008000',
-  greenyellow: '#adff2f',
-  grey: '#808080',
-  honeydew: '#f0fff0',
-  hotpink: '#ff69b4',
-  indianred: '#cd5c5c',
-  indigo: '#4b0082',
-  ivory: '#fffff0',
-  khaki: '#f0e68c',
-  lavender: '#e6e6fa',
-  lavenderblush: '#fff0f5',
-  lawngreen: '#7cfc00',
-  lemonchiffon: '#fffacd',
-  lightblue: '#add8e6',
-  lightcoral: '#f08080',
-  lightcyan: '#e0ffff',
-  lightgoldenrodyellow: '#fafad2',
-  lightgray: '#d3d3d3',
-  lightgreen: '#90ee90',
-  lightgrey: '#d3d3d3',
-  lightpink: '#ffb6c1',
-  lightsalmon: '#ffa07a',
-  lightseagreen: '#20b2aa',
-  lightskyblue: '#87cefa',
-  lightslategray: '#789',
-  lightslategrey: '#789',
-  lightsteelblue: '#b0c4de',
-  lightyellow: '#ffffe0',
-  lime: '#0f0',
-  limegreen: '#32cd32',
-  linen: '#faf0e6',
-  magenta: '#f0f',
-  maroon: '#800000',
-  mediumaquamarine: '#66cdaa',
-  mediumblue: '#0000cd',
-  mediumorchid: '#ba55d3',
-  mediumpurple: '#9370db',
-  mediumseagreen: '#3cb371',
-  mediumslateblue: '#7b68ee',
-  mediumspringgreen: '#00fa9a',
-  mediumturquoise: '#48d1cc',
-  mediumvioletred: '#c71585',
-  midnightblue: '#191970',
-  mintcream: '#f5fffa',
-  mistyrose: '#ffe4e1',
-  moccasin: '#ffe4b5',
-  navajowhite: '#ffdead',
-  navy: '#000080',
-  oldlace: '#fdf5e6',
-  olive: '#808000',
-  olivedrab: '#6b8e23',
-  orange: '#ffa500',
-  orangered: '#ff4500',
-  orchid: '#da70d6',
-  palegoldenrod: '#eee8aa',
-  palegreen: '#98fb98',
-  paleturquoise: '#afeeee',
-  palevioletred: '#db7093',
-  papayawhip: '#ffefd5',
-  peachpuff: '#ffdab9',
-  peru: '#cd853f',
-  pink: '#ffc0cb',
-  plum: '#dda0dd',
-  powderblue: '#b0e0e6',
-  purple: '#800080',
-  rebeccapurple: '#639',
-  red: '#f00',
-  rosybrown: '#bc8f8f',
-  royalblue: '#4169e1',
-  saddlebrown: '#8b4513',
-  salmon: '#fa8072',
-  sandybrown: '#f4a460',
-  seagreen: '#2e8b57',
-  seashell: '#fff5ee',
-  sienna: '#a0522d',
-  silver: '#c0c0c0',
-  skyblue: '#87ceeb',
-  slateblue: '#6a5acd',
-  slategray: '#708090',
-  slategrey: '#708090',
-  snow: '#fffafa',
-  springgreen: '#00ff7f',
-  steelblue: '#4682b4',
-  tan: '#d2b48c',
-  teal: '#008080',
-  thistle: '#d8bfd8',
-  tomato: '#ff6347',
-  turquoise: '#40e0d0',
-  violet: '#ee82ee',
-  wheat: '#f5deb3',
-  white: '#fff',
-  whitesmoke: '#f5f5f5',
-  yellow: '#ff0',
-  yellowgreen: '#9acd32',
-};
+	/**
+	 * https://www.w3.org/TR/SVG11/single-page.html#types-ColorKeywords
+	 *
+	 * @type {Record<string, string>}
+	 */
+	exports.colorsNames = {
+	  aliceblue: '#f0f8ff',
+	  antiquewhite: '#faebd7',
+	  aqua: '#0ff',
+	  aquamarine: '#7fffd4',
+	  azure: '#f0ffff',
+	  beige: '#f5f5dc',
+	  bisque: '#ffe4c4',
+	  black: '#000',
+	  blanchedalmond: '#ffebcd',
+	  blue: '#00f',
+	  blueviolet: '#8a2be2',
+	  brown: '#a52a2a',
+	  burlywood: '#deb887',
+	  cadetblue: '#5f9ea0',
+	  chartreuse: '#7fff00',
+	  chocolate: '#d2691e',
+	  coral: '#ff7f50',
+	  cornflowerblue: '#6495ed',
+	  cornsilk: '#fff8dc',
+	  crimson: '#dc143c',
+	  cyan: '#0ff',
+	  darkblue: '#00008b',
+	  darkcyan: '#008b8b',
+	  darkgoldenrod: '#b8860b',
+	  darkgray: '#a9a9a9',
+	  darkgreen: '#006400',
+	  darkgrey: '#a9a9a9',
+	  darkkhaki: '#bdb76b',
+	  darkmagenta: '#8b008b',
+	  darkolivegreen: '#556b2f',
+	  darkorange: '#ff8c00',
+	  darkorchid: '#9932cc',
+	  darkred: '#8b0000',
+	  darksalmon: '#e9967a',
+	  darkseagreen: '#8fbc8f',
+	  darkslateblue: '#483d8b',
+	  darkslategray: '#2f4f4f',
+	  darkslategrey: '#2f4f4f',
+	  darkturquoise: '#00ced1',
+	  darkviolet: '#9400d3',
+	  deeppink: '#ff1493',
+	  deepskyblue: '#00bfff',
+	  dimgray: '#696969',
+	  dimgrey: '#696969',
+	  dodgerblue: '#1e90ff',
+	  firebrick: '#b22222',
+	  floralwhite: '#fffaf0',
+	  forestgreen: '#228b22',
+	  fuchsia: '#f0f',
+	  gainsboro: '#dcdcdc',
+	  ghostwhite: '#f8f8ff',
+	  gold: '#ffd700',
+	  goldenrod: '#daa520',
+	  gray: '#808080',
+	  green: '#008000',
+	  greenyellow: '#adff2f',
+	  grey: '#808080',
+	  honeydew: '#f0fff0',
+	  hotpink: '#ff69b4',
+	  indianred: '#cd5c5c',
+	  indigo: '#4b0082',
+	  ivory: '#fffff0',
+	  khaki: '#f0e68c',
+	  lavender: '#e6e6fa',
+	  lavenderblush: '#fff0f5',
+	  lawngreen: '#7cfc00',
+	  lemonchiffon: '#fffacd',
+	  lightblue: '#add8e6',
+	  lightcoral: '#f08080',
+	  lightcyan: '#e0ffff',
+	  lightgoldenrodyellow: '#fafad2',
+	  lightgray: '#d3d3d3',
+	  lightgreen: '#90ee90',
+	  lightgrey: '#d3d3d3',
+	  lightpink: '#ffb6c1',
+	  lightsalmon: '#ffa07a',
+	  lightseagreen: '#20b2aa',
+	  lightskyblue: '#87cefa',
+	  lightslategray: '#789',
+	  lightslategrey: '#789',
+	  lightsteelblue: '#b0c4de',
+	  lightyellow: '#ffffe0',
+	  lime: '#0f0',
+	  limegreen: '#32cd32',
+	  linen: '#faf0e6',
+	  magenta: '#f0f',
+	  maroon: '#800000',
+	  mediumaquamarine: '#66cdaa',
+	  mediumblue: '#0000cd',
+	  mediumorchid: '#ba55d3',
+	  mediumpurple: '#9370db',
+	  mediumseagreen: '#3cb371',
+	  mediumslateblue: '#7b68ee',
+	  mediumspringgreen: '#00fa9a',
+	  mediumturquoise: '#48d1cc',
+	  mediumvioletred: '#c71585',
+	  midnightblue: '#191970',
+	  mintcream: '#f5fffa',
+	  mistyrose: '#ffe4e1',
+	  moccasin: '#ffe4b5',
+	  navajowhite: '#ffdead',
+	  navy: '#000080',
+	  oldlace: '#fdf5e6',
+	  olive: '#808000',
+	  olivedrab: '#6b8e23',
+	  orange: '#ffa500',
+	  orangered: '#ff4500',
+	  orchid: '#da70d6',
+	  palegoldenrod: '#eee8aa',
+	  palegreen: '#98fb98',
+	  paleturquoise: '#afeeee',
+	  palevioletred: '#db7093',
+	  papayawhip: '#ffefd5',
+	  peachpuff: '#ffdab9',
+	  peru: '#cd853f',
+	  pink: '#ffc0cb',
+	  plum: '#dda0dd',
+	  powderblue: '#b0e0e6',
+	  purple: '#800080',
+	  rebeccapurple: '#639',
+	  red: '#f00',
+	  rosybrown: '#bc8f8f',
+	  royalblue: '#4169e1',
+	  saddlebrown: '#8b4513',
+	  salmon: '#fa8072',
+	  sandybrown: '#f4a460',
+	  seagreen: '#2e8b57',
+	  seashell: '#fff5ee',
+	  sienna: '#a0522d',
+	  silver: '#c0c0c0',
+	  skyblue: '#87ceeb',
+	  slateblue: '#6a5acd',
+	  slategray: '#708090',
+	  slategrey: '#708090',
+	  snow: '#fffafa',
+	  springgreen: '#00ff7f',
+	  steelblue: '#4682b4',
+	  tan: '#d2b48c',
+	  teal: '#008080',
+	  thistle: '#d8bfd8',
+	  tomato: '#ff6347',
+	  turquoise: '#40e0d0',
+	  violet: '#ee82ee',
+	  wheat: '#f5deb3',
+	  white: '#fff',
+	  whitesmoke: '#f5f5f5',
+	  yellow: '#ff0',
+	  yellowgreen: '#9acd32',
+	};
 
-/**
- * @type {Record<string, string>}
- */
-exports.colorsShortNames = {
-  '#f0ffff': 'azure',
-  '#f5f5dc': 'beige',
-  '#ffe4c4': 'bisque',
-  '#a52a2a': 'brown',
-  '#ff7f50': 'coral',
-  '#ffd700': 'gold',
-  '#808080': 'gray',
-  '#008000': 'green',
-  '#4b0082': 'indigo',
-  '#fffff0': 'ivory',
-  '#f0e68c': 'khaki',
-  '#faf0e6': 'linen',
-  '#800000': 'maroon',
-  '#000080': 'navy',
-  '#808000': 'olive',
-  '#ffa500': 'orange',
-  '#da70d6': 'orchid',
-  '#cd853f': 'peru',
-  '#ffc0cb': 'pink',
-  '#dda0dd': 'plum',
-  '#800080': 'purple',
-  '#f00': 'red',
-  '#ff0000': 'red',
-  '#fa8072': 'salmon',
-  '#a0522d': 'sienna',
-  '#c0c0c0': 'silver',
-  '#fffafa': 'snow',
-  '#d2b48c': 'tan',
-  '#008080': 'teal',
-  '#ff6347': 'tomato',
-  '#ee82ee': 'violet',
-  '#f5deb3': 'wheat',
-};
+	/**
+	 * @type {Record<string, string>}
+	 */
+	exports.colorsShortNames = {
+	  '#f0ffff': 'azure',
+	  '#f5f5dc': 'beige',
+	  '#ffe4c4': 'bisque',
+	  '#a52a2a': 'brown',
+	  '#ff7f50': 'coral',
+	  '#ffd700': 'gold',
+	  '#808080': 'gray',
+	  '#008000': 'green',
+	  '#4b0082': 'indigo',
+	  '#fffff0': 'ivory',
+	  '#f0e68c': 'khaki',
+	  '#faf0e6': 'linen',
+	  '#800000': 'maroon',
+	  '#000080': 'navy',
+	  '#808000': 'olive',
+	  '#ffa500': 'orange',
+	  '#da70d6': 'orchid',
+	  '#cd853f': 'peru',
+	  '#ffc0cb': 'pink',
+	  '#dda0dd': 'plum',
+	  '#800080': 'purple',
+	  '#f00': 'red',
+	  '#ff0000': 'red',
+	  '#fa8072': 'salmon',
+	  '#a0522d': 'sienna',
+	  '#c0c0c0': 'silver',
+	  '#fffafa': 'snow',
+	  '#d2b48c': 'tan',
+	  '#008080': 'teal',
+	  '#ff6347': 'tomato',
+	  '#ee82ee': 'violet',
+	  '#f5deb3': 'wheat',
+	};
 
-// https://www.w3.org/TR/SVG11/single-page.html#types-DataTypeColor
-exports.colorsProps = [
-  'color',
-  'fill',
-  'stroke',
-  'stop-color',
-  'flood-color',
-  'lighting-color',
-];
-}(_collections));
+	// https://www.w3.org/TR/SVG11/single-page.html#types-DataTypeColor
+	exports.colorsProps = [
+	  'color',
+	  'fill',
+	  'stroke',
+	  'stop-color',
+	  'flood-color',
+	  'lighting-color',
+	];
+} (_collections));
 
 const { detachNodeFromParent: detachNodeFromParent$h } = xast;
 const { editorNamespaces } = _collections;
@@ -11163,6 +11218,8 @@ CSSClassList$1.prototype.contains = function (className) {
 };
 
 var cssClassList = CSSClassList$1;
+
+var lib$1 = {exports: {}};
 
 var syntax = {exports: {}};
 
@@ -17865,494 +17922,494 @@ var util$3 = {};
 /* -*- Mode: js; js-indent-level: 2; -*- */
 
 (function (exports) {
-/*
- * Copyright 2011 Mozilla Foundation and contributors
- * Licensed under the New BSD license. See LICENSE or:
- * http://opensource.org/licenses/BSD-3-Clause
- */
+	/*
+	 * Copyright 2011 Mozilla Foundation and contributors
+	 * Licensed under the New BSD license. See LICENSE or:
+	 * http://opensource.org/licenses/BSD-3-Clause
+	 */
 
-/**
- * This is a helper function for getting values from parameter/options
- * objects.
- *
- * @param args The object we are extracting values from
- * @param name The name of the property we are getting.
- * @param defaultValue An optional value to return if the property is missing
- * from the object. If this is not specified and the property is missing, an
- * error will be thrown.
- */
-function getArg(aArgs, aName, aDefaultValue) {
-  if (aName in aArgs) {
-    return aArgs[aName];
-  } else if (arguments.length === 3) {
-    return aDefaultValue;
-  } else {
-    throw new Error('"' + aName + '" is a required argument.');
-  }
-}
-exports.getArg = getArg;
+	/**
+	 * This is a helper function for getting values from parameter/options
+	 * objects.
+	 *
+	 * @param args The object we are extracting values from
+	 * @param name The name of the property we are getting.
+	 * @param defaultValue An optional value to return if the property is missing
+	 * from the object. If this is not specified and the property is missing, an
+	 * error will be thrown.
+	 */
+	function getArg(aArgs, aName, aDefaultValue) {
+	  if (aName in aArgs) {
+	    return aArgs[aName];
+	  } else if (arguments.length === 3) {
+	    return aDefaultValue;
+	  } else {
+	    throw new Error('"' + aName + '" is a required argument.');
+	  }
+	}
+	exports.getArg = getArg;
 
-var urlRegexp = /^(?:([\w+\-.]+):)?\/\/(?:(\w+:\w+)@)?([\w.-]*)(?::(\d+))?(.*)$/;
-var dataUrlRegexp = /^data:.+\,.+$/;
+	var urlRegexp = /^(?:([\w+\-.]+):)?\/\/(?:(\w+:\w+)@)?([\w.-]*)(?::(\d+))?(.*)$/;
+	var dataUrlRegexp = /^data:.+\,.+$/;
 
-function urlParse(aUrl) {
-  var match = aUrl.match(urlRegexp);
-  if (!match) {
-    return null;
-  }
-  return {
-    scheme: match[1],
-    auth: match[2],
-    host: match[3],
-    port: match[4],
-    path: match[5]
-  };
-}
-exports.urlParse = urlParse;
+	function urlParse(aUrl) {
+	  var match = aUrl.match(urlRegexp);
+	  if (!match) {
+	    return null;
+	  }
+	  return {
+	    scheme: match[1],
+	    auth: match[2],
+	    host: match[3],
+	    port: match[4],
+	    path: match[5]
+	  };
+	}
+	exports.urlParse = urlParse;
 
-function urlGenerate(aParsedUrl) {
-  var url = '';
-  if (aParsedUrl.scheme) {
-    url += aParsedUrl.scheme + ':';
-  }
-  url += '//';
-  if (aParsedUrl.auth) {
-    url += aParsedUrl.auth + '@';
-  }
-  if (aParsedUrl.host) {
-    url += aParsedUrl.host;
-  }
-  if (aParsedUrl.port) {
-    url += ":" + aParsedUrl.port;
-  }
-  if (aParsedUrl.path) {
-    url += aParsedUrl.path;
-  }
-  return url;
-}
-exports.urlGenerate = urlGenerate;
+	function urlGenerate(aParsedUrl) {
+	  var url = '';
+	  if (aParsedUrl.scheme) {
+	    url += aParsedUrl.scheme + ':';
+	  }
+	  url += '//';
+	  if (aParsedUrl.auth) {
+	    url += aParsedUrl.auth + '@';
+	  }
+	  if (aParsedUrl.host) {
+	    url += aParsedUrl.host;
+	  }
+	  if (aParsedUrl.port) {
+	    url += ":" + aParsedUrl.port;
+	  }
+	  if (aParsedUrl.path) {
+	    url += aParsedUrl.path;
+	  }
+	  return url;
+	}
+	exports.urlGenerate = urlGenerate;
 
-/**
- * Normalizes a path, or the path portion of a URL:
- *
- * - Replaces consecutive slashes with one slash.
- * - Removes unnecessary '.' parts.
- * - Removes unnecessary '<dir>/..' parts.
- *
- * Based on code in the Node.js 'path' core module.
- *
- * @param aPath The path or url to normalize.
- */
-function normalize(aPath) {
-  var path = aPath;
-  var url = urlParse(aPath);
-  if (url) {
-    if (!url.path) {
-      return aPath;
-    }
-    path = url.path;
-  }
-  var isAbsolute = exports.isAbsolute(path);
+	/**
+	 * Normalizes a path, or the path portion of a URL:
+	 *
+	 * - Replaces consecutive slashes with one slash.
+	 * - Removes unnecessary '.' parts.
+	 * - Removes unnecessary '<dir>/..' parts.
+	 *
+	 * Based on code in the Node.js 'path' core module.
+	 *
+	 * @param aPath The path or url to normalize.
+	 */
+	function normalize(aPath) {
+	  var path = aPath;
+	  var url = urlParse(aPath);
+	  if (url) {
+	    if (!url.path) {
+	      return aPath;
+	    }
+	    path = url.path;
+	  }
+	  var isAbsolute = exports.isAbsolute(path);
 
-  var parts = path.split(/\/+/);
-  for (var part, up = 0, i = parts.length - 1; i >= 0; i--) {
-    part = parts[i];
-    if (part === '.') {
-      parts.splice(i, 1);
-    } else if (part === '..') {
-      up++;
-    } else if (up > 0) {
-      if (part === '') {
-        // The first part is blank if the path is absolute. Trying to go
-        // above the root is a no-op. Therefore we can remove all '..' parts
-        // directly after the root.
-        parts.splice(i + 1, up);
-        up = 0;
-      } else {
-        parts.splice(i, 2);
-        up--;
-      }
-    }
-  }
-  path = parts.join('/');
+	  var parts = path.split(/\/+/);
+	  for (var part, up = 0, i = parts.length - 1; i >= 0; i--) {
+	    part = parts[i];
+	    if (part === '.') {
+	      parts.splice(i, 1);
+	    } else if (part === '..') {
+	      up++;
+	    } else if (up > 0) {
+	      if (part === '') {
+	        // The first part is blank if the path is absolute. Trying to go
+	        // above the root is a no-op. Therefore we can remove all '..' parts
+	        // directly after the root.
+	        parts.splice(i + 1, up);
+	        up = 0;
+	      } else {
+	        parts.splice(i, 2);
+	        up--;
+	      }
+	    }
+	  }
+	  path = parts.join('/');
 
-  if (path === '') {
-    path = isAbsolute ? '/' : '.';
-  }
+	  if (path === '') {
+	    path = isAbsolute ? '/' : '.';
+	  }
 
-  if (url) {
-    url.path = path;
-    return urlGenerate(url);
-  }
-  return path;
-}
-exports.normalize = normalize;
+	  if (url) {
+	    url.path = path;
+	    return urlGenerate(url);
+	  }
+	  return path;
+	}
+	exports.normalize = normalize;
 
-/**
- * Joins two paths/URLs.
- *
- * @param aRoot The root path or URL.
- * @param aPath The path or URL to be joined with the root.
- *
- * - If aPath is a URL or a data URI, aPath is returned, unless aPath is a
- *   scheme-relative URL: Then the scheme of aRoot, if any, is prepended
- *   first.
- * - Otherwise aPath is a path. If aRoot is a URL, then its path portion
- *   is updated with the result and aRoot is returned. Otherwise the result
- *   is returned.
- *   - If aPath is absolute, the result is aPath.
- *   - Otherwise the two paths are joined with a slash.
- * - Joining for example 'http://' and 'www.example.com' is also supported.
- */
-function join(aRoot, aPath) {
-  if (aRoot === "") {
-    aRoot = ".";
-  }
-  if (aPath === "") {
-    aPath = ".";
-  }
-  var aPathUrl = urlParse(aPath);
-  var aRootUrl = urlParse(aRoot);
-  if (aRootUrl) {
-    aRoot = aRootUrl.path || '/';
-  }
+	/**
+	 * Joins two paths/URLs.
+	 *
+	 * @param aRoot The root path or URL.
+	 * @param aPath The path or URL to be joined with the root.
+	 *
+	 * - If aPath is a URL or a data URI, aPath is returned, unless aPath is a
+	 *   scheme-relative URL: Then the scheme of aRoot, if any, is prepended
+	 *   first.
+	 * - Otherwise aPath is a path. If aRoot is a URL, then its path portion
+	 *   is updated with the result and aRoot is returned. Otherwise the result
+	 *   is returned.
+	 *   - If aPath is absolute, the result is aPath.
+	 *   - Otherwise the two paths are joined with a slash.
+	 * - Joining for example 'http://' and 'www.example.com' is also supported.
+	 */
+	function join(aRoot, aPath) {
+	  if (aRoot === "") {
+	    aRoot = ".";
+	  }
+	  if (aPath === "") {
+	    aPath = ".";
+	  }
+	  var aPathUrl = urlParse(aPath);
+	  var aRootUrl = urlParse(aRoot);
+	  if (aRootUrl) {
+	    aRoot = aRootUrl.path || '/';
+	  }
 
-  // `join(foo, '//www.example.org')`
-  if (aPathUrl && !aPathUrl.scheme) {
-    if (aRootUrl) {
-      aPathUrl.scheme = aRootUrl.scheme;
-    }
-    return urlGenerate(aPathUrl);
-  }
+	  // `join(foo, '//www.example.org')`
+	  if (aPathUrl && !aPathUrl.scheme) {
+	    if (aRootUrl) {
+	      aPathUrl.scheme = aRootUrl.scheme;
+	    }
+	    return urlGenerate(aPathUrl);
+	  }
 
-  if (aPathUrl || aPath.match(dataUrlRegexp)) {
-    return aPath;
-  }
+	  if (aPathUrl || aPath.match(dataUrlRegexp)) {
+	    return aPath;
+	  }
 
-  // `join('http://', 'www.example.com')`
-  if (aRootUrl && !aRootUrl.host && !aRootUrl.path) {
-    aRootUrl.host = aPath;
-    return urlGenerate(aRootUrl);
-  }
+	  // `join('http://', 'www.example.com')`
+	  if (aRootUrl && !aRootUrl.host && !aRootUrl.path) {
+	    aRootUrl.host = aPath;
+	    return urlGenerate(aRootUrl);
+	  }
 
-  var joined = aPath.charAt(0) === '/'
-    ? aPath
-    : normalize(aRoot.replace(/\/+$/, '') + '/' + aPath);
+	  var joined = aPath.charAt(0) === '/'
+	    ? aPath
+	    : normalize(aRoot.replace(/\/+$/, '') + '/' + aPath);
 
-  if (aRootUrl) {
-    aRootUrl.path = joined;
-    return urlGenerate(aRootUrl);
-  }
-  return joined;
-}
-exports.join = join;
+	  if (aRootUrl) {
+	    aRootUrl.path = joined;
+	    return urlGenerate(aRootUrl);
+	  }
+	  return joined;
+	}
+	exports.join = join;
 
-exports.isAbsolute = function (aPath) {
-  return aPath.charAt(0) === '/' || urlRegexp.test(aPath);
-};
+	exports.isAbsolute = function (aPath) {
+	  return aPath.charAt(0) === '/' || urlRegexp.test(aPath);
+	};
 
-/**
- * Make a path relative to a URL or another path.
- *
- * @param aRoot The root path or URL.
- * @param aPath The path or URL to be made relative to aRoot.
- */
-function relative(aRoot, aPath) {
-  if (aRoot === "") {
-    aRoot = ".";
-  }
+	/**
+	 * Make a path relative to a URL or another path.
+	 *
+	 * @param aRoot The root path or URL.
+	 * @param aPath The path or URL to be made relative to aRoot.
+	 */
+	function relative(aRoot, aPath) {
+	  if (aRoot === "") {
+	    aRoot = ".";
+	  }
 
-  aRoot = aRoot.replace(/\/$/, '');
+	  aRoot = aRoot.replace(/\/$/, '');
 
-  // It is possible for the path to be above the root. In this case, simply
-  // checking whether the root is a prefix of the path won't work. Instead, we
-  // need to remove components from the root one by one, until either we find
-  // a prefix that fits, or we run out of components to remove.
-  var level = 0;
-  while (aPath.indexOf(aRoot + '/') !== 0) {
-    var index = aRoot.lastIndexOf("/");
-    if (index < 0) {
-      return aPath;
-    }
+	  // It is possible for the path to be above the root. In this case, simply
+	  // checking whether the root is a prefix of the path won't work. Instead, we
+	  // need to remove components from the root one by one, until either we find
+	  // a prefix that fits, or we run out of components to remove.
+	  var level = 0;
+	  while (aPath.indexOf(aRoot + '/') !== 0) {
+	    var index = aRoot.lastIndexOf("/");
+	    if (index < 0) {
+	      return aPath;
+	    }
 
-    // If the only part of the root that is left is the scheme (i.e. http://,
-    // file:///, etc.), one or more slashes (/), or simply nothing at all, we
-    // have exhausted all components, so the path is not relative to the root.
-    aRoot = aRoot.slice(0, index);
-    if (aRoot.match(/^([^\/]+:\/)?\/*$/)) {
-      return aPath;
-    }
+	    // If the only part of the root that is left is the scheme (i.e. http://,
+	    // file:///, etc.), one or more slashes (/), or simply nothing at all, we
+	    // have exhausted all components, so the path is not relative to the root.
+	    aRoot = aRoot.slice(0, index);
+	    if (aRoot.match(/^([^\/]+:\/)?\/*$/)) {
+	      return aPath;
+	    }
 
-    ++level;
-  }
+	    ++level;
+	  }
 
-  // Make sure we add a "../" for each component we removed from the root.
-  return Array(level + 1).join("../") + aPath.substr(aRoot.length + 1);
-}
-exports.relative = relative;
+	  // Make sure we add a "../" for each component we removed from the root.
+	  return Array(level + 1).join("../") + aPath.substr(aRoot.length + 1);
+	}
+	exports.relative = relative;
 
-var supportsNullProto = (function () {
-  var obj = Object.create(null);
-  return !('__proto__' in obj);
-}());
+	var supportsNullProto = (function () {
+	  var obj = Object.create(null);
+	  return !('__proto__' in obj);
+	}());
 
-function identity (s) {
-  return s;
-}
+	function identity (s) {
+	  return s;
+	}
 
-/**
- * Because behavior goes wacky when you set `__proto__` on objects, we
- * have to prefix all the strings in our set with an arbitrary character.
- *
- * See https://github.com/mozilla/source-map/pull/31 and
- * https://github.com/mozilla/source-map/issues/30
- *
- * @param String aStr
- */
-function toSetString(aStr) {
-  if (isProtoString(aStr)) {
-    return '$' + aStr;
-  }
+	/**
+	 * Because behavior goes wacky when you set `__proto__` on objects, we
+	 * have to prefix all the strings in our set with an arbitrary character.
+	 *
+	 * See https://github.com/mozilla/source-map/pull/31 and
+	 * https://github.com/mozilla/source-map/issues/30
+	 *
+	 * @param String aStr
+	 */
+	function toSetString(aStr) {
+	  if (isProtoString(aStr)) {
+	    return '$' + aStr;
+	  }
 
-  return aStr;
-}
-exports.toSetString = supportsNullProto ? identity : toSetString;
+	  return aStr;
+	}
+	exports.toSetString = supportsNullProto ? identity : toSetString;
 
-function fromSetString(aStr) {
-  if (isProtoString(aStr)) {
-    return aStr.slice(1);
-  }
+	function fromSetString(aStr) {
+	  if (isProtoString(aStr)) {
+	    return aStr.slice(1);
+	  }
 
-  return aStr;
-}
-exports.fromSetString = supportsNullProto ? identity : fromSetString;
+	  return aStr;
+	}
+	exports.fromSetString = supportsNullProto ? identity : fromSetString;
 
-function isProtoString(s) {
-  if (!s) {
-    return false;
-  }
+	function isProtoString(s) {
+	  if (!s) {
+	    return false;
+	  }
 
-  var length = s.length;
+	  var length = s.length;
 
-  if (length < 9 /* "__proto__".length */) {
-    return false;
-  }
+	  if (length < 9 /* "__proto__".length */) {
+	    return false;
+	  }
 
-  if (s.charCodeAt(length - 1) !== 95  /* '_' */ ||
-      s.charCodeAt(length - 2) !== 95  /* '_' */ ||
-      s.charCodeAt(length - 3) !== 111 /* 'o' */ ||
-      s.charCodeAt(length - 4) !== 116 /* 't' */ ||
-      s.charCodeAt(length - 5) !== 111 /* 'o' */ ||
-      s.charCodeAt(length - 6) !== 114 /* 'r' */ ||
-      s.charCodeAt(length - 7) !== 112 /* 'p' */ ||
-      s.charCodeAt(length - 8) !== 95  /* '_' */ ||
-      s.charCodeAt(length - 9) !== 95  /* '_' */) {
-    return false;
-  }
+	  if (s.charCodeAt(length - 1) !== 95  /* '_' */ ||
+	      s.charCodeAt(length - 2) !== 95  /* '_' */ ||
+	      s.charCodeAt(length - 3) !== 111 /* 'o' */ ||
+	      s.charCodeAt(length - 4) !== 116 /* 't' */ ||
+	      s.charCodeAt(length - 5) !== 111 /* 'o' */ ||
+	      s.charCodeAt(length - 6) !== 114 /* 'r' */ ||
+	      s.charCodeAt(length - 7) !== 112 /* 'p' */ ||
+	      s.charCodeAt(length - 8) !== 95  /* '_' */ ||
+	      s.charCodeAt(length - 9) !== 95  /* '_' */) {
+	    return false;
+	  }
 
-  for (var i = length - 10; i >= 0; i--) {
-    if (s.charCodeAt(i) !== 36 /* '$' */) {
-      return false;
-    }
-  }
+	  for (var i = length - 10; i >= 0; i--) {
+	    if (s.charCodeAt(i) !== 36 /* '$' */) {
+	      return false;
+	    }
+	  }
 
-  return true;
-}
+	  return true;
+	}
 
-/**
- * Comparator between two mappings where the original positions are compared.
- *
- * Optionally pass in `true` as `onlyCompareGenerated` to consider two
- * mappings with the same original source/line/column, but different generated
- * line and column the same. Useful when searching for a mapping with a
- * stubbed out mapping.
- */
-function compareByOriginalPositions(mappingA, mappingB, onlyCompareOriginal) {
-  var cmp = strcmp(mappingA.source, mappingB.source);
-  if (cmp !== 0) {
-    return cmp;
-  }
+	/**
+	 * Comparator between two mappings where the original positions are compared.
+	 *
+	 * Optionally pass in `true` as `onlyCompareGenerated` to consider two
+	 * mappings with the same original source/line/column, but different generated
+	 * line and column the same. Useful when searching for a mapping with a
+	 * stubbed out mapping.
+	 */
+	function compareByOriginalPositions(mappingA, mappingB, onlyCompareOriginal) {
+	  var cmp = strcmp(mappingA.source, mappingB.source);
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.originalLine - mappingB.originalLine;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = mappingA.originalLine - mappingB.originalLine;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.originalColumn - mappingB.originalColumn;
-  if (cmp !== 0 || onlyCompareOriginal) {
-    return cmp;
-  }
+	  cmp = mappingA.originalColumn - mappingB.originalColumn;
+	  if (cmp !== 0 || onlyCompareOriginal) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.generatedLine - mappingB.generatedLine;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = mappingA.generatedLine - mappingB.generatedLine;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  return strcmp(mappingA.name, mappingB.name);
-}
-exports.compareByOriginalPositions = compareByOriginalPositions;
+	  return strcmp(mappingA.name, mappingB.name);
+	}
+	exports.compareByOriginalPositions = compareByOriginalPositions;
 
-/**
- * Comparator between two mappings with deflated source and name indices where
- * the generated positions are compared.
- *
- * Optionally pass in `true` as `onlyCompareGenerated` to consider two
- * mappings with the same generated line and column, but different
- * source/name/original line and column the same. Useful when searching for a
- * mapping with a stubbed out mapping.
- */
-function compareByGeneratedPositionsDeflated(mappingA, mappingB, onlyCompareGenerated) {
-  var cmp = mappingA.generatedLine - mappingB.generatedLine;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	/**
+	 * Comparator between two mappings with deflated source and name indices where
+	 * the generated positions are compared.
+	 *
+	 * Optionally pass in `true` as `onlyCompareGenerated` to consider two
+	 * mappings with the same generated line and column, but different
+	 * source/name/original line and column the same. Useful when searching for a
+	 * mapping with a stubbed out mapping.
+	 */
+	function compareByGeneratedPositionsDeflated(mappingA, mappingB, onlyCompareGenerated) {
+	  var cmp = mappingA.generatedLine - mappingB.generatedLine;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
-  if (cmp !== 0 || onlyCompareGenerated) {
-    return cmp;
-  }
+	  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
+	  if (cmp !== 0 || onlyCompareGenerated) {
+	    return cmp;
+	  }
 
-  cmp = strcmp(mappingA.source, mappingB.source);
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = strcmp(mappingA.source, mappingB.source);
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.originalLine - mappingB.originalLine;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = mappingA.originalLine - mappingB.originalLine;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.originalColumn - mappingB.originalColumn;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = mappingA.originalColumn - mappingB.originalColumn;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  return strcmp(mappingA.name, mappingB.name);
-}
-exports.compareByGeneratedPositionsDeflated = compareByGeneratedPositionsDeflated;
+	  return strcmp(mappingA.name, mappingB.name);
+	}
+	exports.compareByGeneratedPositionsDeflated = compareByGeneratedPositionsDeflated;
 
-function strcmp(aStr1, aStr2) {
-  if (aStr1 === aStr2) {
-    return 0;
-  }
+	function strcmp(aStr1, aStr2) {
+	  if (aStr1 === aStr2) {
+	    return 0;
+	  }
 
-  if (aStr1 === null) {
-    return 1; // aStr2 !== null
-  }
+	  if (aStr1 === null) {
+	    return 1; // aStr2 !== null
+	  }
 
-  if (aStr2 === null) {
-    return -1; // aStr1 !== null
-  }
+	  if (aStr2 === null) {
+	    return -1; // aStr1 !== null
+	  }
 
-  if (aStr1 > aStr2) {
-    return 1;
-  }
+	  if (aStr1 > aStr2) {
+	    return 1;
+	  }
 
-  return -1;
-}
+	  return -1;
+	}
 
-/**
- * Comparator between two mappings with inflated source and name strings where
- * the generated positions are compared.
- */
-function compareByGeneratedPositionsInflated(mappingA, mappingB) {
-  var cmp = mappingA.generatedLine - mappingB.generatedLine;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	/**
+	 * Comparator between two mappings with inflated source and name strings where
+	 * the generated positions are compared.
+	 */
+	function compareByGeneratedPositionsInflated(mappingA, mappingB) {
+	  var cmp = mappingA.generatedLine - mappingB.generatedLine;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = mappingA.generatedColumn - mappingB.generatedColumn;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = strcmp(mappingA.source, mappingB.source);
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = strcmp(mappingA.source, mappingB.source);
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.originalLine - mappingB.originalLine;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = mappingA.originalLine - mappingB.originalLine;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  cmp = mappingA.originalColumn - mappingB.originalColumn;
-  if (cmp !== 0) {
-    return cmp;
-  }
+	  cmp = mappingA.originalColumn - mappingB.originalColumn;
+	  if (cmp !== 0) {
+	    return cmp;
+	  }
 
-  return strcmp(mappingA.name, mappingB.name);
-}
-exports.compareByGeneratedPositionsInflated = compareByGeneratedPositionsInflated;
+	  return strcmp(mappingA.name, mappingB.name);
+	}
+	exports.compareByGeneratedPositionsInflated = compareByGeneratedPositionsInflated;
 
-/**
- * Strip any JSON XSSI avoidance prefix from the string (as documented
- * in the source maps specification), and then parse the string as
- * JSON.
- */
-function parseSourceMapInput(str) {
-  return JSON.parse(str.replace(/^\)]}'[^\n]*\n/, ''));
-}
-exports.parseSourceMapInput = parseSourceMapInput;
+	/**
+	 * Strip any JSON XSSI avoidance prefix from the string (as documented
+	 * in the source maps specification), and then parse the string as
+	 * JSON.
+	 */
+	function parseSourceMapInput(str) {
+	  return JSON.parse(str.replace(/^\)]}'[^\n]*\n/, ''));
+	}
+	exports.parseSourceMapInput = parseSourceMapInput;
 
-/**
- * Compute the URL of a source given the the source root, the source's
- * URL, and the source map's URL.
- */
-function computeSourceURL(sourceRoot, sourceURL, sourceMapURL) {
-  sourceURL = sourceURL || '';
+	/**
+	 * Compute the URL of a source given the the source root, the source's
+	 * URL, and the source map's URL.
+	 */
+	function computeSourceURL(sourceRoot, sourceURL, sourceMapURL) {
+	  sourceURL = sourceURL || '';
 
-  if (sourceRoot) {
-    // This follows what Chrome does.
-    if (sourceRoot[sourceRoot.length - 1] !== '/' && sourceURL[0] !== '/') {
-      sourceRoot += '/';
-    }
-    // The spec says:
-    //   Line 4: An optional source root, useful for relocating source
-    //   files on a server or removing repeated values in the
-    //   “sources” entry.  This value is prepended to the individual
-    //   entries in the “source” field.
-    sourceURL = sourceRoot + sourceURL;
-  }
+	  if (sourceRoot) {
+	    // This follows what Chrome does.
+	    if (sourceRoot[sourceRoot.length - 1] !== '/' && sourceURL[0] !== '/') {
+	      sourceRoot += '/';
+	    }
+	    // The spec says:
+	    //   Line 4: An optional source root, useful for relocating source
+	    //   files on a server or removing repeated values in the
+	    //   “sources” entry.  This value is prepended to the individual
+	    //   entries in the “source” field.
+	    sourceURL = sourceRoot + sourceURL;
+	  }
 
-  // Historically, SourceMapConsumer did not take the sourceMapURL as
-  // a parameter.  This mode is still somewhat supported, which is why
-  // this code block is conditional.  However, it's preferable to pass
-  // the source map URL to SourceMapConsumer, so that this function
-  // can implement the source URL resolution algorithm as outlined in
-  // the spec.  This block is basically the equivalent of:
-  //    new URL(sourceURL, sourceMapURL).toString()
-  // ... except it avoids using URL, which wasn't available in the
-  // older releases of node still supported by this library.
-  //
-  // The spec says:
-  //   If the sources are not absolute URLs after prepending of the
-  //   “sourceRoot”, the sources are resolved relative to the
-  //   SourceMap (like resolving script src in a html document).
-  if (sourceMapURL) {
-    var parsed = urlParse(sourceMapURL);
-    if (!parsed) {
-      throw new Error("sourceMapURL could not be parsed");
-    }
-    if (parsed.path) {
-      // Strip the last path component, but keep the "/".
-      var index = parsed.path.lastIndexOf('/');
-      if (index >= 0) {
-        parsed.path = parsed.path.substring(0, index + 1);
-      }
-    }
-    sourceURL = join(urlGenerate(parsed), sourceURL);
-  }
+	  // Historically, SourceMapConsumer did not take the sourceMapURL as
+	  // a parameter.  This mode is still somewhat supported, which is why
+	  // this code block is conditional.  However, it's preferable to pass
+	  // the source map URL to SourceMapConsumer, so that this function
+	  // can implement the source URL resolution algorithm as outlined in
+	  // the spec.  This block is basically the equivalent of:
+	  //    new URL(sourceURL, sourceMapURL).toString()
+	  // ... except it avoids using URL, which wasn't available in the
+	  // older releases of node still supported by this library.
+	  //
+	  // The spec says:
+	  //   If the sources are not absolute URLs after prepending of the
+	  //   “sourceRoot”, the sources are resolved relative to the
+	  //   SourceMap (like resolving script src in a html document).
+	  if (sourceMapURL) {
+	    var parsed = urlParse(sourceMapURL);
+	    if (!parsed) {
+	      throw new Error("sourceMapURL could not be parsed");
+	    }
+	    if (parsed.path) {
+	      // Strip the last path component, but keep the "/".
+	      var index = parsed.path.lastIndexOf('/');
+	      if (index >= 0) {
+	        parsed.path = parsed.path.substring(0, index + 1);
+	      }
+	    }
+	    sourceURL = join(urlGenerate(parsed), sourceURL);
+	  }
 
-  return normalize(sourceURL);
-}
-exports.computeSourceURL = computeSourceURL;
-}(util$3));
+	  return normalize(sourceURL);
+	}
+	exports.computeSourceURL = computeSourceURL;
+} (util$3));
 
 var arraySet = {};
 
@@ -34041,6 +34098,8 @@ var lang = {
     }
 };
 
+var matches$1 = {exports: {}};
+
 var selectorList = {
     parse: function selectorList() {
         return this.createSingleNodeList(
@@ -34049,9 +34108,17 @@ var selectorList = {
     }
 };
 
-var matches$1 = selectorList;
+(function (module) {
+	module.exports = selectorList;
+} (matches$1));
 
-var not = selectorList;
+var not = {exports: {}};
+
+(function (module) {
+	module.exports = selectorList;
+} (not));
+
+var nthChild = {exports: {}};
 
 var ALLOW_OF_CLAUSE = true;
 
@@ -34063,9 +34130,17 @@ var nthWithOfClause = {
     }
 };
 
-var nthChild = nthWithOfClause;
+(function (module) {
+	module.exports = nthWithOfClause;
+} (nthChild));
 
-var nthLastChild = nthWithOfClause;
+var nthLastChild = {exports: {}};
+
+(function (module) {
+	module.exports = nthWithOfClause;
+} (nthLastChild));
+
+var nthLastOfType = {exports: {}};
 
 var DISALLOW_OF_CLAUSE = false;
 
@@ -34077,9 +34152,15 @@ var nth = {
     }
 };
 
-var nthLastOfType = nth;
+(function (module) {
+	module.exports = nth;
+} (nthLastOfType));
 
-var nthOfType = nth;
+var nthOfType = {exports: {}};
+
+(function (module) {
+	module.exports = nth;
+} (nthOfType));
 
 var slotted = {
     parse: function compoundSelector() {
@@ -34093,12 +34174,12 @@ var pseudo = {
     'dir': dir,
     'has': has,
     'lang': lang,
-    'matches': matches$1,
-    'not': not,
-    'nth-child': nthChild,
-    'nth-last-child': nthLastChild,
-    'nth-last-of-type': nthLastOfType,
-    'nth-of-type': nthOfType,
+    'matches': matches$1.exports,
+    'not': not.exports,
+    'nth-child': nthChild.exports,
+    'nth-last-child': nthLastChild.exports,
+    'nth-last-of-type': nthLastOfType.exports,
+    'nth-of-type': nthOfType.exports,
     'slotted': slotted
 };
 
@@ -34287,120 +34368,122 @@ syntax.exports = create$4.create(
 );
 syntax.exports.version = require$$4.version;
 
-var lib$1 = syntax.exports;
+(function (module) {
+	module.exports = syntax.exports;
+} (lib$1));
 
 var cssTools = {};
 
 var stable$3 = {exports: {}};
 
 (function (module, exports) {
-//! stable.js 0.1.8, https://github.com/Two-Screen/stable
-//! © 2018 Angry Bytes and contributors. MIT licensed.
+	//! stable.js 0.1.8, https://github.com/Two-Screen/stable
+	//! © 2018 Angry Bytes and contributors. MIT licensed.
 
-(function (global, factory) {
-  module.exports = factory() ;
-}(commonjsGlobal, (function () {
-  // A stable array sort, because `Array#sort()` is not guaranteed stable.
-  // This is an implementation of merge sort, without recursion.
+	(function (global, factory) {
+	  module.exports = factory() ;
+	}(commonjsGlobal, (function () {
+	  // A stable array sort, because `Array#sort()` is not guaranteed stable.
+	  // This is an implementation of merge sort, without recursion.
 
-  var stable = function (arr, comp) {
-    return exec(arr.slice(), comp)
-  };
+	  var stable = function (arr, comp) {
+	    return exec(arr.slice(), comp)
+	  };
 
-  stable.inplace = function (arr, comp) {
-    var result = exec(arr, comp);
+	  stable.inplace = function (arr, comp) {
+	    var result = exec(arr, comp);
 
-    // This simply copies back if the result isn't in the original array,
-    // which happens on an odd number of passes.
-    if (result !== arr) {
-      pass(result, null, arr.length, arr);
-    }
+	    // This simply copies back if the result isn't in the original array,
+	    // which happens on an odd number of passes.
+	    if (result !== arr) {
+	      pass(result, null, arr.length, arr);
+	    }
 
-    return arr
-  };
+	    return arr
+	  };
 
-  // Execute the sort using the input array and a second buffer as work space.
-  // Returns one of those two, containing the final result.
-  function exec(arr, comp) {
-    if (typeof(comp) !== 'function') {
-      comp = function (a, b) {
-        return String(a).localeCompare(b)
-      };
-    }
+	  // Execute the sort using the input array and a second buffer as work space.
+	  // Returns one of those two, containing the final result.
+	  function exec(arr, comp) {
+	    if (typeof(comp) !== 'function') {
+	      comp = function (a, b) {
+	        return String(a).localeCompare(b)
+	      };
+	    }
 
-    // Short-circuit when there's nothing to sort.
-    var len = arr.length;
-    if (len <= 1) {
-      return arr
-    }
+	    // Short-circuit when there's nothing to sort.
+	    var len = arr.length;
+	    if (len <= 1) {
+	      return arr
+	    }
 
-    // Rather than dividing input, simply iterate chunks of 1, 2, 4, 8, etc.
-    // Chunks are the size of the left or right hand in merge sort.
-    // Stop when the left-hand covers all of the array.
-    var buffer = new Array(len);
-    for (var chk = 1; chk < len; chk *= 2) {
-      pass(arr, comp, chk, buffer);
+	    // Rather than dividing input, simply iterate chunks of 1, 2, 4, 8, etc.
+	    // Chunks are the size of the left or right hand in merge sort.
+	    // Stop when the left-hand covers all of the array.
+	    var buffer = new Array(len);
+	    for (var chk = 1; chk < len; chk *= 2) {
+	      pass(arr, comp, chk, buffer);
 
-      var tmp = arr;
-      arr = buffer;
-      buffer = tmp;
-    }
+	      var tmp = arr;
+	      arr = buffer;
+	      buffer = tmp;
+	    }
 
-    return arr
-  }
+	    return arr
+	  }
 
-  // Run a single pass with the given chunk size.
-  var pass = function (arr, comp, chk, result) {
-    var len = arr.length;
-    var i = 0;
-    // Step size / double chunk size.
-    var dbl = chk * 2;
-    // Bounds of the left and right chunks.
-    var l, r, e;
-    // Iterators over the left and right chunk.
-    var li, ri;
+	  // Run a single pass with the given chunk size.
+	  var pass = function (arr, comp, chk, result) {
+	    var len = arr.length;
+	    var i = 0;
+	    // Step size / double chunk size.
+	    var dbl = chk * 2;
+	    // Bounds of the left and right chunks.
+	    var l, r, e;
+	    // Iterators over the left and right chunk.
+	    var li, ri;
 
-    // Iterate over pairs of chunks.
-    for (l = 0; l < len; l += dbl) {
-      r = l + chk;
-      e = r + chk;
-      if (r > len) r = len;
-      if (e > len) e = len;
+	    // Iterate over pairs of chunks.
+	    for (l = 0; l < len; l += dbl) {
+	      r = l + chk;
+	      e = r + chk;
+	      if (r > len) r = len;
+	      if (e > len) e = len;
 
-      // Iterate both chunks in parallel.
-      li = l;
-      ri = r;
-      while (true) {
-        // Compare the chunks.
-        if (li < r && ri < e) {
-          // This works for a regular `sort()` compatible comparator,
-          // but also for a simple comparator like: `a > b`
-          if (comp(arr[li], arr[ri]) <= 0) {
-            result[i++] = arr[li++];
-          }
-          else {
-            result[i++] = arr[ri++];
-          }
-        }
-        // Nothing to compare, just flush what's left.
-        else if (li < r) {
-          result[i++] = arr[li++];
-        }
-        else if (ri < e) {
-          result[i++] = arr[ri++];
-        }
-        // Both iterators are at the chunk ends.
-        else {
-          break
-        }
-      }
-    }
-  };
+	      // Iterate both chunks in parallel.
+	      li = l;
+	      ri = r;
+	      while (true) {
+	        // Compare the chunks.
+	        if (li < r && ri < e) {
+	          // This works for a regular `sort()` compatible comparator,
+	          // but also for a simple comparator like: `a > b`
+	          if (comp(arr[li], arr[ri]) <= 0) {
+	            result[i++] = arr[li++];
+	          }
+	          else {
+	            result[i++] = arr[ri++];
+	          }
+	        }
+	        // Nothing to compare, just flush what's left.
+	        else if (li < r) {
+	          result[i++] = arr[li++];
+	        }
+	        else if (ri < e) {
+	          result[i++] = arr[ri++];
+	        }
+	        // Both iterators are at the chunk ends.
+	        else {
+	          break
+	        }
+	      }
+	    }
+	  };
 
-  return stable;
+	  return stable;
 
-})));
-}(stable$3));
+	})));
+} (stable$3));
 
 var specificity$4 = function specificity(simpleSelector) {
     var A = 0;
@@ -34459,7 +34542,7 @@ var specificity$4 = function specificity(simpleSelector) {
     return [A, B, C];
 };
 
-var csstree$5 = lib$1,
+var csstree$5 = lib$1.exports,
   List$6 = csstree$5.List,
   stable$2 = stable$3.exports,
   specificity$3 = specificity$4;
@@ -34697,7 +34780,7 @@ cssTools.csstreeToStyleDeclaration = csstreeToStyleDeclaration;
 cssTools.getCssStr = getCssStr;
 cssTools.setCssStr = setCssStr;
 
-var csstree$4 = lib$1,
+var csstree$4 = lib$1.exports,
   csstools = cssTools;
 
 var CSSStyleDeclaration$1 = function (node) {
@@ -35470,7 +35553,7 @@ var inlineStyles$1 = {};
  * @typedef {import('../lib/types').XastParent} XastParent
  */
 
-const csstree$3 = lib$1;
+const csstree$3 = lib$1.exports;
 // @ts-ignore not defined in @types/csso
 const specificity$2 = specificity$4;
 const stable$1 = stable$3.exports;
@@ -35933,7 +36016,7 @@ var utils$4 = {
     }
 };
 
-var resolveKeyword$4 = lib$1.keyword;
+var resolveKeyword$4 = lib$1.exports.keyword;
 var { hasNoChildren: hasNoChildren$1 } = utils$4;
 
 var Atrule$1 = function cleanAtrule(node, item, list) {
@@ -36004,7 +36087,7 @@ var Comment = function cleanComment(data, item, list) {
     list.remove(item);
 };
 
-var property = lib$1.property;
+var property = lib$1.exports.property;
 
 var Declaration = function cleanDeclartion(node, item, list) {
     if (node.value.children && node.value.children.isEmpty()) {
@@ -36030,7 +36113,7 @@ var Raw = function cleanRaw(node, item, list) {
 };
 
 var hasOwnProperty$3 = Object.prototype.hasOwnProperty;
-var walk$b = lib$1.walk;
+var walk$b = lib$1.exports.walk;
 var { hasNoChildren } = utils$4;
 
 function cleanUnused(selectorList, usageData) {
@@ -36174,7 +36257,7 @@ var WhiteSpace = function cleanWhitespace(node, item, list) {
     }
 };
 
-var walk$a = lib$1.walk;
+var walk$a = lib$1.exports.walk;
 var handlers$2 = {
     Atrule: Atrule$1,
     Comment: Comment,
@@ -36217,7 +36300,7 @@ var keyframes = function(node) {
     });
 };
 
-var resolveKeyword$3 = lib$1.keyword;
+var resolveKeyword$3 = lib$1.exports.keyword;
 var compressKeyframes = keyframes;
 
 var Atrule = function(node) {
@@ -36330,7 +36413,7 @@ var fontWeight = function compressFontWeight(node) {
     }
 };
 
-var List$5 = lib$1.List;
+var List$5 = lib$1.exports.List;
 
 var background = function compressBackground(node) {
     function lastType() {
@@ -36432,7 +36515,7 @@ var border = function compressBorder(node) {
     });
 };
 
-var resolveName = lib$1.property;
+var resolveName = lib$1.exports.property;
 var handlers$1 = {
     'font': font,
     'font-weight': fontWeight,
@@ -36558,7 +36641,7 @@ var Dimension = function compressDimension(node, item) {
     }
 };
 
-var lexer$1 = lib$1.lexer;
+var lexer$1 = lib$1.exports.lexer;
 var packNumber$1 = _Number.exports.pack;
 var blacklist = new Set([
     // see https://github.com/jakubpawlowicz/clean-css/issues/957
@@ -36642,7 +36725,7 @@ var Url = function(node) {
     }
 };
 
-var lexer = lib$1.lexer;
+var lexer = lib$1.exports.lexer;
 var packNumber = _Number.exports.pack;
 
 // http://www.w3.org/TR/css3-color/#svg-color
@@ -37153,7 +37236,7 @@ var color = {
     compressHex: compressHex
 };
 
-var walk$9 = lib$1.walk;
+var walk$9 = lib$1.exports.walk;
 var handlers = {
     Atrule: Atrule,
     AttributeSelector: AttributeSelector,
@@ -37178,7 +37261,7 @@ var replace$1 = function(ast) {
     });
 };
 
-var generate$5 = lib$1.generate;
+var generate$5 = lib$1.exports.generate;
 
 function Index() {
     this.seed = 0;
@@ -37210,7 +37293,7 @@ var createDeclarationIndexer$1 = function createDeclarationIndexer() {
     };
 };
 
-var generate$4 = lib$1.generate;
+var generate$4 = lib$1.exports.generate;
 var specificity$1 = specificity$4;
 
 var nonFreezePseudoElements = {
@@ -37305,9 +37388,9 @@ var processSelector$1 = function freeze(node, usageData) {
     node.pseudoSignature = hasPseudo && Object.keys(pseudos).sort().join(',');
 };
 
-var resolveKeyword$2 = lib$1.keyword;
-var walk$8 = lib$1.walk;
-var generate$3 = lib$1.generate;
+var resolveKeyword$2 = lib$1.exports.keyword;
+var walk$8 = lib$1.exports.walk;
+var generate$3 = lib$1.exports.generate;
 var createDeclarationIndexer = createDeclarationIndexer$1;
 var processSelector = processSelector$1;
 
@@ -37349,10 +37432,10 @@ var prepare$1 = function prepare(ast, options) {
     };
 };
 
-var List$4 = lib$1.List;
-var resolveKeyword$1 = lib$1.keyword;
+var List$4 = lib$1.exports.List;
+var resolveKeyword$1 = lib$1.exports.keyword;
 var hasOwnProperty$2 = Object.prototype.hasOwnProperty;
-var walk$7 = lib$1.walk;
+var walk$7 = lib$1.exports.walk;
 
 function addRuleToMap(map, item, list, single) {
     var node = item.data;
@@ -37608,7 +37691,7 @@ var utils$3 = {
     unsafeToSkipNode: unsafeToSkipNode
 };
 
-var walk$6 = lib$1.walk;
+var walk$6 = lib$1.exports.walk;
 var utils$2 = utils$3;
 
 function processRule$5(node, item, list) {
@@ -37656,8 +37739,8 @@ var _2InitialMergeRuleset = function initialMergeRule(ast) {
     });
 };
 
-var List$3 = lib$1.List;
-var walk$5 = lib$1.walk;
+var List$3 = lib$1.exports.List;
+var walk$5 = lib$1.exports.walk;
 
 function processRule$4(node, item, list) {
     var selectors = node.prelude.children;
@@ -37699,9 +37782,9 @@ var _3DisjoinRuleset = function disjoinRule(ast) {
     });
 };
 
-var List$2 = lib$1.List;
-var generate$2 = lib$1.generate;
-var walk$4 = lib$1.walk;
+var List$2 = lib$1.exports.List;
+var generate$2 = lib$1.exports.generate;
+var walk$4 = lib$1.exports.walk;
 
 var REPLACE = 1;
 var REMOVE = 2;
@@ -38132,10 +38215,10 @@ var _4RestructShorthand = function restructBlock(ast, indexer) {
     processShorthands(shortDeclarations, indexer.declaration);
 };
 
-var resolveProperty = lib$1.property;
-var resolveKeyword = lib$1.keyword;
-var walk$3 = lib$1.walk;
-var generate$1 = lib$1.generate;
+var resolveProperty = lib$1.exports.property;
+var resolveKeyword = lib$1.exports.keyword;
+var walk$3 = lib$1.exports.walk;
+var generate$1 = lib$1.exports.generate;
 var fingerprintId = 1;
 var dontRestructure = {
     'src': 1 // https://github.com/afelix/csso/issues/50
@@ -38433,7 +38516,7 @@ var _6RestructBlock = function restructBlock(ast) {
     });
 };
 
-var walk$2 = lib$1.walk;
+var walk$2 = lib$1.exports.walk;
 var utils$1 = utils$3;
 
 /*
@@ -38520,8 +38603,8 @@ var _7MergeRuleset = function mergeRule(ast) {
     });
 };
 
-var List$1 = lib$1.List;
-var walk$1 = lib$1.walk;
+var List$1 = lib$1.exports.List;
+var walk$1 = lib$1.exports.walk;
 var utils = utils$3;
 
 function calcSelectorLength(list) {
@@ -38734,13 +38817,13 @@ var restructure$1 = function(ast, options) {
     options.logger('restructRuleset', ast);
 };
 
-var List = lib$1.List;
-var clone = lib$1.clone;
+var List = lib$1.exports.List;
+var clone = lib$1.exports.clone;
 var usageUtils = usage;
 var clean = clean$1;
 var replace = replace$1;
 var restructure = restructure$1;
-var walk = lib$1.walk;
+var walk = lib$1.exports.walk;
 
 function readChunk(children, specialComments) {
     var buffer = new List();
@@ -39064,7 +39147,7 @@ var require$$2 = {
 	version: version
 };
 
-var csstree$2 = lib$1;
+var csstree$2 = lib$1.exports;
 var parse = csstree$2.parse;
 var compress = compress$1;
 var generate = csstree$2.generate;
@@ -40140,7 +40223,7 @@ var style = {};
  */
 
 const stable = stable$3.exports;
-const csstree$1 = lib$1;
+const csstree$1 = lib$1.exports;
 // @ts-ignore not defined in @types/csso
 const specificity = specificity$4;
 const { visit: visit$3, matches } = xast;
@@ -46136,7 +46219,7 @@ function g() {
 
 var prefixIds = {};
 
-const csstree = lib$1;
+const csstree = lib$1.exports;
 const { referencesProps } = _collections;
 
 /**
@@ -47253,61 +47336,61 @@ sortAttrs.fn = (_root, params) => {
 
 (function (exports) {
 
-// builtin presets
-exports['preset-default'] = presetDefault_1;
+	// builtin presets
+	exports['preset-default'] = presetDefault_1;
 
-// builtin plugins
-exports.addAttributesToSVGElement = addAttributesToSVGElement;
-exports.addClassesToSVGElement = addClassesToSVGElement;
-exports.cleanupAttrs = cleanupAttrs$1;
-exports.cleanupEnableBackground = cleanupEnableBackground$1;
-exports.cleanupIDs = cleanupIDs$1;
-exports.cleanupListOfValues = cleanupListOfValues;
-exports.cleanupNumericValues = cleanupNumericValues$1;
-exports.collapseGroups = collapseGroups$1;
-exports.convertColors = convertColors$1;
-exports.convertEllipseToCircle = convertEllipseToCircle$1;
-exports.convertPathData = convertPathData$1;
-exports.convertShapeToPath = convertShapeToPath$1;
-exports.convertStyleToAttrs = convertStyleToAttrs;
-exports.convertTransform = convertTransform$2;
-exports.mergeStyles = mergeStyles$1;
-exports.inlineStyles = inlineStyles$1;
-exports.mergePaths = mergePaths$1;
-exports.minifyStyles = minifyStyles$1;
-exports.moveElemsAttrsToGroup = moveElemsAttrsToGroup$1;
-exports.moveGroupAttrsToElems = moveGroupAttrsToElems$1;
-exports.prefixIds = prefixIds;
-exports.removeAttributesBySelector = removeAttributesBySelector;
-exports.removeAttrs = removeAttrs;
-exports.removeComments = removeComments$1;
-exports.removeDesc = removeDesc$1;
-exports.removeDimensions = removeDimensions;
-exports.removeDoctype = removeDoctype$1;
-exports.removeEditorsNSData = removeEditorsNSData$1;
-exports.removeElementsByAttr = removeElementsByAttr;
-exports.removeEmptyAttrs = removeEmptyAttrs$1;
-exports.removeEmptyContainers = removeEmptyContainers$1;
-exports.removeEmptyText = removeEmptyText$1;
-exports.removeHiddenElems = removeHiddenElems$1;
-exports.removeMetadata = removeMetadata$1;
-exports.removeNonInheritableGroupAttrs = removeNonInheritableGroupAttrs$1;
-exports.removeOffCanvasPaths = removeOffCanvasPaths;
-exports.removeRasterImages = removeRasterImages;
-exports.removeScriptElement = removeScriptElement;
-exports.removeStyleElement = removeStyleElement;
-exports.removeTitle = removeTitle$1;
-exports.removeUnknownsAndDefaults = removeUnknownsAndDefaults$1;
-exports.removeUnusedNS = removeUnusedNS$1;
-exports.removeUselessDefs = removeUselessDefs$1;
-exports.removeUselessStrokeAndFill = removeUselessStrokeAndFill$1;
-exports.removeViewBox = removeViewBox$1;
-exports.removeXMLNS = removeXMLNS;
-exports.removeXMLProcInst = removeXMLProcInst$1;
-exports.reusePaths = reusePaths;
-exports.sortAttrs = sortAttrs;
-exports.sortDefsChildren = sortDefsChildren$1;
-}(plugins$1));
+	// builtin plugins
+	exports.addAttributesToSVGElement = addAttributesToSVGElement;
+	exports.addClassesToSVGElement = addClassesToSVGElement;
+	exports.cleanupAttrs = cleanupAttrs$1;
+	exports.cleanupEnableBackground = cleanupEnableBackground$1;
+	exports.cleanupIDs = cleanupIDs$1;
+	exports.cleanupListOfValues = cleanupListOfValues;
+	exports.cleanupNumericValues = cleanupNumericValues$1;
+	exports.collapseGroups = collapseGroups$1;
+	exports.convertColors = convertColors$1;
+	exports.convertEllipseToCircle = convertEllipseToCircle$1;
+	exports.convertPathData = convertPathData$1;
+	exports.convertShapeToPath = convertShapeToPath$1;
+	exports.convertStyleToAttrs = convertStyleToAttrs;
+	exports.convertTransform = convertTransform$2;
+	exports.mergeStyles = mergeStyles$1;
+	exports.inlineStyles = inlineStyles$1;
+	exports.mergePaths = mergePaths$1;
+	exports.minifyStyles = minifyStyles$1;
+	exports.moveElemsAttrsToGroup = moveElemsAttrsToGroup$1;
+	exports.moveGroupAttrsToElems = moveGroupAttrsToElems$1;
+	exports.prefixIds = prefixIds;
+	exports.removeAttributesBySelector = removeAttributesBySelector;
+	exports.removeAttrs = removeAttrs;
+	exports.removeComments = removeComments$1;
+	exports.removeDesc = removeDesc$1;
+	exports.removeDimensions = removeDimensions;
+	exports.removeDoctype = removeDoctype$1;
+	exports.removeEditorsNSData = removeEditorsNSData$1;
+	exports.removeElementsByAttr = removeElementsByAttr;
+	exports.removeEmptyAttrs = removeEmptyAttrs$1;
+	exports.removeEmptyContainers = removeEmptyContainers$1;
+	exports.removeEmptyText = removeEmptyText$1;
+	exports.removeHiddenElems = removeHiddenElems$1;
+	exports.removeMetadata = removeMetadata$1;
+	exports.removeNonInheritableGroupAttrs = removeNonInheritableGroupAttrs$1;
+	exports.removeOffCanvasPaths = removeOffCanvasPaths;
+	exports.removeRasterImages = removeRasterImages;
+	exports.removeScriptElement = removeScriptElement;
+	exports.removeStyleElement = removeStyleElement;
+	exports.removeTitle = removeTitle$1;
+	exports.removeUnknownsAndDefaults = removeUnknownsAndDefaults$1;
+	exports.removeUnusedNS = removeUnusedNS$1;
+	exports.removeUselessDefs = removeUselessDefs$1;
+	exports.removeUselessStrokeAndFill = removeUselessStrokeAndFill$1;
+	exports.removeViewBox = removeViewBox$1;
+	exports.removeXMLNS = removeXMLNS;
+	exports.removeXMLProcInst = removeXMLProcInst$1;
+	exports.reusePaths = reusePaths;
+	exports.sortAttrs = sortAttrs;
+	exports.sortDefsChildren = sortDefsChildren$1;
+} (plugins$1));
 
 const pluginsMap = plugins$1;
 
@@ -47452,1417 +47535,1417 @@ var sax = {};
 
 (function (exports) {
 (function (sax) { // wrapper for non-node envs
-  sax.parser = function (strict, opt) { return new SAXParser(strict, opt) };
-  sax.SAXParser = SAXParser;
-
-  // When we pass the MAX_BUFFER_LENGTH position, start checking for buffer overruns.
-  // When we check, schedule the next check for MAX_BUFFER_LENGTH - (max(buffer lengths)),
-  // since that's the earliest that a buffer overrun could occur.  This way, checks are
-  // as rare as required, but as often as necessary to ensure never crossing this bound.
-  // Furthermore, buffers are only tested at most once per write(), so passing a very
-  // large string into write() might have undesirable effects, but this is manageable by
-  // the caller, so it is assumed to be safe.  Thus, a call to write() may, in the extreme
-  // edge case, result in creating at most one complete copy of the string passed in.
-  // Set to Infinity to have unlimited buffers.
-  sax.MAX_BUFFER_LENGTH = 64 * 1024;
-
-  var buffers = [
-    'comment', 'sgmlDecl', 'textNode', 'tagName', 'doctype',
-    'procInstName', 'procInstBody', 'entity', 'attribName',
-    'attribValue', 'cdata', 'script'
-  ];
-
-  sax.EVENTS = [
-    'text',
-    'processinginstruction',
-    'sgmldeclaration',
-    'doctype',
-    'comment',
-    'opentagstart',
-    'attribute',
-    'opentag',
-    'closetag',
-    'opencdata',
-    'cdata',
-    'closecdata',
-    'error',
-    'end',
-    'ready',
-    'script',
-    'opennamespace',
-    'closenamespace'
-  ];
-
-  function SAXParser (strict, opt) {
-    if (!(this instanceof SAXParser)) {
-      return new SAXParser(strict, opt)
-    }
-
-    var parser = this;
-    clearBuffers(parser);
-    parser.q = parser.c = '';
-    parser.bufferCheckPosition = sax.MAX_BUFFER_LENGTH;
-    parser.opt = opt || {};
-    parser.opt.lowercase = parser.opt.lowercase || parser.opt.lowercasetags;
-    parser.looseCase = parser.opt.lowercase ? 'toLowerCase' : 'toUpperCase';
-    parser.tags = [];
-    parser.closed = parser.closedRoot = parser.sawRoot = false;
-    parser.tag = parser.error = null;
-    parser.strict = !!strict;
-    parser.noscript = !!(strict || parser.opt.noscript);
-    parser.state = S.BEGIN;
-    parser.strictEntities = parser.opt.strictEntities;
-    parser.ENTITIES = parser.strictEntities ? Object.create(sax.XML_ENTITIES) : Object.create(sax.ENTITIES);
-    parser.attribList = [];
-
-    // namespaces form a prototype chain.
-    // it always points at the current tag,
-    // which protos to its parent tag.
-    if (parser.opt.xmlns) {
-      parser.ns = Object.create(rootNS);
-    }
-
-    // mostly just for error reporting
-    parser.trackPosition = parser.opt.position !== false;
-    if (parser.trackPosition) {
-      parser.position = parser.line = parser.column = 0;
-    }
-    emit(parser, 'onready');
-  }
-
-  if (!Object.create) {
-    Object.create = function (o) {
-      function F () {}
-      F.prototype = o;
-      var newf = new F();
-      return newf
-    };
-  }
-
-  if (!Object.keys) {
-    Object.keys = function (o) {
-      var a = [];
-      for (var i in o) if (o.hasOwnProperty(i)) a.push(i);
-      return a
-    };
-  }
-
-  function checkBufferLength (parser) {
-    var maxAllowed = Math.max(sax.MAX_BUFFER_LENGTH, 10);
-    var maxActual = 0;
-    for (var i = 0, l = buffers.length; i < l; i++) {
-      var len = parser[buffers[i]].length;
-      if (len > maxAllowed) {
-        // Text/cdata nodes can get big, and since they're buffered,
-        // we can get here under normal conditions.
-        // Avoid issues by emitting the text node now,
-        // so at least it won't get any bigger.
-        switch (buffers[i]) {
-          case 'textNode':
-            closeText(parser);
-            break
-
-          case 'cdata':
-            emitNode(parser, 'oncdata', parser.cdata);
-            parser.cdata = '';
-            break
-
-          case 'script':
-            emitNode(parser, 'onscript', parser.script);
-            parser.script = '';
-            break
-
-          default:
-            error(parser, 'Max buffer length exceeded: ' + buffers[i]);
-        }
-      }
-      maxActual = Math.max(maxActual, len);
-    }
-    // schedule the next check for the earliest possible buffer overrun.
-    var m = sax.MAX_BUFFER_LENGTH - maxActual;
-    parser.bufferCheckPosition = m + parser.position;
-  }
-
-  function clearBuffers (parser) {
-    for (var i = 0, l = buffers.length; i < l; i++) {
-      parser[buffers[i]] = '';
-    }
-  }
-
-  function flushBuffers (parser) {
-    closeText(parser);
-    if (parser.cdata !== '') {
-      emitNode(parser, 'oncdata', parser.cdata);
-      parser.cdata = '';
-    }
-    if (parser.script !== '') {
-      emitNode(parser, 'onscript', parser.script);
-      parser.script = '';
-    }
-  }
-
-  SAXParser.prototype = {
-    end: function () { end(this); },
-    write: write,
-    resume: function () { this.error = null; return this },
-    close: function () { return this.write(null) },
-    flush: function () { flushBuffers(this); }
-  };
-
-  // this really needs to be replaced with character classes.
-  // XML allows all manner of ridiculous numbers and digits.
-  var CDATA = '[CDATA[';
-  var DOCTYPE = 'DOCTYPE';
-  var XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
-  var XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
-  var rootNS = { xml: XML_NAMESPACE, xmlns: XMLNS_NAMESPACE };
-
-  // http://www.w3.org/TR/REC-xml/#NT-NameStartChar
-  // This implementation works on strings, a single character at a time
-  // as such, it cannot ever support astral-plane characters (10000-EFFFF)
-  // without a significant breaking change to either this  parser, or the
-  // JavaScript language.  Implementation of an emoji-capable xml parser
-  // is left as an exercise for the reader.
-  var nameStart = /[:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]/;
-
-  var nameBody = /[:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u00B7\u0300-\u036F\u203F-\u2040.\d-]/;
-
-  var entityStart = /[#:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]/;
-  var entityBody = /[#:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u00B7\u0300-\u036F\u203F-\u2040.\d-]/;
-
-  function isWhitespace (c) {
-    return c === ' ' || c === '\n' || c === '\r' || c === '\t'
-  }
-
-  function isQuote (c) {
-    return c === '"' || c === '\''
-  }
-
-  function isAttribEnd (c) {
-    return c === '>' || isWhitespace(c)
-  }
-
-  function isMatch (regex, c) {
-    return regex.test(c)
-  }
-
-  function notMatch (regex, c) {
-    return !isMatch(regex, c)
-  }
-
-  var S = 0;
-  sax.STATE = {
-    BEGIN: S++, // leading byte order mark or whitespace
-    BEGIN_WHITESPACE: S++, // leading whitespace
-    TEXT: S++, // general stuff
-    TEXT_ENTITY: S++, // &amp and such.
-    OPEN_WAKA: S++, // <
-    SGML_DECL: S++, // <!BLARG
-    SGML_DECL_QUOTED: S++, // <!BLARG foo "bar
-    DOCTYPE: S++, // <!DOCTYPE
-    DOCTYPE_QUOTED: S++, // <!DOCTYPE "//blah
-    DOCTYPE_DTD: S++, // <!DOCTYPE "//blah" [ ...
-    DOCTYPE_DTD_QUOTED: S++, // <!DOCTYPE "//blah" [ "foo
-    COMMENT_STARTING: S++, // <!-
-    COMMENT: S++, // <!--
-    COMMENT_ENDING: S++, // <!-- blah -
-    COMMENT_ENDED: S++, // <!-- blah --
-    CDATA: S++, // <![CDATA[ something
-    CDATA_ENDING: S++, // ]
-    CDATA_ENDING_2: S++, // ]]
-    PROC_INST: S++, // <?hi
-    PROC_INST_BODY: S++, // <?hi there
-    PROC_INST_ENDING: S++, // <?hi "there" ?
-    OPEN_TAG: S++, // <strong
-    OPEN_TAG_SLASH: S++, // <strong /
-    ATTRIB: S++, // <a
-    ATTRIB_NAME: S++, // <a foo
-    ATTRIB_NAME_SAW_WHITE: S++, // <a foo _
-    ATTRIB_VALUE: S++, // <a foo=
-    ATTRIB_VALUE_QUOTED: S++, // <a foo="bar
-    ATTRIB_VALUE_CLOSED: S++, // <a foo="bar"
-    ATTRIB_VALUE_UNQUOTED: S++, // <a foo=bar
-    ATTRIB_VALUE_ENTITY_Q: S++, // <foo bar="&quot;"
-    ATTRIB_VALUE_ENTITY_U: S++, // <foo bar=&quot
-    CLOSE_TAG: S++, // </a
-    CLOSE_TAG_SAW_WHITE: S++, // </a   >
-    SCRIPT: S++, // <script> ...
-    SCRIPT_ENDING: S++ // <script> ... <
-  };
-
-  sax.XML_ENTITIES = {
-    'amp': '&',
-    'gt': '>',
-    'lt': '<',
-    'quot': '"',
-    'apos': "'"
-  };
-
-  sax.ENTITIES = {
-    'amp': '&',
-    'gt': '>',
-    'lt': '<',
-    'quot': '"',
-    'apos': "'",
-    'AElig': 198,
-    'Aacute': 193,
-    'Acirc': 194,
-    'Agrave': 192,
-    'Aring': 197,
-    'Atilde': 195,
-    'Auml': 196,
-    'Ccedil': 199,
-    'ETH': 208,
-    'Eacute': 201,
-    'Ecirc': 202,
-    'Egrave': 200,
-    'Euml': 203,
-    'Iacute': 205,
-    'Icirc': 206,
-    'Igrave': 204,
-    'Iuml': 207,
-    'Ntilde': 209,
-    'Oacute': 211,
-    'Ocirc': 212,
-    'Ograve': 210,
-    'Oslash': 216,
-    'Otilde': 213,
-    'Ouml': 214,
-    'THORN': 222,
-    'Uacute': 218,
-    'Ucirc': 219,
-    'Ugrave': 217,
-    'Uuml': 220,
-    'Yacute': 221,
-    'aacute': 225,
-    'acirc': 226,
-    'aelig': 230,
-    'agrave': 224,
-    'aring': 229,
-    'atilde': 227,
-    'auml': 228,
-    'ccedil': 231,
-    'eacute': 233,
-    'ecirc': 234,
-    'egrave': 232,
-    'eth': 240,
-    'euml': 235,
-    'iacute': 237,
-    'icirc': 238,
-    'igrave': 236,
-    'iuml': 239,
-    'ntilde': 241,
-    'oacute': 243,
-    'ocirc': 244,
-    'ograve': 242,
-    'oslash': 248,
-    'otilde': 245,
-    'ouml': 246,
-    'szlig': 223,
-    'thorn': 254,
-    'uacute': 250,
-    'ucirc': 251,
-    'ugrave': 249,
-    'uuml': 252,
-    'yacute': 253,
-    'yuml': 255,
-    'copy': 169,
-    'reg': 174,
-    'nbsp': 160,
-    'iexcl': 161,
-    'cent': 162,
-    'pound': 163,
-    'curren': 164,
-    'yen': 165,
-    'brvbar': 166,
-    'sect': 167,
-    'uml': 168,
-    'ordf': 170,
-    'laquo': 171,
-    'not': 172,
-    'shy': 173,
-    'macr': 175,
-    'deg': 176,
-    'plusmn': 177,
-    'sup1': 185,
-    'sup2': 178,
-    'sup3': 179,
-    'acute': 180,
-    'micro': 181,
-    'para': 182,
-    'middot': 183,
-    'cedil': 184,
-    'ordm': 186,
-    'raquo': 187,
-    'frac14': 188,
-    'frac12': 189,
-    'frac34': 190,
-    'iquest': 191,
-    'times': 215,
-    'divide': 247,
-    'OElig': 338,
-    'oelig': 339,
-    'Scaron': 352,
-    'scaron': 353,
-    'Yuml': 376,
-    'fnof': 402,
-    'circ': 710,
-    'tilde': 732,
-    'Alpha': 913,
-    'Beta': 914,
-    'Gamma': 915,
-    'Delta': 916,
-    'Epsilon': 917,
-    'Zeta': 918,
-    'Eta': 919,
-    'Theta': 920,
-    'Iota': 921,
-    'Kappa': 922,
-    'Lambda': 923,
-    'Mu': 924,
-    'Nu': 925,
-    'Xi': 926,
-    'Omicron': 927,
-    'Pi': 928,
-    'Rho': 929,
-    'Sigma': 931,
-    'Tau': 932,
-    'Upsilon': 933,
-    'Phi': 934,
-    'Chi': 935,
-    'Psi': 936,
-    'Omega': 937,
-    'alpha': 945,
-    'beta': 946,
-    'gamma': 947,
-    'delta': 948,
-    'epsilon': 949,
-    'zeta': 950,
-    'eta': 951,
-    'theta': 952,
-    'iota': 953,
-    'kappa': 954,
-    'lambda': 955,
-    'mu': 956,
-    'nu': 957,
-    'xi': 958,
-    'omicron': 959,
-    'pi': 960,
-    'rho': 961,
-    'sigmaf': 962,
-    'sigma': 963,
-    'tau': 964,
-    'upsilon': 965,
-    'phi': 966,
-    'chi': 967,
-    'psi': 968,
-    'omega': 969,
-    'thetasym': 977,
-    'upsih': 978,
-    'piv': 982,
-    'ensp': 8194,
-    'emsp': 8195,
-    'thinsp': 8201,
-    'zwnj': 8204,
-    'zwj': 8205,
-    'lrm': 8206,
-    'rlm': 8207,
-    'ndash': 8211,
-    'mdash': 8212,
-    'lsquo': 8216,
-    'rsquo': 8217,
-    'sbquo': 8218,
-    'ldquo': 8220,
-    'rdquo': 8221,
-    'bdquo': 8222,
-    'dagger': 8224,
-    'Dagger': 8225,
-    'bull': 8226,
-    'hellip': 8230,
-    'permil': 8240,
-    'prime': 8242,
-    'Prime': 8243,
-    'lsaquo': 8249,
-    'rsaquo': 8250,
-    'oline': 8254,
-    'frasl': 8260,
-    'euro': 8364,
-    'image': 8465,
-    'weierp': 8472,
-    'real': 8476,
-    'trade': 8482,
-    'alefsym': 8501,
-    'larr': 8592,
-    'uarr': 8593,
-    'rarr': 8594,
-    'darr': 8595,
-    'harr': 8596,
-    'crarr': 8629,
-    'lArr': 8656,
-    'uArr': 8657,
-    'rArr': 8658,
-    'dArr': 8659,
-    'hArr': 8660,
-    'forall': 8704,
-    'part': 8706,
-    'exist': 8707,
-    'empty': 8709,
-    'nabla': 8711,
-    'isin': 8712,
-    'notin': 8713,
-    'ni': 8715,
-    'prod': 8719,
-    'sum': 8721,
-    'minus': 8722,
-    'lowast': 8727,
-    'radic': 8730,
-    'prop': 8733,
-    'infin': 8734,
-    'ang': 8736,
-    'and': 8743,
-    'or': 8744,
-    'cap': 8745,
-    'cup': 8746,
-    'int': 8747,
-    'there4': 8756,
-    'sim': 8764,
-    'cong': 8773,
-    'asymp': 8776,
-    'ne': 8800,
-    'equiv': 8801,
-    'le': 8804,
-    'ge': 8805,
-    'sub': 8834,
-    'sup': 8835,
-    'nsub': 8836,
-    'sube': 8838,
-    'supe': 8839,
-    'oplus': 8853,
-    'otimes': 8855,
-    'perp': 8869,
-    'sdot': 8901,
-    'lceil': 8968,
-    'rceil': 8969,
-    'lfloor': 8970,
-    'rfloor': 8971,
-    'lang': 9001,
-    'rang': 9002,
-    'loz': 9674,
-    'spades': 9824,
-    'clubs': 9827,
-    'hearts': 9829,
-    'diams': 9830
-  };
-
-  Object.keys(sax.ENTITIES).forEach(function (key) {
-    var e = sax.ENTITIES[key];
-    var s = typeof e === 'number' ? String.fromCharCode(e) : e;
-    sax.ENTITIES[key] = s;
-  });
-
-  for (var s in sax.STATE) {
-    sax.STATE[sax.STATE[s]] = s;
-  }
-
-  // shorthand
-  S = sax.STATE;
-
-  function emit (parser, event, data) {
-    parser[event] && parser[event](data);
-  }
-
-  function emitNode (parser, nodeType, data) {
-    if (parser.textNode) closeText(parser);
-    emit(parser, nodeType, data);
-  }
-
-  function closeText (parser) {
-    parser.textNode = textopts(parser.opt, parser.textNode);
-    if (parser.textNode) emit(parser, 'ontext', parser.textNode);
-    parser.textNode = '';
-  }
-
-  function textopts (opt, text) {
-    if (opt.trim) text = text.trim();
-    if (opt.normalize) text = text.replace(/\s+/g, ' ');
-    return text
-  }
-
-  function error (parser, reason) {
-    closeText(parser);
-    const message = reason +
-      '\nLine: ' + parser.line +
-      '\nColumn: ' + parser.column +
-      '\nChar: ' + parser.c;
-    const error = new Error(message);
-    error.reason = reason;
-    error.line = parser.line;
-    error.column = parser.column;
-    parser.error = error;
-    emit(parser, 'onerror', error);
-    return parser
-  }
-
-  function end (parser) {
-    if (parser.sawRoot && !parser.closedRoot) strictFail(parser, 'Unclosed root tag');
-    if ((parser.state !== S.BEGIN) &&
-      (parser.state !== S.BEGIN_WHITESPACE) &&
-      (parser.state !== S.TEXT)) {
-      error(parser, 'Unexpected end');
-    }
-    closeText(parser);
-    parser.c = '';
-    parser.closed = true;
-    emit(parser, 'onend');
-    SAXParser.call(parser, parser.strict, parser.opt);
-    return parser
-  }
-
-  function strictFail (parser, message) {
-    if (typeof parser !== 'object' || !(parser instanceof SAXParser)) {
-      throw new Error('bad call to strictFail')
-    }
-    if (parser.strict) {
-      error(parser, message);
-    }
-  }
-
-  function newTag (parser) {
-    if (!parser.strict) parser.tagName = parser.tagName[parser.looseCase]();
-    var parent = parser.tags[parser.tags.length - 1] || parser;
-    var tag = parser.tag = { name: parser.tagName, attributes: {} };
-
-    // will be overridden if tag contails an xmlns="foo" or xmlns:foo="bar"
-    if (parser.opt.xmlns) {
-      tag.ns = parent.ns;
-    }
-    parser.attribList.length = 0;
-    emitNode(parser, 'onopentagstart', tag);
-  }
-
-  function qname (name, attribute) {
-    var i = name.indexOf(':');
-    var qualName = i < 0 ? [ '', name ] : name.split(':');
-    var prefix = qualName[0];
-    var local = qualName[1];
-
-    // <x "xmlns"="http://foo">
-    if (attribute && name === 'xmlns') {
-      prefix = 'xmlns';
-      local = '';
-    }
-
-    return { prefix: prefix, local: local }
-  }
-
-  function attrib (parser) {
-    if (!parser.strict) {
-      parser.attribName = parser.attribName[parser.looseCase]();
-    }
-
-    if (parser.attribList.indexOf(parser.attribName) !== -1 ||
-      parser.tag.attributes.hasOwnProperty(parser.attribName)) {
-      parser.attribName = parser.attribValue = '';
-      return
-    }
-
-    if (parser.opt.xmlns) {
-      var qn = qname(parser.attribName, true);
-      var prefix = qn.prefix;
-      var local = qn.local;
-
-      if (prefix === 'xmlns') {
-        // namespace binding attribute. push the binding into scope
-        if (local === 'xml' && parser.attribValue !== XML_NAMESPACE) {
-          strictFail(parser,
-            'xml: prefix must be bound to ' + XML_NAMESPACE + '\n' +
-            'Actual: ' + parser.attribValue);
-        } else if (local === 'xmlns' && parser.attribValue !== XMLNS_NAMESPACE) {
-          strictFail(parser,
-            'xmlns: prefix must be bound to ' + XMLNS_NAMESPACE + '\n' +
-            'Actual: ' + parser.attribValue);
-        } else {
-          var tag = parser.tag;
-          var parent = parser.tags[parser.tags.length - 1] || parser;
-          if (tag.ns === parent.ns) {
-            tag.ns = Object.create(parent.ns);
-          }
-          tag.ns[local] = parser.attribValue;
-        }
-      }
-
-      // defer onattribute events until all attributes have been seen
-      // so any new bindings can take effect. preserve attribute order
-      // so deferred events can be emitted in document order
-      parser.attribList.push([parser.attribName, parser.attribValue]);
-    } else {
-      // in non-xmlns mode, we can emit the event right away
-      parser.tag.attributes[parser.attribName] = parser.attribValue;
-      emitNode(parser, 'onattribute', {
-        name: parser.attribName,
-        value: parser.attribValue
-      });
-    }
-
-    parser.attribName = parser.attribValue = '';
-  }
-
-  function openTag (parser, selfClosing) {
-    if (parser.opt.xmlns) {
-      // emit namespace binding events
-      var tag = parser.tag;
-
-      // add namespace info to tag
-      var qn = qname(parser.tagName);
-      tag.prefix = qn.prefix;
-      tag.local = qn.local;
-      tag.uri = tag.ns[qn.prefix] || '';
-
-      if (tag.prefix && !tag.uri) {
-        strictFail(parser, 'Unbound namespace prefix: ' +
-          JSON.stringify(parser.tagName));
-        tag.uri = qn.prefix;
-      }
-
-      var parent = parser.tags[parser.tags.length - 1] || parser;
-      if (tag.ns && parent.ns !== tag.ns) {
-        Object.keys(tag.ns).forEach(function (p) {
-          emitNode(parser, 'onopennamespace', {
-            prefix: p,
-            uri: tag.ns[p]
-          });
-        });
-      }
-
-      // handle deferred onattribute events
-      // Note: do not apply default ns to attributes:
-      //   http://www.w3.org/TR/REC-xml-names/#defaulting
-      for (var i = 0, l = parser.attribList.length; i < l; i++) {
-        var nv = parser.attribList[i];
-        var name = nv[0];
-        var value = nv[1];
-        var qualName = qname(name, true);
-        var prefix = qualName.prefix;
-        var local = qualName.local;
-        var uri = prefix === '' ? '' : (tag.ns[prefix] || '');
-        var a = {
-          name: name,
-          value: value,
-          prefix: prefix,
-          local: local,
-          uri: uri
-        };
-
-        // if there's any attributes with an undefined namespace,
-        // then fail on them now.
-        if (prefix && prefix !== 'xmlns' && !uri) {
-          strictFail(parser, 'Unbound namespace prefix: ' +
-            JSON.stringify(prefix));
-          a.uri = prefix;
-        }
-        parser.tag.attributes[name] = a;
-        emitNode(parser, 'onattribute', a);
-      }
-      parser.attribList.length = 0;
-    }
-
-    parser.tag.isSelfClosing = !!selfClosing;
-
-    // process the tag
-    parser.sawRoot = true;
-    parser.tags.push(parser.tag);
-    emitNode(parser, 'onopentag', parser.tag);
-    if (!selfClosing) {
-      // special case for <script> in non-strict mode.
-      if (!parser.noscript && parser.tagName.toLowerCase() === 'script') {
-        parser.state = S.SCRIPT;
-      } else {
-        parser.state = S.TEXT;
-      }
-      parser.tag = null;
-      parser.tagName = '';
-    }
-    parser.attribName = parser.attribValue = '';
-    parser.attribList.length = 0;
-  }
-
-  function closeTag (parser) {
-    if (!parser.tagName) {
-      strictFail(parser, 'Weird empty close tag.');
-      parser.textNode += '</>';
-      parser.state = S.TEXT;
-      return
-    }
-
-    if (parser.script) {
-      if (parser.tagName !== 'script') {
-        parser.script += '</' + parser.tagName + '>';
-        parser.tagName = '';
-        parser.state = S.SCRIPT;
-        return
-      }
-      emitNode(parser, 'onscript', parser.script);
-      parser.script = '';
-    }
-
-    // first make sure that the closing tag actually exists.
-    // <a><b></c></b></a> will close everything, otherwise.
-    var t = parser.tags.length;
-    var tagName = parser.tagName;
-    if (!parser.strict) {
-      tagName = tagName[parser.looseCase]();
-    }
-    var closeTo = tagName;
-    while (t--) {
-      var close = parser.tags[t];
-      if (close.name !== closeTo) {
-        // fail the first time in strict mode
-        strictFail(parser, 'Unexpected close tag');
-      } else {
-        break
-      }
-    }
-
-    // didn't find it.  we already failed for strict, so just abort.
-    if (t < 0) {
-      strictFail(parser, 'Unmatched closing tag: ' + parser.tagName);
-      parser.textNode += '</' + parser.tagName + '>';
-      parser.state = S.TEXT;
-      return
-    }
-    parser.tagName = tagName;
-    var s = parser.tags.length;
-    while (s-- > t) {
-      var tag = parser.tag = parser.tags.pop();
-      parser.tagName = parser.tag.name;
-      emitNode(parser, 'onclosetag', parser.tagName);
-
-      var x = {};
-      for (var i in tag.ns) {
-        x[i] = tag.ns[i];
-      }
-
-      var parent = parser.tags[parser.tags.length - 1] || parser;
-      if (parser.opt.xmlns && tag.ns !== parent.ns) {
-        // remove namespace bindings introduced by tag
-        Object.keys(tag.ns).forEach(function (p) {
-          var n = tag.ns[p];
-          emitNode(parser, 'onclosenamespace', { prefix: p, uri: n });
-        });
-      }
-    }
-    if (t === 0) parser.closedRoot = true;
-    parser.tagName = parser.attribValue = parser.attribName = '';
-    parser.attribList.length = 0;
-    parser.state = S.TEXT;
-  }
-
-  function parseEntity (parser) {
-    var entity = parser.entity;
-    var entityLC = entity.toLowerCase();
-    var num;
-    var numStr = '';
-
-    if (parser.ENTITIES[entity]) {
-      return parser.ENTITIES[entity]
-    }
-    if (parser.ENTITIES[entityLC]) {
-      return parser.ENTITIES[entityLC]
-    }
-    entity = entityLC;
-    if (entity.charAt(0) === '#') {
-      if (entity.charAt(1) === 'x') {
-        entity = entity.slice(2);
-        num = parseInt(entity, 16);
-        numStr = num.toString(16);
-      } else {
-        entity = entity.slice(1);
-        num = parseInt(entity, 10);
-        numStr = num.toString(10);
-      }
-    }
-    entity = entity.replace(/^0+/, '');
-    if (isNaN(num) || numStr.toLowerCase() !== entity) {
-      strictFail(parser, 'Invalid character entity');
-      return '&' + parser.entity + ';'
-    }
-
-    return String.fromCodePoint(num)
-  }
-
-  function beginWhiteSpace (parser, c) {
-    if (c === '<') {
-      parser.state = S.OPEN_WAKA;
-      parser.startTagPosition = parser.position;
-    } else if (!isWhitespace(c)) {
-      // have to process this as a text node.
-      // weird, but happens.
-      strictFail(parser, 'Non-whitespace before first tag.');
-      parser.textNode = c;
-      parser.state = S.TEXT;
-    }
-  }
-
-  function charAt (chunk, i) {
-    var result = '';
-    if (i < chunk.length) {
-      result = chunk.charAt(i);
-    }
-    return result
-  }
-
-  function write (chunk) {
-    var parser = this;
-    if (this.error) {
-      throw this.error
-    }
-    if (parser.closed) {
-      return error(parser,
-        'Cannot write after close. Assign an onready handler.')
-    }
-    if (chunk === null) {
-      return end(parser)
-    }
-    if (typeof chunk === 'object') {
-      chunk = chunk.toString();
-    }
-    var i = 0;
-    var c = '';
-    while (true) {
-      c = charAt(chunk, i++);
-      parser.c = c;
-
-      if (!c) {
-        break
-      }
-
-      if (parser.trackPosition) {
-        parser.position++;
-        if (c === '\n') {
-          parser.line++;
-          parser.column = 0;
-        } else {
-          parser.column++;
-        }
-      }
-
-      switch (parser.state) {
-        case S.BEGIN:
-          parser.state = S.BEGIN_WHITESPACE;
-          if (c === '\uFEFF') {
-            continue
-          }
-          beginWhiteSpace(parser, c);
-          continue
-
-        case S.BEGIN_WHITESPACE:
-          beginWhiteSpace(parser, c);
-          continue
-
-        case S.TEXT:
-          if (parser.sawRoot && !parser.closedRoot) {
-            var starti = i - 1;
-            while (c && c !== '<' && c !== '&') {
-              c = charAt(chunk, i++);
-              if (c && parser.trackPosition) {
-                parser.position++;
-                if (c === '\n') {
-                  parser.line++;
-                  parser.column = 0;
-                } else {
-                  parser.column++;
-                }
-              }
-            }
-            parser.textNode += chunk.substring(starti, i - 1);
-          }
-          if (c === '<' && !(parser.sawRoot && parser.closedRoot && !parser.strict)) {
-            parser.state = S.OPEN_WAKA;
-            parser.startTagPosition = parser.position;
-          } else {
-            if (!isWhitespace(c) && (!parser.sawRoot || parser.closedRoot)) {
-              strictFail(parser, 'Text data outside of root node.');
-            }
-            if (c === '&') {
-              parser.state = S.TEXT_ENTITY;
-            } else {
-              parser.textNode += c;
-            }
-          }
-          continue
-
-        case S.SCRIPT:
-          // only non-strict
-          if (c === '<') {
-            parser.state = S.SCRIPT_ENDING;
-          } else {
-            parser.script += c;
-          }
-          continue
-
-        case S.SCRIPT_ENDING:
-          if (c === '/') {
-            parser.state = S.CLOSE_TAG;
-          } else {
-            parser.script += '<' + c;
-            parser.state = S.SCRIPT;
-          }
-          continue
-
-        case S.OPEN_WAKA:
-          // either a /, ?, !, or text is coming next.
-          if (c === '!') {
-            parser.state = S.SGML_DECL;
-            parser.sgmlDecl = '';
-          } else if (isWhitespace(c)) ; else if (isMatch(nameStart, c)) {
-            parser.state = S.OPEN_TAG;
-            parser.tagName = c;
-          } else if (c === '/') {
-            parser.state = S.CLOSE_TAG;
-            parser.tagName = '';
-          } else if (c === '?') {
-            parser.state = S.PROC_INST;
-            parser.procInstName = parser.procInstBody = '';
-          } else {
-            strictFail(parser, 'Unencoded <');
-            // if there was some whitespace, then add that in.
-            if (parser.startTagPosition + 1 < parser.position) {
-              var pad = parser.position - parser.startTagPosition;
-              c = new Array(pad).join(' ') + c;
-            }
-            parser.textNode += '<' + c;
-            parser.state = S.TEXT;
-          }
-          continue
-
-        case S.SGML_DECL:
-          if ((parser.sgmlDecl + c).toUpperCase() === CDATA) {
-            emitNode(parser, 'onopencdata');
-            parser.state = S.CDATA;
-            parser.sgmlDecl = '';
-            parser.cdata = '';
-          } else if (parser.sgmlDecl + c === '--') {
-            parser.state = S.COMMENT;
-            parser.comment = '';
-            parser.sgmlDecl = '';
-          } else if ((parser.sgmlDecl + c).toUpperCase() === DOCTYPE) {
-            parser.state = S.DOCTYPE;
-            if (parser.doctype || parser.sawRoot) {
-              strictFail(parser,
-                'Inappropriately located doctype declaration');
-            }
-            parser.doctype = '';
-            parser.sgmlDecl = '';
-          } else if (c === '>') {
-            emitNode(parser, 'onsgmldeclaration', parser.sgmlDecl);
-            parser.sgmlDecl = '';
-            parser.state = S.TEXT;
-          } else if (isQuote(c)) {
-            parser.state = S.SGML_DECL_QUOTED;
-            parser.sgmlDecl += c;
-          } else {
-            parser.sgmlDecl += c;
-          }
-          continue
-
-        case S.SGML_DECL_QUOTED:
-          if (c === parser.q) {
-            parser.state = S.SGML_DECL;
-            parser.q = '';
-          }
-          parser.sgmlDecl += c;
-          continue
-
-        case S.DOCTYPE:
-          if (c === '>') {
-            parser.state = S.TEXT;
-            emitNode(parser, 'ondoctype', parser.doctype);
-            parser.doctype = true; // just remember that we saw it.
-          } else {
-            parser.doctype += c;
-            if (c === '[') {
-              parser.state = S.DOCTYPE_DTD;
-            } else if (isQuote(c)) {
-              parser.state = S.DOCTYPE_QUOTED;
-              parser.q = c;
-            }
-          }
-          continue
-
-        case S.DOCTYPE_QUOTED:
-          parser.doctype += c;
-          if (c === parser.q) {
-            parser.q = '';
-            parser.state = S.DOCTYPE;
-          }
-          continue
-
-        case S.DOCTYPE_DTD:
-          parser.doctype += c;
-          if (c === ']') {
-            parser.state = S.DOCTYPE;
-          } else if (isQuote(c)) {
-            parser.state = S.DOCTYPE_DTD_QUOTED;
-            parser.q = c;
-          }
-          continue
-
-        case S.DOCTYPE_DTD_QUOTED:
-          parser.doctype += c;
-          if (c === parser.q) {
-            parser.state = S.DOCTYPE_DTD;
-            parser.q = '';
-          }
-          continue
-
-        case S.COMMENT:
-          if (c === '-') {
-            parser.state = S.COMMENT_ENDING;
-          } else {
-            parser.comment += c;
-          }
-          continue
-
-        case S.COMMENT_ENDING:
-          if (c === '-') {
-            parser.state = S.COMMENT_ENDED;
-            parser.comment = textopts(parser.opt, parser.comment);
-            if (parser.comment) {
-              emitNode(parser, 'oncomment', parser.comment);
-            }
-            parser.comment = '';
-          } else {
-            parser.comment += '-' + c;
-            parser.state = S.COMMENT;
-          }
-          continue
-
-        case S.COMMENT_ENDED:
-          if (c !== '>') {
-            strictFail(parser, 'Malformed comment');
-            // allow <!-- blah -- bloo --> in non-strict mode,
-            // which is a comment of " blah -- bloo "
-            parser.comment += '--' + c;
-            parser.state = S.COMMENT;
-          } else {
-            parser.state = S.TEXT;
-          }
-          continue
-
-        case S.CDATA:
-          if (c === ']') {
-            parser.state = S.CDATA_ENDING;
-          } else {
-            parser.cdata += c;
-          }
-          continue
-
-        case S.CDATA_ENDING:
-          if (c === ']') {
-            parser.state = S.CDATA_ENDING_2;
-          } else {
-            parser.cdata += ']' + c;
-            parser.state = S.CDATA;
-          }
-          continue
-
-        case S.CDATA_ENDING_2:
-          if (c === '>') {
-            if (parser.cdata) {
-              emitNode(parser, 'oncdata', parser.cdata);
-            }
-            emitNode(parser, 'onclosecdata');
-            parser.cdata = '';
-            parser.state = S.TEXT;
-          } else if (c === ']') {
-            parser.cdata += ']';
-          } else {
-            parser.cdata += ']]' + c;
-            parser.state = S.CDATA;
-          }
-          continue
-
-        case S.PROC_INST:
-          if (c === '?') {
-            parser.state = S.PROC_INST_ENDING;
-          } else if (isWhitespace(c)) {
-            parser.state = S.PROC_INST_BODY;
-          } else {
-            parser.procInstName += c;
-          }
-          continue
-
-        case S.PROC_INST_BODY:
-          if (!parser.procInstBody && isWhitespace(c)) {
-            continue
-          } else if (c === '?') {
-            parser.state = S.PROC_INST_ENDING;
-          } else {
-            parser.procInstBody += c;
-          }
-          continue
-
-        case S.PROC_INST_ENDING:
-          if (c === '>') {
-            emitNode(parser, 'onprocessinginstruction', {
-              name: parser.procInstName,
-              body: parser.procInstBody
-            });
-            parser.procInstName = parser.procInstBody = '';
-            parser.state = S.TEXT;
-          } else {
-            parser.procInstBody += '?' + c;
-            parser.state = S.PROC_INST_BODY;
-          }
-          continue
-
-        case S.OPEN_TAG:
-          if (isMatch(nameBody, c)) {
-            parser.tagName += c;
-          } else {
-            newTag(parser);
-            if (c === '>') {
-              openTag(parser);
-            } else if (c === '/') {
-              parser.state = S.OPEN_TAG_SLASH;
-            } else {
-              if (!isWhitespace(c)) {
-                strictFail(parser, 'Invalid character in tag name');
-              }
-              parser.state = S.ATTRIB;
-            }
-          }
-          continue
-
-        case S.OPEN_TAG_SLASH:
-          if (c === '>') {
-            openTag(parser, true);
-            closeTag(parser);
-          } else {
-            strictFail(parser, 'Forward-slash in opening tag not followed by >');
-            parser.state = S.ATTRIB;
-          }
-          continue
-
-        case S.ATTRIB:
-          // haven't read the attribute name yet.
-          if (isWhitespace(c)) {
-            continue
-          } else if (c === '>') {
-            openTag(parser);
-          } else if (c === '/') {
-            parser.state = S.OPEN_TAG_SLASH;
-          } else if (isMatch(nameStart, c)) {
-            parser.attribName = c;
-            parser.attribValue = '';
-            parser.state = S.ATTRIB_NAME;
-          } else {
-            strictFail(parser, 'Invalid attribute name');
-          }
-          continue
-
-        case S.ATTRIB_NAME:
-          if (c === '=') {
-            parser.state = S.ATTRIB_VALUE;
-          } else if (c === '>') {
-            strictFail(parser, 'Attribute without value');
-            parser.attribValue = parser.attribName;
-            attrib(parser);
-            openTag(parser);
-          } else if (isWhitespace(c)) {
-            parser.state = S.ATTRIB_NAME_SAW_WHITE;
-          } else if (isMatch(nameBody, c)) {
-            parser.attribName += c;
-          } else {
-            strictFail(parser, 'Invalid attribute name');
-          }
-          continue
-
-        case S.ATTRIB_NAME_SAW_WHITE:
-          if (c === '=') {
-            parser.state = S.ATTRIB_VALUE;
-          } else if (isWhitespace(c)) {
-            continue
-          } else {
-            strictFail(parser, 'Attribute without value');
-            parser.tag.attributes[parser.attribName] = '';
-            parser.attribValue = '';
-            emitNode(parser, 'onattribute', {
-              name: parser.attribName,
-              value: ''
-            });
-            parser.attribName = '';
-            if (c === '>') {
-              openTag(parser);
-            } else if (isMatch(nameStart, c)) {
-              parser.attribName = c;
-              parser.state = S.ATTRIB_NAME;
-            } else {
-              strictFail(parser, 'Invalid attribute name');
-              parser.state = S.ATTRIB;
-            }
-          }
-          continue
-
-        case S.ATTRIB_VALUE:
-          if (isWhitespace(c)) {
-            continue
-          } else if (isQuote(c)) {
-            parser.q = c;
-            parser.state = S.ATTRIB_VALUE_QUOTED;
-          } else {
-            strictFail(parser, 'Unquoted attribute value');
-            parser.state = S.ATTRIB_VALUE_UNQUOTED;
-            parser.attribValue = c;
-          }
-          continue
-
-        case S.ATTRIB_VALUE_QUOTED:
-          if (c !== parser.q) {
-            if (c === '&') {
-              parser.state = S.ATTRIB_VALUE_ENTITY_Q;
-            } else {
-              parser.attribValue += c;
-            }
-            continue
-          }
-          attrib(parser);
-          parser.q = '';
-          parser.state = S.ATTRIB_VALUE_CLOSED;
-          continue
-
-        case S.ATTRIB_VALUE_CLOSED:
-          if (isWhitespace(c)) {
-            parser.state = S.ATTRIB;
-          } else if (c === '>') {
-            openTag(parser);
-          } else if (c === '/') {
-            parser.state = S.OPEN_TAG_SLASH;
-          } else if (isMatch(nameStart, c)) {
-            strictFail(parser, 'No whitespace between attributes');
-            parser.attribName = c;
-            parser.attribValue = '';
-            parser.state = S.ATTRIB_NAME;
-          } else {
-            strictFail(parser, 'Invalid attribute name');
-          }
-          continue
-
-        case S.ATTRIB_VALUE_UNQUOTED:
-          if (!isAttribEnd(c)) {
-            if (c === '&') {
-              parser.state = S.ATTRIB_VALUE_ENTITY_U;
-            } else {
-              parser.attribValue += c;
-            }
-            continue
-          }
-          attrib(parser);
-          if (c === '>') {
-            openTag(parser);
-          } else {
-            parser.state = S.ATTRIB;
-          }
-          continue
-
-        case S.CLOSE_TAG:
-          if (!parser.tagName) {
-            if (isWhitespace(c)) {
-              continue
-            } else if (notMatch(nameStart, c)) {
-              if (parser.script) {
-                parser.script += '</' + c;
-                parser.state = S.SCRIPT;
-              } else {
-                strictFail(parser, 'Invalid tagname in closing tag.');
-              }
-            } else {
-              parser.tagName = c;
-            }
-          } else if (c === '>') {
-            closeTag(parser);
-          } else if (isMatch(nameBody, c)) {
-            parser.tagName += c;
-          } else if (parser.script) {
-            parser.script += '</' + parser.tagName;
-            parser.tagName = '';
-            parser.state = S.SCRIPT;
-          } else {
-            if (!isWhitespace(c)) {
-              strictFail(parser, 'Invalid tagname in closing tag');
-            }
-            parser.state = S.CLOSE_TAG_SAW_WHITE;
-          }
-          continue
-
-        case S.CLOSE_TAG_SAW_WHITE:
-          if (isWhitespace(c)) {
-            continue
-          }
-          if (c === '>') {
-            closeTag(parser);
-          } else {
-            strictFail(parser, 'Invalid characters in closing tag');
-          }
-          continue
-
-        case S.TEXT_ENTITY:
-        case S.ATTRIB_VALUE_ENTITY_Q:
-        case S.ATTRIB_VALUE_ENTITY_U:
-          var returnState;
-          var buffer;
-          switch (parser.state) {
-            case S.TEXT_ENTITY:
-              returnState = S.TEXT;
-              buffer = 'textNode';
-              break
-
-            case S.ATTRIB_VALUE_ENTITY_Q:
-              returnState = S.ATTRIB_VALUE_QUOTED;
-              buffer = 'attribValue';
-              break
-
-            case S.ATTRIB_VALUE_ENTITY_U:
-              returnState = S.ATTRIB_VALUE_UNQUOTED;
-              buffer = 'attribValue';
-              break
-          }
-
-          if (c === ';') {
-            var parsedEntity = parseEntity(parser);
-
-            // Custom entities can contain tags, so we potentially need to parse the result
-            if (parser.state === S.TEXT_ENTITY && !sax.ENTITIES[parser.entity] && parsedEntity !== '&' + parser.entity + ';') {
-              chunk = chunk.slice(0, i) + parsedEntity + chunk.slice(i);
-            } else {
-              parser[buffer] += parsedEntity;
-            }
-
-            parser.entity = '';
-            parser.state = returnState;
-          } else if (isMatch(parser.entity.length ? entityBody : entityStart, c)) {
-            parser.entity += c;
-          } else {
-            strictFail(parser, 'Invalid character in entity name');
-            parser[buffer] += '&' + parser.entity + c;
-            parser.entity = '';
-            parser.state = returnState;
-          }
-
-          continue
-
-        default:
-          throw new Error(parser, 'Unknown state: ' + parser.state)
-      }
-    } // while
-
-    if (parser.position >= parser.bufferCheckPosition) {
-      checkBufferLength(parser);
-    }
-    return parser
-  }
-})(exports);
-}(sax));
+	  sax.parser = function (strict, opt) { return new SAXParser(strict, opt) };
+	  sax.SAXParser = SAXParser;
+
+	  // When we pass the MAX_BUFFER_LENGTH position, start checking for buffer overruns.
+	  // When we check, schedule the next check for MAX_BUFFER_LENGTH - (max(buffer lengths)),
+	  // since that's the earliest that a buffer overrun could occur.  This way, checks are
+	  // as rare as required, but as often as necessary to ensure never crossing this bound.
+	  // Furthermore, buffers are only tested at most once per write(), so passing a very
+	  // large string into write() might have undesirable effects, but this is manageable by
+	  // the caller, so it is assumed to be safe.  Thus, a call to write() may, in the extreme
+	  // edge case, result in creating at most one complete copy of the string passed in.
+	  // Set to Infinity to have unlimited buffers.
+	  sax.MAX_BUFFER_LENGTH = 64 * 1024;
+
+	  var buffers = [
+	    'comment', 'sgmlDecl', 'textNode', 'tagName', 'doctype',
+	    'procInstName', 'procInstBody', 'entity', 'attribName',
+	    'attribValue', 'cdata', 'script'
+	  ];
+
+	  sax.EVENTS = [
+	    'text',
+	    'processinginstruction',
+	    'sgmldeclaration',
+	    'doctype',
+	    'comment',
+	    'opentagstart',
+	    'attribute',
+	    'opentag',
+	    'closetag',
+	    'opencdata',
+	    'cdata',
+	    'closecdata',
+	    'error',
+	    'end',
+	    'ready',
+	    'script',
+	    'opennamespace',
+	    'closenamespace'
+	  ];
+
+	  function SAXParser (strict, opt) {
+	    if (!(this instanceof SAXParser)) {
+	      return new SAXParser(strict, opt)
+	    }
+
+	    var parser = this;
+	    clearBuffers(parser);
+	    parser.q = parser.c = '';
+	    parser.bufferCheckPosition = sax.MAX_BUFFER_LENGTH;
+	    parser.opt = opt || {};
+	    parser.opt.lowercase = parser.opt.lowercase || parser.opt.lowercasetags;
+	    parser.looseCase = parser.opt.lowercase ? 'toLowerCase' : 'toUpperCase';
+	    parser.tags = [];
+	    parser.closed = parser.closedRoot = parser.sawRoot = false;
+	    parser.tag = parser.error = null;
+	    parser.strict = !!strict;
+	    parser.noscript = !!(strict || parser.opt.noscript);
+	    parser.state = S.BEGIN;
+	    parser.strictEntities = parser.opt.strictEntities;
+	    parser.ENTITIES = parser.strictEntities ? Object.create(sax.XML_ENTITIES) : Object.create(sax.ENTITIES);
+	    parser.attribList = [];
+
+	    // namespaces form a prototype chain.
+	    // it always points at the current tag,
+	    // which protos to its parent tag.
+	    if (parser.opt.xmlns) {
+	      parser.ns = Object.create(rootNS);
+	    }
+
+	    // mostly just for error reporting
+	    parser.trackPosition = parser.opt.position !== false;
+	    if (parser.trackPosition) {
+	      parser.position = parser.line = parser.column = 0;
+	    }
+	    emit(parser, 'onready');
+	  }
+
+	  if (!Object.create) {
+	    Object.create = function (o) {
+	      function F () {}
+	      F.prototype = o;
+	      var newf = new F();
+	      return newf
+	    };
+	  }
+
+	  if (!Object.keys) {
+	    Object.keys = function (o) {
+	      var a = [];
+	      for (var i in o) if (o.hasOwnProperty(i)) a.push(i);
+	      return a
+	    };
+	  }
+
+	  function checkBufferLength (parser) {
+	    var maxAllowed = Math.max(sax.MAX_BUFFER_LENGTH, 10);
+	    var maxActual = 0;
+	    for (var i = 0, l = buffers.length; i < l; i++) {
+	      var len = parser[buffers[i]].length;
+	      if (len > maxAllowed) {
+	        // Text/cdata nodes can get big, and since they're buffered,
+	        // we can get here under normal conditions.
+	        // Avoid issues by emitting the text node now,
+	        // so at least it won't get any bigger.
+	        switch (buffers[i]) {
+	          case 'textNode':
+	            closeText(parser);
+	            break
+
+	          case 'cdata':
+	            emitNode(parser, 'oncdata', parser.cdata);
+	            parser.cdata = '';
+	            break
+
+	          case 'script':
+	            emitNode(parser, 'onscript', parser.script);
+	            parser.script = '';
+	            break
+
+	          default:
+	            error(parser, 'Max buffer length exceeded: ' + buffers[i]);
+	        }
+	      }
+	      maxActual = Math.max(maxActual, len);
+	    }
+	    // schedule the next check for the earliest possible buffer overrun.
+	    var m = sax.MAX_BUFFER_LENGTH - maxActual;
+	    parser.bufferCheckPosition = m + parser.position;
+	  }
+
+	  function clearBuffers (parser) {
+	    for (var i = 0, l = buffers.length; i < l; i++) {
+	      parser[buffers[i]] = '';
+	    }
+	  }
+
+	  function flushBuffers (parser) {
+	    closeText(parser);
+	    if (parser.cdata !== '') {
+	      emitNode(parser, 'oncdata', parser.cdata);
+	      parser.cdata = '';
+	    }
+	    if (parser.script !== '') {
+	      emitNode(parser, 'onscript', parser.script);
+	      parser.script = '';
+	    }
+	  }
+
+	  SAXParser.prototype = {
+	    end: function () { end(this); },
+	    write: write,
+	    resume: function () { this.error = null; return this },
+	    close: function () { return this.write(null) },
+	    flush: function () { flushBuffers(this); }
+	  };
+
+	  // this really needs to be replaced with character classes.
+	  // XML allows all manner of ridiculous numbers and digits.
+	  var CDATA = '[CDATA[';
+	  var DOCTYPE = 'DOCTYPE';
+	  var XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
+	  var XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
+	  var rootNS = { xml: XML_NAMESPACE, xmlns: XMLNS_NAMESPACE };
+
+	  // http://www.w3.org/TR/REC-xml/#NT-NameStartChar
+	  // This implementation works on strings, a single character at a time
+	  // as such, it cannot ever support astral-plane characters (10000-EFFFF)
+	  // without a significant breaking change to either this  parser, or the
+	  // JavaScript language.  Implementation of an emoji-capable xml parser
+	  // is left as an exercise for the reader.
+	  var nameStart = /[:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]/;
+
+	  var nameBody = /[:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u00B7\u0300-\u036F\u203F-\u2040.\d-]/;
+
+	  var entityStart = /[#:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]/;
+	  var entityBody = /[#:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u00B7\u0300-\u036F\u203F-\u2040.\d-]/;
+
+	  function isWhitespace (c) {
+	    return c === ' ' || c === '\n' || c === '\r' || c === '\t'
+	  }
+
+	  function isQuote (c) {
+	    return c === '"' || c === '\''
+	  }
+
+	  function isAttribEnd (c) {
+	    return c === '>' || isWhitespace(c)
+	  }
+
+	  function isMatch (regex, c) {
+	    return regex.test(c)
+	  }
+
+	  function notMatch (regex, c) {
+	    return !isMatch(regex, c)
+	  }
+
+	  var S = 0;
+	  sax.STATE = {
+	    BEGIN: S++, // leading byte order mark or whitespace
+	    BEGIN_WHITESPACE: S++, // leading whitespace
+	    TEXT: S++, // general stuff
+	    TEXT_ENTITY: S++, // &amp and such.
+	    OPEN_WAKA: S++, // <
+	    SGML_DECL: S++, // <!BLARG
+	    SGML_DECL_QUOTED: S++, // <!BLARG foo "bar
+	    DOCTYPE: S++, // <!DOCTYPE
+	    DOCTYPE_QUOTED: S++, // <!DOCTYPE "//blah
+	    DOCTYPE_DTD: S++, // <!DOCTYPE "//blah" [ ...
+	    DOCTYPE_DTD_QUOTED: S++, // <!DOCTYPE "//blah" [ "foo
+	    COMMENT_STARTING: S++, // <!-
+	    COMMENT: S++, // <!--
+	    COMMENT_ENDING: S++, // <!-- blah -
+	    COMMENT_ENDED: S++, // <!-- blah --
+	    CDATA: S++, // <![CDATA[ something
+	    CDATA_ENDING: S++, // ]
+	    CDATA_ENDING_2: S++, // ]]
+	    PROC_INST: S++, // <?hi
+	    PROC_INST_BODY: S++, // <?hi there
+	    PROC_INST_ENDING: S++, // <?hi "there" ?
+	    OPEN_TAG: S++, // <strong
+	    OPEN_TAG_SLASH: S++, // <strong /
+	    ATTRIB: S++, // <a
+	    ATTRIB_NAME: S++, // <a foo
+	    ATTRIB_NAME_SAW_WHITE: S++, // <a foo _
+	    ATTRIB_VALUE: S++, // <a foo=
+	    ATTRIB_VALUE_QUOTED: S++, // <a foo="bar
+	    ATTRIB_VALUE_CLOSED: S++, // <a foo="bar"
+	    ATTRIB_VALUE_UNQUOTED: S++, // <a foo=bar
+	    ATTRIB_VALUE_ENTITY_Q: S++, // <foo bar="&quot;"
+	    ATTRIB_VALUE_ENTITY_U: S++, // <foo bar=&quot
+	    CLOSE_TAG: S++, // </a
+	    CLOSE_TAG_SAW_WHITE: S++, // </a   >
+	    SCRIPT: S++, // <script> ...
+	    SCRIPT_ENDING: S++ // <script> ... <
+	  };
+
+	  sax.XML_ENTITIES = {
+	    'amp': '&',
+	    'gt': '>',
+	    'lt': '<',
+	    'quot': '"',
+	    'apos': "'"
+	  };
+
+	  sax.ENTITIES = {
+	    'amp': '&',
+	    'gt': '>',
+	    'lt': '<',
+	    'quot': '"',
+	    'apos': "'",
+	    'AElig': 198,
+	    'Aacute': 193,
+	    'Acirc': 194,
+	    'Agrave': 192,
+	    'Aring': 197,
+	    'Atilde': 195,
+	    'Auml': 196,
+	    'Ccedil': 199,
+	    'ETH': 208,
+	    'Eacute': 201,
+	    'Ecirc': 202,
+	    'Egrave': 200,
+	    'Euml': 203,
+	    'Iacute': 205,
+	    'Icirc': 206,
+	    'Igrave': 204,
+	    'Iuml': 207,
+	    'Ntilde': 209,
+	    'Oacute': 211,
+	    'Ocirc': 212,
+	    'Ograve': 210,
+	    'Oslash': 216,
+	    'Otilde': 213,
+	    'Ouml': 214,
+	    'THORN': 222,
+	    'Uacute': 218,
+	    'Ucirc': 219,
+	    'Ugrave': 217,
+	    'Uuml': 220,
+	    'Yacute': 221,
+	    'aacute': 225,
+	    'acirc': 226,
+	    'aelig': 230,
+	    'agrave': 224,
+	    'aring': 229,
+	    'atilde': 227,
+	    'auml': 228,
+	    'ccedil': 231,
+	    'eacute': 233,
+	    'ecirc': 234,
+	    'egrave': 232,
+	    'eth': 240,
+	    'euml': 235,
+	    'iacute': 237,
+	    'icirc': 238,
+	    'igrave': 236,
+	    'iuml': 239,
+	    'ntilde': 241,
+	    'oacute': 243,
+	    'ocirc': 244,
+	    'ograve': 242,
+	    'oslash': 248,
+	    'otilde': 245,
+	    'ouml': 246,
+	    'szlig': 223,
+	    'thorn': 254,
+	    'uacute': 250,
+	    'ucirc': 251,
+	    'ugrave': 249,
+	    'uuml': 252,
+	    'yacute': 253,
+	    'yuml': 255,
+	    'copy': 169,
+	    'reg': 174,
+	    'nbsp': 160,
+	    'iexcl': 161,
+	    'cent': 162,
+	    'pound': 163,
+	    'curren': 164,
+	    'yen': 165,
+	    'brvbar': 166,
+	    'sect': 167,
+	    'uml': 168,
+	    'ordf': 170,
+	    'laquo': 171,
+	    'not': 172,
+	    'shy': 173,
+	    'macr': 175,
+	    'deg': 176,
+	    'plusmn': 177,
+	    'sup1': 185,
+	    'sup2': 178,
+	    'sup3': 179,
+	    'acute': 180,
+	    'micro': 181,
+	    'para': 182,
+	    'middot': 183,
+	    'cedil': 184,
+	    'ordm': 186,
+	    'raquo': 187,
+	    'frac14': 188,
+	    'frac12': 189,
+	    'frac34': 190,
+	    'iquest': 191,
+	    'times': 215,
+	    'divide': 247,
+	    'OElig': 338,
+	    'oelig': 339,
+	    'Scaron': 352,
+	    'scaron': 353,
+	    'Yuml': 376,
+	    'fnof': 402,
+	    'circ': 710,
+	    'tilde': 732,
+	    'Alpha': 913,
+	    'Beta': 914,
+	    'Gamma': 915,
+	    'Delta': 916,
+	    'Epsilon': 917,
+	    'Zeta': 918,
+	    'Eta': 919,
+	    'Theta': 920,
+	    'Iota': 921,
+	    'Kappa': 922,
+	    'Lambda': 923,
+	    'Mu': 924,
+	    'Nu': 925,
+	    'Xi': 926,
+	    'Omicron': 927,
+	    'Pi': 928,
+	    'Rho': 929,
+	    'Sigma': 931,
+	    'Tau': 932,
+	    'Upsilon': 933,
+	    'Phi': 934,
+	    'Chi': 935,
+	    'Psi': 936,
+	    'Omega': 937,
+	    'alpha': 945,
+	    'beta': 946,
+	    'gamma': 947,
+	    'delta': 948,
+	    'epsilon': 949,
+	    'zeta': 950,
+	    'eta': 951,
+	    'theta': 952,
+	    'iota': 953,
+	    'kappa': 954,
+	    'lambda': 955,
+	    'mu': 956,
+	    'nu': 957,
+	    'xi': 958,
+	    'omicron': 959,
+	    'pi': 960,
+	    'rho': 961,
+	    'sigmaf': 962,
+	    'sigma': 963,
+	    'tau': 964,
+	    'upsilon': 965,
+	    'phi': 966,
+	    'chi': 967,
+	    'psi': 968,
+	    'omega': 969,
+	    'thetasym': 977,
+	    'upsih': 978,
+	    'piv': 982,
+	    'ensp': 8194,
+	    'emsp': 8195,
+	    'thinsp': 8201,
+	    'zwnj': 8204,
+	    'zwj': 8205,
+	    'lrm': 8206,
+	    'rlm': 8207,
+	    'ndash': 8211,
+	    'mdash': 8212,
+	    'lsquo': 8216,
+	    'rsquo': 8217,
+	    'sbquo': 8218,
+	    'ldquo': 8220,
+	    'rdquo': 8221,
+	    'bdquo': 8222,
+	    'dagger': 8224,
+	    'Dagger': 8225,
+	    'bull': 8226,
+	    'hellip': 8230,
+	    'permil': 8240,
+	    'prime': 8242,
+	    'Prime': 8243,
+	    'lsaquo': 8249,
+	    'rsaquo': 8250,
+	    'oline': 8254,
+	    'frasl': 8260,
+	    'euro': 8364,
+	    'image': 8465,
+	    'weierp': 8472,
+	    'real': 8476,
+	    'trade': 8482,
+	    'alefsym': 8501,
+	    'larr': 8592,
+	    'uarr': 8593,
+	    'rarr': 8594,
+	    'darr': 8595,
+	    'harr': 8596,
+	    'crarr': 8629,
+	    'lArr': 8656,
+	    'uArr': 8657,
+	    'rArr': 8658,
+	    'dArr': 8659,
+	    'hArr': 8660,
+	    'forall': 8704,
+	    'part': 8706,
+	    'exist': 8707,
+	    'empty': 8709,
+	    'nabla': 8711,
+	    'isin': 8712,
+	    'notin': 8713,
+	    'ni': 8715,
+	    'prod': 8719,
+	    'sum': 8721,
+	    'minus': 8722,
+	    'lowast': 8727,
+	    'radic': 8730,
+	    'prop': 8733,
+	    'infin': 8734,
+	    'ang': 8736,
+	    'and': 8743,
+	    'or': 8744,
+	    'cap': 8745,
+	    'cup': 8746,
+	    'int': 8747,
+	    'there4': 8756,
+	    'sim': 8764,
+	    'cong': 8773,
+	    'asymp': 8776,
+	    'ne': 8800,
+	    'equiv': 8801,
+	    'le': 8804,
+	    'ge': 8805,
+	    'sub': 8834,
+	    'sup': 8835,
+	    'nsub': 8836,
+	    'sube': 8838,
+	    'supe': 8839,
+	    'oplus': 8853,
+	    'otimes': 8855,
+	    'perp': 8869,
+	    'sdot': 8901,
+	    'lceil': 8968,
+	    'rceil': 8969,
+	    'lfloor': 8970,
+	    'rfloor': 8971,
+	    'lang': 9001,
+	    'rang': 9002,
+	    'loz': 9674,
+	    'spades': 9824,
+	    'clubs': 9827,
+	    'hearts': 9829,
+	    'diams': 9830
+	  };
+
+	  Object.keys(sax.ENTITIES).forEach(function (key) {
+	    var e = sax.ENTITIES[key];
+	    var s = typeof e === 'number' ? String.fromCharCode(e) : e;
+	    sax.ENTITIES[key] = s;
+	  });
+
+	  for (var s in sax.STATE) {
+	    sax.STATE[sax.STATE[s]] = s;
+	  }
+
+	  // shorthand
+	  S = sax.STATE;
+
+	  function emit (parser, event, data) {
+	    parser[event] && parser[event](data);
+	  }
+
+	  function emitNode (parser, nodeType, data) {
+	    if (parser.textNode) closeText(parser);
+	    emit(parser, nodeType, data);
+	  }
+
+	  function closeText (parser) {
+	    parser.textNode = textopts(parser.opt, parser.textNode);
+	    if (parser.textNode) emit(parser, 'ontext', parser.textNode);
+	    parser.textNode = '';
+	  }
+
+	  function textopts (opt, text) {
+	    if (opt.trim) text = text.trim();
+	    if (opt.normalize) text = text.replace(/\s+/g, ' ');
+	    return text
+	  }
+
+	  function error (parser, reason) {
+	    closeText(parser);
+	    const message = reason +
+	      '\nLine: ' + parser.line +
+	      '\nColumn: ' + parser.column +
+	      '\nChar: ' + parser.c;
+	    const error = new Error(message);
+	    error.reason = reason;
+	    error.line = parser.line;
+	    error.column = parser.column;
+	    parser.error = error;
+	    emit(parser, 'onerror', error);
+	    return parser
+	  }
+
+	  function end (parser) {
+	    if (parser.sawRoot && !parser.closedRoot) strictFail(parser, 'Unclosed root tag');
+	    if ((parser.state !== S.BEGIN) &&
+	      (parser.state !== S.BEGIN_WHITESPACE) &&
+	      (parser.state !== S.TEXT)) {
+	      error(parser, 'Unexpected end');
+	    }
+	    closeText(parser);
+	    parser.c = '';
+	    parser.closed = true;
+	    emit(parser, 'onend');
+	    SAXParser.call(parser, parser.strict, parser.opt);
+	    return parser
+	  }
+
+	  function strictFail (parser, message) {
+	    if (typeof parser !== 'object' || !(parser instanceof SAXParser)) {
+	      throw new Error('bad call to strictFail')
+	    }
+	    if (parser.strict) {
+	      error(parser, message);
+	    }
+	  }
+
+	  function newTag (parser) {
+	    if (!parser.strict) parser.tagName = parser.tagName[parser.looseCase]();
+	    var parent = parser.tags[parser.tags.length - 1] || parser;
+	    var tag = parser.tag = { name: parser.tagName, attributes: {} };
+
+	    // will be overridden if tag contails an xmlns="foo" or xmlns:foo="bar"
+	    if (parser.opt.xmlns) {
+	      tag.ns = parent.ns;
+	    }
+	    parser.attribList.length = 0;
+	    emitNode(parser, 'onopentagstart', tag);
+	  }
+
+	  function qname (name, attribute) {
+	    var i = name.indexOf(':');
+	    var qualName = i < 0 ? [ '', name ] : name.split(':');
+	    var prefix = qualName[0];
+	    var local = qualName[1];
+
+	    // <x "xmlns"="http://foo">
+	    if (attribute && name === 'xmlns') {
+	      prefix = 'xmlns';
+	      local = '';
+	    }
+
+	    return { prefix: prefix, local: local }
+	  }
+
+	  function attrib (parser) {
+	    if (!parser.strict) {
+	      parser.attribName = parser.attribName[parser.looseCase]();
+	    }
+
+	    if (parser.attribList.indexOf(parser.attribName) !== -1 ||
+	      parser.tag.attributes.hasOwnProperty(parser.attribName)) {
+	      parser.attribName = parser.attribValue = '';
+	      return
+	    }
+
+	    if (parser.opt.xmlns) {
+	      var qn = qname(parser.attribName, true);
+	      var prefix = qn.prefix;
+	      var local = qn.local;
+
+	      if (prefix === 'xmlns') {
+	        // namespace binding attribute. push the binding into scope
+	        if (local === 'xml' && parser.attribValue !== XML_NAMESPACE) {
+	          strictFail(parser,
+	            'xml: prefix must be bound to ' + XML_NAMESPACE + '\n' +
+	            'Actual: ' + parser.attribValue);
+	        } else if (local === 'xmlns' && parser.attribValue !== XMLNS_NAMESPACE) {
+	          strictFail(parser,
+	            'xmlns: prefix must be bound to ' + XMLNS_NAMESPACE + '\n' +
+	            'Actual: ' + parser.attribValue);
+	        } else {
+	          var tag = parser.tag;
+	          var parent = parser.tags[parser.tags.length - 1] || parser;
+	          if (tag.ns === parent.ns) {
+	            tag.ns = Object.create(parent.ns);
+	          }
+	          tag.ns[local] = parser.attribValue;
+	        }
+	      }
+
+	      // defer onattribute events until all attributes have been seen
+	      // so any new bindings can take effect. preserve attribute order
+	      // so deferred events can be emitted in document order
+	      parser.attribList.push([parser.attribName, parser.attribValue]);
+	    } else {
+	      // in non-xmlns mode, we can emit the event right away
+	      parser.tag.attributes[parser.attribName] = parser.attribValue;
+	      emitNode(parser, 'onattribute', {
+	        name: parser.attribName,
+	        value: parser.attribValue
+	      });
+	    }
+
+	    parser.attribName = parser.attribValue = '';
+	  }
+
+	  function openTag (parser, selfClosing) {
+	    if (parser.opt.xmlns) {
+	      // emit namespace binding events
+	      var tag = parser.tag;
+
+	      // add namespace info to tag
+	      var qn = qname(parser.tagName);
+	      tag.prefix = qn.prefix;
+	      tag.local = qn.local;
+	      tag.uri = tag.ns[qn.prefix] || '';
+
+	      if (tag.prefix && !tag.uri) {
+	        strictFail(parser, 'Unbound namespace prefix: ' +
+	          JSON.stringify(parser.tagName));
+	        tag.uri = qn.prefix;
+	      }
+
+	      var parent = parser.tags[parser.tags.length - 1] || parser;
+	      if (tag.ns && parent.ns !== tag.ns) {
+	        Object.keys(tag.ns).forEach(function (p) {
+	          emitNode(parser, 'onopennamespace', {
+	            prefix: p,
+	            uri: tag.ns[p]
+	          });
+	        });
+	      }
+
+	      // handle deferred onattribute events
+	      // Note: do not apply default ns to attributes:
+	      //   http://www.w3.org/TR/REC-xml-names/#defaulting
+	      for (var i = 0, l = parser.attribList.length; i < l; i++) {
+	        var nv = parser.attribList[i];
+	        var name = nv[0];
+	        var value = nv[1];
+	        var qualName = qname(name, true);
+	        var prefix = qualName.prefix;
+	        var local = qualName.local;
+	        var uri = prefix === '' ? '' : (tag.ns[prefix] || '');
+	        var a = {
+	          name: name,
+	          value: value,
+	          prefix: prefix,
+	          local: local,
+	          uri: uri
+	        };
+
+	        // if there's any attributes with an undefined namespace,
+	        // then fail on them now.
+	        if (prefix && prefix !== 'xmlns' && !uri) {
+	          strictFail(parser, 'Unbound namespace prefix: ' +
+	            JSON.stringify(prefix));
+	          a.uri = prefix;
+	        }
+	        parser.tag.attributes[name] = a;
+	        emitNode(parser, 'onattribute', a);
+	      }
+	      parser.attribList.length = 0;
+	    }
+
+	    parser.tag.isSelfClosing = !!selfClosing;
+
+	    // process the tag
+	    parser.sawRoot = true;
+	    parser.tags.push(parser.tag);
+	    emitNode(parser, 'onopentag', parser.tag);
+	    if (!selfClosing) {
+	      // special case for <script> in non-strict mode.
+	      if (!parser.noscript && parser.tagName.toLowerCase() === 'script') {
+	        parser.state = S.SCRIPT;
+	      } else {
+	        parser.state = S.TEXT;
+	      }
+	      parser.tag = null;
+	      parser.tagName = '';
+	    }
+	    parser.attribName = parser.attribValue = '';
+	    parser.attribList.length = 0;
+	  }
+
+	  function closeTag (parser) {
+	    if (!parser.tagName) {
+	      strictFail(parser, 'Weird empty close tag.');
+	      parser.textNode += '</>';
+	      parser.state = S.TEXT;
+	      return
+	    }
+
+	    if (parser.script) {
+	      if (parser.tagName !== 'script') {
+	        parser.script += '</' + parser.tagName + '>';
+	        parser.tagName = '';
+	        parser.state = S.SCRIPT;
+	        return
+	      }
+	      emitNode(parser, 'onscript', parser.script);
+	      parser.script = '';
+	    }
+
+	    // first make sure that the closing tag actually exists.
+	    // <a><b></c></b></a> will close everything, otherwise.
+	    var t = parser.tags.length;
+	    var tagName = parser.tagName;
+	    if (!parser.strict) {
+	      tagName = tagName[parser.looseCase]();
+	    }
+	    var closeTo = tagName;
+	    while (t--) {
+	      var close = parser.tags[t];
+	      if (close.name !== closeTo) {
+	        // fail the first time in strict mode
+	        strictFail(parser, 'Unexpected close tag');
+	      } else {
+	        break
+	      }
+	    }
+
+	    // didn't find it.  we already failed for strict, so just abort.
+	    if (t < 0) {
+	      strictFail(parser, 'Unmatched closing tag: ' + parser.tagName);
+	      parser.textNode += '</' + parser.tagName + '>';
+	      parser.state = S.TEXT;
+	      return
+	    }
+	    parser.tagName = tagName;
+	    var s = parser.tags.length;
+	    while (s-- > t) {
+	      var tag = parser.tag = parser.tags.pop();
+	      parser.tagName = parser.tag.name;
+	      emitNode(parser, 'onclosetag', parser.tagName);
+
+	      var x = {};
+	      for (var i in tag.ns) {
+	        x[i] = tag.ns[i];
+	      }
+
+	      var parent = parser.tags[parser.tags.length - 1] || parser;
+	      if (parser.opt.xmlns && tag.ns !== parent.ns) {
+	        // remove namespace bindings introduced by tag
+	        Object.keys(tag.ns).forEach(function (p) {
+	          var n = tag.ns[p];
+	          emitNode(parser, 'onclosenamespace', { prefix: p, uri: n });
+	        });
+	      }
+	    }
+	    if (t === 0) parser.closedRoot = true;
+	    parser.tagName = parser.attribValue = parser.attribName = '';
+	    parser.attribList.length = 0;
+	    parser.state = S.TEXT;
+	  }
+
+	  function parseEntity (parser) {
+	    var entity = parser.entity;
+	    var entityLC = entity.toLowerCase();
+	    var num;
+	    var numStr = '';
+
+	    if (parser.ENTITIES[entity]) {
+	      return parser.ENTITIES[entity]
+	    }
+	    if (parser.ENTITIES[entityLC]) {
+	      return parser.ENTITIES[entityLC]
+	    }
+	    entity = entityLC;
+	    if (entity.charAt(0) === '#') {
+	      if (entity.charAt(1) === 'x') {
+	        entity = entity.slice(2);
+	        num = parseInt(entity, 16);
+	        numStr = num.toString(16);
+	      } else {
+	        entity = entity.slice(1);
+	        num = parseInt(entity, 10);
+	        numStr = num.toString(10);
+	      }
+	    }
+	    entity = entity.replace(/^0+/, '');
+	    if (isNaN(num) || numStr.toLowerCase() !== entity) {
+	      strictFail(parser, 'Invalid character entity');
+	      return '&' + parser.entity + ';'
+	    }
+
+	    return String.fromCodePoint(num)
+	  }
+
+	  function beginWhiteSpace (parser, c) {
+	    if (c === '<') {
+	      parser.state = S.OPEN_WAKA;
+	      parser.startTagPosition = parser.position;
+	    } else if (!isWhitespace(c)) {
+	      // have to process this as a text node.
+	      // weird, but happens.
+	      strictFail(parser, 'Non-whitespace before first tag.');
+	      parser.textNode = c;
+	      parser.state = S.TEXT;
+	    }
+	  }
+
+	  function charAt (chunk, i) {
+	    var result = '';
+	    if (i < chunk.length) {
+	      result = chunk.charAt(i);
+	    }
+	    return result
+	  }
+
+	  function write (chunk) {
+	    var parser = this;
+	    if (this.error) {
+	      throw this.error
+	    }
+	    if (parser.closed) {
+	      return error(parser,
+	        'Cannot write after close. Assign an onready handler.')
+	    }
+	    if (chunk === null) {
+	      return end(parser)
+	    }
+	    if (typeof chunk === 'object') {
+	      chunk = chunk.toString();
+	    }
+	    var i = 0;
+	    var c = '';
+	    while (true) {
+	      c = charAt(chunk, i++);
+	      parser.c = c;
+
+	      if (!c) {
+	        break
+	      }
+
+	      if (parser.trackPosition) {
+	        parser.position++;
+	        if (c === '\n') {
+	          parser.line++;
+	          parser.column = 0;
+	        } else {
+	          parser.column++;
+	        }
+	      }
+
+	      switch (parser.state) {
+	        case S.BEGIN:
+	          parser.state = S.BEGIN_WHITESPACE;
+	          if (c === '\uFEFF') {
+	            continue
+	          }
+	          beginWhiteSpace(parser, c);
+	          continue
+
+	        case S.BEGIN_WHITESPACE:
+	          beginWhiteSpace(parser, c);
+	          continue
+
+	        case S.TEXT:
+	          if (parser.sawRoot && !parser.closedRoot) {
+	            var starti = i - 1;
+	            while (c && c !== '<' && c !== '&') {
+	              c = charAt(chunk, i++);
+	              if (c && parser.trackPosition) {
+	                parser.position++;
+	                if (c === '\n') {
+	                  parser.line++;
+	                  parser.column = 0;
+	                } else {
+	                  parser.column++;
+	                }
+	              }
+	            }
+	            parser.textNode += chunk.substring(starti, i - 1);
+	          }
+	          if (c === '<' && !(parser.sawRoot && parser.closedRoot && !parser.strict)) {
+	            parser.state = S.OPEN_WAKA;
+	            parser.startTagPosition = parser.position;
+	          } else {
+	            if (!isWhitespace(c) && (!parser.sawRoot || parser.closedRoot)) {
+	              strictFail(parser, 'Text data outside of root node.');
+	            }
+	            if (c === '&') {
+	              parser.state = S.TEXT_ENTITY;
+	            } else {
+	              parser.textNode += c;
+	            }
+	          }
+	          continue
+
+	        case S.SCRIPT:
+	          // only non-strict
+	          if (c === '<') {
+	            parser.state = S.SCRIPT_ENDING;
+	          } else {
+	            parser.script += c;
+	          }
+	          continue
+
+	        case S.SCRIPT_ENDING:
+	          if (c === '/') {
+	            parser.state = S.CLOSE_TAG;
+	          } else {
+	            parser.script += '<' + c;
+	            parser.state = S.SCRIPT;
+	          }
+	          continue
+
+	        case S.OPEN_WAKA:
+	          // either a /, ?, !, or text is coming next.
+	          if (c === '!') {
+	            parser.state = S.SGML_DECL;
+	            parser.sgmlDecl = '';
+	          } else if (isWhitespace(c)) ; else if (isMatch(nameStart, c)) {
+	            parser.state = S.OPEN_TAG;
+	            parser.tagName = c;
+	          } else if (c === '/') {
+	            parser.state = S.CLOSE_TAG;
+	            parser.tagName = '';
+	          } else if (c === '?') {
+	            parser.state = S.PROC_INST;
+	            parser.procInstName = parser.procInstBody = '';
+	          } else {
+	            strictFail(parser, 'Unencoded <');
+	            // if there was some whitespace, then add that in.
+	            if (parser.startTagPosition + 1 < parser.position) {
+	              var pad = parser.position - parser.startTagPosition;
+	              c = new Array(pad).join(' ') + c;
+	            }
+	            parser.textNode += '<' + c;
+	            parser.state = S.TEXT;
+	          }
+	          continue
+
+	        case S.SGML_DECL:
+	          if ((parser.sgmlDecl + c).toUpperCase() === CDATA) {
+	            emitNode(parser, 'onopencdata');
+	            parser.state = S.CDATA;
+	            parser.sgmlDecl = '';
+	            parser.cdata = '';
+	          } else if (parser.sgmlDecl + c === '--') {
+	            parser.state = S.COMMENT;
+	            parser.comment = '';
+	            parser.sgmlDecl = '';
+	          } else if ((parser.sgmlDecl + c).toUpperCase() === DOCTYPE) {
+	            parser.state = S.DOCTYPE;
+	            if (parser.doctype || parser.sawRoot) {
+	              strictFail(parser,
+	                'Inappropriately located doctype declaration');
+	            }
+	            parser.doctype = '';
+	            parser.sgmlDecl = '';
+	          } else if (c === '>') {
+	            emitNode(parser, 'onsgmldeclaration', parser.sgmlDecl);
+	            parser.sgmlDecl = '';
+	            parser.state = S.TEXT;
+	          } else if (isQuote(c)) {
+	            parser.state = S.SGML_DECL_QUOTED;
+	            parser.sgmlDecl += c;
+	          } else {
+	            parser.sgmlDecl += c;
+	          }
+	          continue
+
+	        case S.SGML_DECL_QUOTED:
+	          if (c === parser.q) {
+	            parser.state = S.SGML_DECL;
+	            parser.q = '';
+	          }
+	          parser.sgmlDecl += c;
+	          continue
+
+	        case S.DOCTYPE:
+	          if (c === '>') {
+	            parser.state = S.TEXT;
+	            emitNode(parser, 'ondoctype', parser.doctype);
+	            parser.doctype = true; // just remember that we saw it.
+	          } else {
+	            parser.doctype += c;
+	            if (c === '[') {
+	              parser.state = S.DOCTYPE_DTD;
+	            } else if (isQuote(c)) {
+	              parser.state = S.DOCTYPE_QUOTED;
+	              parser.q = c;
+	            }
+	          }
+	          continue
+
+	        case S.DOCTYPE_QUOTED:
+	          parser.doctype += c;
+	          if (c === parser.q) {
+	            parser.q = '';
+	            parser.state = S.DOCTYPE;
+	          }
+	          continue
+
+	        case S.DOCTYPE_DTD:
+	          parser.doctype += c;
+	          if (c === ']') {
+	            parser.state = S.DOCTYPE;
+	          } else if (isQuote(c)) {
+	            parser.state = S.DOCTYPE_DTD_QUOTED;
+	            parser.q = c;
+	          }
+	          continue
+
+	        case S.DOCTYPE_DTD_QUOTED:
+	          parser.doctype += c;
+	          if (c === parser.q) {
+	            parser.state = S.DOCTYPE_DTD;
+	            parser.q = '';
+	          }
+	          continue
+
+	        case S.COMMENT:
+	          if (c === '-') {
+	            parser.state = S.COMMENT_ENDING;
+	          } else {
+	            parser.comment += c;
+	          }
+	          continue
+
+	        case S.COMMENT_ENDING:
+	          if (c === '-') {
+	            parser.state = S.COMMENT_ENDED;
+	            parser.comment = textopts(parser.opt, parser.comment);
+	            if (parser.comment) {
+	              emitNode(parser, 'oncomment', parser.comment);
+	            }
+	            parser.comment = '';
+	          } else {
+	            parser.comment += '-' + c;
+	            parser.state = S.COMMENT;
+	          }
+	          continue
+
+	        case S.COMMENT_ENDED:
+	          if (c !== '>') {
+	            strictFail(parser, 'Malformed comment');
+	            // allow <!-- blah -- bloo --> in non-strict mode,
+	            // which is a comment of " blah -- bloo "
+	            parser.comment += '--' + c;
+	            parser.state = S.COMMENT;
+	          } else {
+	            parser.state = S.TEXT;
+	          }
+	          continue
+
+	        case S.CDATA:
+	          if (c === ']') {
+	            parser.state = S.CDATA_ENDING;
+	          } else {
+	            parser.cdata += c;
+	          }
+	          continue
+
+	        case S.CDATA_ENDING:
+	          if (c === ']') {
+	            parser.state = S.CDATA_ENDING_2;
+	          } else {
+	            parser.cdata += ']' + c;
+	            parser.state = S.CDATA;
+	          }
+	          continue
+
+	        case S.CDATA_ENDING_2:
+	          if (c === '>') {
+	            if (parser.cdata) {
+	              emitNode(parser, 'oncdata', parser.cdata);
+	            }
+	            emitNode(parser, 'onclosecdata');
+	            parser.cdata = '';
+	            parser.state = S.TEXT;
+	          } else if (c === ']') {
+	            parser.cdata += ']';
+	          } else {
+	            parser.cdata += ']]' + c;
+	            parser.state = S.CDATA;
+	          }
+	          continue
+
+	        case S.PROC_INST:
+	          if (c === '?') {
+	            parser.state = S.PROC_INST_ENDING;
+	          } else if (isWhitespace(c)) {
+	            parser.state = S.PROC_INST_BODY;
+	          } else {
+	            parser.procInstName += c;
+	          }
+	          continue
+
+	        case S.PROC_INST_BODY:
+	          if (!parser.procInstBody && isWhitespace(c)) {
+	            continue
+	          } else if (c === '?') {
+	            parser.state = S.PROC_INST_ENDING;
+	          } else {
+	            parser.procInstBody += c;
+	          }
+	          continue
+
+	        case S.PROC_INST_ENDING:
+	          if (c === '>') {
+	            emitNode(parser, 'onprocessinginstruction', {
+	              name: parser.procInstName,
+	              body: parser.procInstBody
+	            });
+	            parser.procInstName = parser.procInstBody = '';
+	            parser.state = S.TEXT;
+	          } else {
+	            parser.procInstBody += '?' + c;
+	            parser.state = S.PROC_INST_BODY;
+	          }
+	          continue
+
+	        case S.OPEN_TAG:
+	          if (isMatch(nameBody, c)) {
+	            parser.tagName += c;
+	          } else {
+	            newTag(parser);
+	            if (c === '>') {
+	              openTag(parser);
+	            } else if (c === '/') {
+	              parser.state = S.OPEN_TAG_SLASH;
+	            } else {
+	              if (!isWhitespace(c)) {
+	                strictFail(parser, 'Invalid character in tag name');
+	              }
+	              parser.state = S.ATTRIB;
+	            }
+	          }
+	          continue
+
+	        case S.OPEN_TAG_SLASH:
+	          if (c === '>') {
+	            openTag(parser, true);
+	            closeTag(parser);
+	          } else {
+	            strictFail(parser, 'Forward-slash in opening tag not followed by >');
+	            parser.state = S.ATTRIB;
+	          }
+	          continue
+
+	        case S.ATTRIB:
+	          // haven't read the attribute name yet.
+	          if (isWhitespace(c)) {
+	            continue
+	          } else if (c === '>') {
+	            openTag(parser);
+	          } else if (c === '/') {
+	            parser.state = S.OPEN_TAG_SLASH;
+	          } else if (isMatch(nameStart, c)) {
+	            parser.attribName = c;
+	            parser.attribValue = '';
+	            parser.state = S.ATTRIB_NAME;
+	          } else {
+	            strictFail(parser, 'Invalid attribute name');
+	          }
+	          continue
+
+	        case S.ATTRIB_NAME:
+	          if (c === '=') {
+	            parser.state = S.ATTRIB_VALUE;
+	          } else if (c === '>') {
+	            strictFail(parser, 'Attribute without value');
+	            parser.attribValue = parser.attribName;
+	            attrib(parser);
+	            openTag(parser);
+	          } else if (isWhitespace(c)) {
+	            parser.state = S.ATTRIB_NAME_SAW_WHITE;
+	          } else if (isMatch(nameBody, c)) {
+	            parser.attribName += c;
+	          } else {
+	            strictFail(parser, 'Invalid attribute name');
+	          }
+	          continue
+
+	        case S.ATTRIB_NAME_SAW_WHITE:
+	          if (c === '=') {
+	            parser.state = S.ATTRIB_VALUE;
+	          } else if (isWhitespace(c)) {
+	            continue
+	          } else {
+	            strictFail(parser, 'Attribute without value');
+	            parser.tag.attributes[parser.attribName] = '';
+	            parser.attribValue = '';
+	            emitNode(parser, 'onattribute', {
+	              name: parser.attribName,
+	              value: ''
+	            });
+	            parser.attribName = '';
+	            if (c === '>') {
+	              openTag(parser);
+	            } else if (isMatch(nameStart, c)) {
+	              parser.attribName = c;
+	              parser.state = S.ATTRIB_NAME;
+	            } else {
+	              strictFail(parser, 'Invalid attribute name');
+	              parser.state = S.ATTRIB;
+	            }
+	          }
+	          continue
+
+	        case S.ATTRIB_VALUE:
+	          if (isWhitespace(c)) {
+	            continue
+	          } else if (isQuote(c)) {
+	            parser.q = c;
+	            parser.state = S.ATTRIB_VALUE_QUOTED;
+	          } else {
+	            strictFail(parser, 'Unquoted attribute value');
+	            parser.state = S.ATTRIB_VALUE_UNQUOTED;
+	            parser.attribValue = c;
+	          }
+	          continue
+
+	        case S.ATTRIB_VALUE_QUOTED:
+	          if (c !== parser.q) {
+	            if (c === '&') {
+	              parser.state = S.ATTRIB_VALUE_ENTITY_Q;
+	            } else {
+	              parser.attribValue += c;
+	            }
+	            continue
+	          }
+	          attrib(parser);
+	          parser.q = '';
+	          parser.state = S.ATTRIB_VALUE_CLOSED;
+	          continue
+
+	        case S.ATTRIB_VALUE_CLOSED:
+	          if (isWhitespace(c)) {
+	            parser.state = S.ATTRIB;
+	          } else if (c === '>') {
+	            openTag(parser);
+	          } else if (c === '/') {
+	            parser.state = S.OPEN_TAG_SLASH;
+	          } else if (isMatch(nameStart, c)) {
+	            strictFail(parser, 'No whitespace between attributes');
+	            parser.attribName = c;
+	            parser.attribValue = '';
+	            parser.state = S.ATTRIB_NAME;
+	          } else {
+	            strictFail(parser, 'Invalid attribute name');
+	          }
+	          continue
+
+	        case S.ATTRIB_VALUE_UNQUOTED:
+	          if (!isAttribEnd(c)) {
+	            if (c === '&') {
+	              parser.state = S.ATTRIB_VALUE_ENTITY_U;
+	            } else {
+	              parser.attribValue += c;
+	            }
+	            continue
+	          }
+	          attrib(parser);
+	          if (c === '>') {
+	            openTag(parser);
+	          } else {
+	            parser.state = S.ATTRIB;
+	          }
+	          continue
+
+	        case S.CLOSE_TAG:
+	          if (!parser.tagName) {
+	            if (isWhitespace(c)) {
+	              continue
+	            } else if (notMatch(nameStart, c)) {
+	              if (parser.script) {
+	                parser.script += '</' + c;
+	                parser.state = S.SCRIPT;
+	              } else {
+	                strictFail(parser, 'Invalid tagname in closing tag.');
+	              }
+	            } else {
+	              parser.tagName = c;
+	            }
+	          } else if (c === '>') {
+	            closeTag(parser);
+	          } else if (isMatch(nameBody, c)) {
+	            parser.tagName += c;
+	          } else if (parser.script) {
+	            parser.script += '</' + parser.tagName;
+	            parser.tagName = '';
+	            parser.state = S.SCRIPT;
+	          } else {
+	            if (!isWhitespace(c)) {
+	              strictFail(parser, 'Invalid tagname in closing tag');
+	            }
+	            parser.state = S.CLOSE_TAG_SAW_WHITE;
+	          }
+	          continue
+
+	        case S.CLOSE_TAG_SAW_WHITE:
+	          if (isWhitespace(c)) {
+	            continue
+	          }
+	          if (c === '>') {
+	            closeTag(parser);
+	          } else {
+	            strictFail(parser, 'Invalid characters in closing tag');
+	          }
+	          continue
+
+	        case S.TEXT_ENTITY:
+	        case S.ATTRIB_VALUE_ENTITY_Q:
+	        case S.ATTRIB_VALUE_ENTITY_U:
+	          var returnState;
+	          var buffer;
+	          switch (parser.state) {
+	            case S.TEXT_ENTITY:
+	              returnState = S.TEXT;
+	              buffer = 'textNode';
+	              break
+
+	            case S.ATTRIB_VALUE_ENTITY_Q:
+	              returnState = S.ATTRIB_VALUE_QUOTED;
+	              buffer = 'attribValue';
+	              break
+
+	            case S.ATTRIB_VALUE_ENTITY_U:
+	              returnState = S.ATTRIB_VALUE_UNQUOTED;
+	              buffer = 'attribValue';
+	              break
+	          }
+
+	          if (c === ';') {
+	            var parsedEntity = parseEntity(parser);
+
+	            // Custom entities can contain tags, so we potentially need to parse the result
+	            if (parser.state === S.TEXT_ENTITY && !sax.ENTITIES[parser.entity] && parsedEntity !== '&' + parser.entity + ';') {
+	              chunk = chunk.slice(0, i) + parsedEntity + chunk.slice(i);
+	            } else {
+	              parser[buffer] += parsedEntity;
+	            }
+
+	            parser.entity = '';
+	            parser.state = returnState;
+	          } else if (isMatch(parser.entity.length ? entityBody : entityStart, c)) {
+	            parser.entity += c;
+	          } else {
+	            strictFail(parser, 'Invalid character in entity name');
+	            parser[buffer] += '&' + parser.entity + c;
+	            parser.entity = '';
+	            parser.state = returnState;
+	          }
+
+	          continue
+
+	        default:
+	          throw new Error(parser, 'Unknown state: ' + parser.state)
+	      }
+	    } // while
+
+	    if (parser.position >= parser.bufferCheckPosition) {
+	      checkBufferLength(parser);
+	    }
+	    return parser
+	  }
+	})(exports);
+} (sax));
 
 /**
  * @typedef {import('./types').XastNode} XastNode

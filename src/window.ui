@@ -20,7 +20,7 @@
                 </style>
               </object>
             </property>
-    
+
             <child type="end">
               <object class="GtkMenuButton" id="button_menu">
                 <property name="menu-model">menu_app</property>
@@ -95,7 +95,7 @@
                                 <property name="justify">center</property>
                               </object>
                             </child>
-              
+
                             <child>
                               <object class="GtkButton">
                                 <property name="margin-top">20</property>
@@ -113,7 +113,7 @@
                                 </style>
                               </object>
                             </child>
-    
+
                             <child>
                               <object class="GtkLabel">
                                 <property name="margin-top">20</property>
@@ -125,7 +125,7 @@
                                 </style>
                               </object>
                             </child>
-    
+
                             <child>
                               <object class="GtkScale" id="scale">
                                 <property
@@ -148,7 +148,7 @@
                                 </marks>
                               </object>
                             </child>
-              
+
                             <child>
                               <object class="GtkLabel">
                                 <property name="margin-top">20</property>
@@ -162,8 +162,8 @@
                             </child>
                           </object>
                         </child>
-              
-              
+
+
                         <child>
                           <object class="GtkScrolledWindow">
                             <property name="hscrollbar-policy">never</property>
@@ -209,7 +209,6 @@
                           </object>
                         </child>
                       </object>
-              
                     </child>
                     <child>
                       <object class="GtkBox">
@@ -278,10 +277,6 @@
         <attribute name="label" translatable="yes">_About Oh My SVG</attribute>
         <attribute name="action">app.about</attribute>
       </item>
-      <!-- <item>
-        <attribute name="label" translatable="yes">_Preferences</attribute>
-        <attribute name="action">app.preferences</attribute>
-      </item> -->
       <item>
         <attribute name="label" translatable="yes">_Quit</attribute>
         <attribute name="action">app.quit</attribute>
