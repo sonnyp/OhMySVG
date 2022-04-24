@@ -19,7 +19,7 @@ export function process({ string_original, config }) {
   debug("svgo", width, height);
 
   const handle = Rsvg.Handle.new_from_data(data_optimized);
-  // FIXME: doc says to set dpi but whay and why?
+  // FIXME: doc says to set dpi but what and why?
   // isn't the default good enough?
   // handle.set_dpi()
   const dimensions = handle.get_dimensions();
