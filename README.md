@@ -101,7 +101,7 @@ Oh My SVG is powered by [SVGO](https://github.com/svg/svgo) and inspired by [SVG
 
 ## License
 
-GPLv3 or later. Please see [COPYING](COPYING) file.
+GPLv3. Please see [COPYING](COPYING) file.
 
 ## Bookmarks
 

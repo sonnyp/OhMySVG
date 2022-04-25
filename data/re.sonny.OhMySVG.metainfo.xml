@@ -19,22 +19,24 @@
   </description>
   <url type="homepage">https://github.com/sonnyp/OhMySVG</url>
   <url type="bugtracker">https://github.com/sonnyp/OhMySVG/issues</url>
+  <url type="donation">https://github.com/sonnyp/OhMySVG</url>
   <screenshots>
     <screenshot type="default">
       <image>
-        https://raw.githubusercontent.com/sonnyp/OhMySVG/33e4ff4424b51850fc6668b7756f72413b268b16/data/screenshot-light.png
+        https://raw.githubusercontent.com/sonnyp/OhMySVG/main/data/screenshot.png
       </image>
       <caption>Oh My SVG</caption>
-    </screenshot>
-    <screenshot>
-      <image>
-        https://raw.githubusercontent.com/sonnyp/OhMySVG/33e4ff4424b51850fc6668b7756f72413b268b16/data/screenshot-dark.png
-      </image>
-      <caption>Oh My SVG - dark mode</caption>
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.1.0" date="2022-04-25">
+      <description>
+        <p>Update to svgo 2.8.0</p>
+        <p>Port to libadwaita</p>
+        <p>GNOME Platform 42</p>
+      </description>
+    </release>
     <release version="1.0.0" date="2021-07-24">
       <description>
         <p>Initial release.</p>
