@@ -1,0 +1,87 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-08-08 13:20+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: data/re.sonny.OhMySVG.desktop:3 data/re.sonny.OhMySVG.appdata.xml:5
+#: data/re.sonny.OhMySVG.appdata.xml:28 src/window.ui:9
+msgid "Oh My SVG"
+msgstr ""
+
+#: data/re.sonny.OhMySVG.desktop:4
+msgid "Optimize SVG"
+msgstr ""
+
+#: data/re.sonny.OhMySVG.desktop:12
+msgid "SVG;clean;optimize;"
+msgstr ""
+
+#: data/re.sonny.OhMySVG.appdata.xml:6
+msgid "Sonny Piers"
+msgstr ""
+
+#: data/re.sonny.OhMySVG.appdata.xml:10
+msgid "Reduce the size of SVGs"
+msgstr ""
+
+#: data/re.sonny.OhMySVG.appdata.xml:12
+msgid "Oh My SVG let you export unoptimized SVG files into smaller versions."
+msgstr ""
+
+#: data/re.sonny.OhMySVG.appdata.xml:15
+msgid "SVGO"
+msgstr ""
+
+#: data/re.sonny.OhMySVG.appdata.xml:17
+msgid ""
+"It lets you preview and tweak the parameters to obtain a satisfactory result "
+"before saving."
+msgstr ""
+
+#: data/re.sonny.OhMySVG.appdata.xml:19
+msgid ""
+"Remember that Oh My SVG removes information and metadata that may be useful, "
+"do not overwrite your original/source SVG files."
+msgstr ""
+
+#: data/re.sonny.OhMySVG.appdata.xml:34
+msgid "Oh My SVG - dark mode"
+msgstr ""
+
+#: data/re.sonny.OhMySVG.appdata.xml:41
+msgid "Initial release."
+msgstr ""
+
+#: src/window.ui:245
+msgid "_Open File…"
+msgstr ""
+
+#: src/window.ui:249
+msgid "_Save As…"
+msgstr ""
+
+#: src/window.ui:259
+msgid "_New Window"
+msgstr ""
+
+#: src/window.ui:263
+msgid "_About Oh My SVG"
+msgstr ""
+
+#: src/window.ui:271
+msgid "_Quit"
+msgstr ""
