@@ -30,8 +30,13 @@ export default function Window({ application }) {
     name: "save",
     parameter_type: null,
   });
+
   action_save.connect("activate", () => {
-    DialogSave({ window, file, getData: () => data_optimized });
+    DialogSave({
+      window,
+      file,
+      getData: () => data_optimized,
+    });
   });
 
   let string_original;
