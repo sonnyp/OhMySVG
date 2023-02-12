@@ -71,6 +71,7 @@
                         <property name="action-name">win.open</property>
                         <style>
                           <class name="suggested-action" />
+                          <class name="pill" />
                         </style>
                       </object>
                     </child>
@@ -78,6 +79,9 @@
                       <object class="GtkButton" id="button_demo">
                         <property name="label">Open Demo</property>
                         <property name="margin-top">10</property>
+                        <style>
+                          <class name="pill" />
+                        </style>
                       </object>
                     </child>
                   </object>
