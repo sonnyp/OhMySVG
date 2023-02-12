@@ -30,6 +30,13 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2" date="2023-02-12">
+      <description>
+        <p>New icon by Sam Hewitt</p>
+        <p>Fix save location</p>
+        <p>Design improvements</p>
+      </description>
+    </release>
     <release version="1.1.0" date="2022-04-25">
       <description>
         <p>Update to svgo 2.8.0</p>
