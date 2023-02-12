@@ -94,6 +94,7 @@ export default function Window({ application }) {
   function openFile(_file) {
     window.maximize();
 
+    builder.get_object("button_save").visible = true;
     builder.get_object("stack").set_visible_child_name("view_edit");
     window.add_action(action_save);
 
