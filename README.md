@@ -57,16 +57,21 @@ cd OhMySVG
 
 Make changes and hit `Ctrl+Shift+Q` on the window to restart the application.
 
-To pass the tests you have to install a few dependencies
+To pass the tests you have to install a few dependencies:
 
 ```sh
-# Install development dependencies
+# Install development dependencies with dnf (Fedora)
 sudo dnf install --assumeyes npm flatpak make desktop-file-utils gjs gtk4-devel libadwaita-devel
+
+# Install development dependencies with apt (Debian, Ubuntu)
+sudo apt-get install --assume-yes npm flatpak make desktop-file-utils gjs libgtk-4-dev libadwaita-1-dev
+
+# The rest is distribution-agnostic once other dependencies have been resolved
 npm install
 flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 flatpak install --user --assumeyes --noninteractive flathub org.freedesktop.appstream-glib
 
-# Run tests
+# Run tests, may fail in sandboxed environments (i.e. Snap/Flatpak)
 make test
 ```
 

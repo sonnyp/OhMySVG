@@ -1,190 +1,232 @@
 export default [
-  // Fairly new; hasn't made it into SVGOMG yet
-  {
-    id: "mergeStyles",
-    name: "merge styles",
-  },
-  // not enabled in svgomg - disabled by default
-  {
-    id: "removeOffCanvasPaths",
-    name: "Remove elements outside the viewbox",
-  },
-  // The following names were provided by SVGOMG
-  // https://github.com/jakearchibald/svgomg/blob/82c92f6ccc9f124549d94c182c9d5ad5e8431830/src/config.json
   {
     id: "removeDoctype",
     name: "Remove doctype",
+    enabledByDefault: true
   },
   {
     id: "removeXMLProcInst",
     name: "Remove XML instructions",
+    enabledByDefault: true
   },
   {
     id: "removeComments",
     name: "Remove comments",
+    enabledByDefault: true
   },
   {
     id: "removeMetadata",
     name: "Remove <metadata>",
+    enabledByDefault: true
   },
   {
     id: "removeXMLNS",
     name: "Remove xmlns",
+    enabledByDefault: false
   },
   {
     id: "removeEditorsNSData",
     name: "Remove editor data",
+    enabledByDefault: true
   },
   {
     id: "cleanupAttrs",
-    name: "Cleanup attribute whitespace",
+    name: "Clean up attribute whitespace",
+    enabledByDefault: true
+  },
+  {
+    id: "mergeStyles",
+    name: "Merge styles",
+    enabledByDefault: true
   },
   {
     id: "inlineStyles",
     name: "Inline styles",
+    enabledByDefault: true
   },
   {
     id: "minifyStyles",
     name: "Minify styles",
+    enabledByDefault: true
   },
-  // Disabled by default since SVGO 2.1.0
-  // https://github.com/svg/svgo/releases/tag/v2.1.0
-  // https://github.com/svg/svgo/pull/1365
-  // SVGOMG use svgo ^1.3.0
-  // also - produces bigger outputs with Ghostscript_Tiger.svg
   {
     id: "convertStyleToAttrs",
     name: "Style to attributes",
+    enabledByDefault: false
   },
   {
-    id: "cleanupIDs",
-    name: "Clean IDs",
+    id: "cleanupIds",
+    name: "Clean up IDs",
+    enabledByDefault: true
   },
   {
     id: "removeRasterImages",
     name: "Remove raster images",
+    enabledByDefault: false
   },
   {
     id: "removeUselessDefs",
     name: "Remove unused defs",
+    enabledByDefault: true
   },
   {
     id: "cleanupNumericValues",
     name: "Round/rewrite numbers",
+    enabledByDefault: true
   },
   {
     id: "cleanupListOfValues",
     name: "Round/rewrite number lists",
+    enabledByDefault: false
   },
   {
     id: "convertColors",
     name: "Minify colours",
+    enabledByDefault: true
   },
   {
     id: "removeUnknownsAndDefaults",
     name: "Remove unknowns & defaults",
+    enabledByDefault: true
   },
   {
     id: "removeNonInheritableGroupAttrs",
     name: "Remove unneeded group attrs",
+    enabledByDefault: true
   },
   {
     id: "removeUselessStrokeAndFill",
     name: "Remove useless stroke & fill",
+    enabledByDefault: true
   },
   {
     id: "removeViewBox",
     name: "Remove viewBox",
+    enabledByDefault: true
   },
   {
     id: "cleanupEnableBackground",
     name: "Remove/tidy enable-background",
+    enabledByDefault: true
   },
   {
     id: "removeHiddenElems",
     name: "Remove hidden elements",
+    enabledByDefault: true
   },
   {
     id: "removeEmptyText",
     name: "Remove empty text",
+    enabledByDefault: true
   },
   {
     id: "convertShapeToPath",
     name: "Shapes to (smaller) paths",
+    enabledByDefault: true
   },
   {
     id: "moveElemsAttrsToGroup",
     name: "Move attrs to parent group",
+    enabledByDefault: true
   },
   {
     id: "moveGroupAttrsToElems",
     name: "Move group attrs to elements",
+    enabledByDefault: true
   },
   {
     id: "collapseGroups",
     name: "Collapse useless groups",
+    enabledByDefault: true
   },
   {
     id: "convertPathData",
     name: "Round/rewrite paths",
+    enabledByDefault: true
   },
   {
     id: "convertEllipseToCircle",
     name: "Convert non-eccentric <ellipse> to <circle>",
+    enabledByDefault: true
   },
   {
     id: "convertTransform",
     name: "Round/rewrite transforms",
+    enabledByDefault: true
   },
   {
     id: "removeEmptyAttrs",
     name: "Remove empty attrs",
+    enabledByDefault: true
   },
   {
     id: "removeEmptyContainers",
     name: "Remove empty containers",
+    enabledByDefault: true
   },
   {
     id: "mergePaths",
     name: "Merge paths",
+    enabledByDefault: true
   },
   {
     id: "removeUnusedNS",
     name: "Remove unused namespaces",
+    enabledByDefault: true
   },
   {
     id: "reusePaths",
     name: "Replace duplicate elements with links",
-  },
-  // produce smaller gzipped - why disabled by default?
-  // https://github.com/svg/svgo/pull/1506
-  {
-    id: "sortAttrs",
-    // name: "Sort attrs",
-    name: "Sort attributes",
-  },
-  {
-    id: "sortDefsChildren",
-    name: "Sort children of <defs>",
+    enabledByDefault: false
   },
   {
     id: "removeTitle",
     name: "Remove <title>",
+    enabledByDefault: true
   },
   {
     id: "removeDesc",
     name: "Remove <desc>",
+    enabledByDefault: true
   },
   {
     id: "removeDimensions",
     name: "Prefer viewBox to width/height",
+    enabledByDefault: false
   },
   {
     id: "removeStyleElement",
     name: "Remove style elements",
+    enabledByDefault: false
   },
   {
     id: "removeScriptElement",
     name: "Remove script elements",
+    enabledByDefault: false
   },
+  {
+    id: "removeOffCanvasPaths",
+    name: "Remove out-of-bounds paths",
+    enabledByDefault: false
+  },
+  {
+    id: "convertOneStopGradients",
+    name: "Convert one-stop gradients",
+    enabledByDefault: false
+  },
+  {
+    id: "removeXlink",
+    name: "Remove XLink namespace",
+    enabledByDefault: false
+  },
+  {
+    id: "sortAttrs",
+    name: "Sort attrs",
+    enabledByDefault: true
+  },
+  {
+    id: "sortDefsChildren",
+    name: "Sort children of <defs>",
+    enabledByDefault: true
+  }
 ];

@@ -12,11 +12,9 @@ export function process({ string_original, config }) {
   const result = optimize(string_original, config);
 
   const {
-    data: string_optimized,
-    info: { width, height },
+    data: string_optimized
   } = result;
   const data_optimized = ByteArray.fromString(string_optimized);
-  debug("svgo", width, height);
 
   const handle = Rsvg.Handle.new_from_data(data_optimized);
   // FIXME: doc says to set dpi but what and why?

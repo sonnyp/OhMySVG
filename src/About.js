@@ -28,14 +28,15 @@ export default function About({ application, version, system_information }) {
     artists: ["Sam Hewitt"],
     hide_on_close: true,
   });
-  //   dialog.add_credit_section("Contributors", [
-  //     // Add yourself as
-  //     // "John Doe",
-  //     // or
-  //     // "John Doe <john@example.com>",
-  //     // or
-  //     // "John Doe https://john.com",
-  //   ]);
+  dialog.add_credit_section("Contributors", [
+    // Add yourself as
+    // "John Doe",
+    // or
+    // "John Doe <john@example.com>",
+    // or
+    // "John Doe https://john.com",
+    "Seth Falco <seth@falco.fun>"
+  ]);
   dialog.present();
 
   return { dialog };
