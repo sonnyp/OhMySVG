@@ -3,7 +3,7 @@ import GLib from "gi://GLib";
 import Gio from "gi://Gio";
 
 import { relativePath, debug } from "./util.js";
-import { defaultPlugins } from "./svgo.js";
+import plugins_data from "./plugin_data.js";
 import Plugins from "./Plugins.js";
 import { drawCheckerboard, drawHandle, process } from "./ohmysvg.js";
 import DialogSave from "./DialogSave.js";
@@ -44,7 +44,9 @@ export default function Window({ application }) {
 
   let handle;
   let data_optimized;
-  let plugins = defaultPlugins;
+  let plugins = plugins_data
+    .filter((plugin) => plugin.enabledByDefault)
+    .map((plugin) => plugin.id);
   let file;
 
   const label_size = builder.get_object("label_size");
@@ -113,7 +115,7 @@ export default function Window({ application }) {
 
   Plugins({
     builder,
-    defaultValue: defaultPlugins,
+    defaultValue: plugins,
     onChange(value) {
       plugins = value;
       proceed();
