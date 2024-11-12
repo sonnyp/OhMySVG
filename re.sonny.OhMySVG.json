@@ -1,7 +1,7 @@
 {
   "id": "re.sonny.OhMySVG",
   "runtime": "org.gnome.Platform",
-  "runtime-version": "45",
+  "runtime-version": "47",
   "sdk": "org.gnome.Sdk",
   "command": "re.sonny.OhMySVG",
   "finish-args": [
