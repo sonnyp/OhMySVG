@@ -20,6 +20,10 @@
   <url type="homepage">https://github.com/sonnyp/OhMySVG</url>
   <url type="bugtracker">https://github.com/sonnyp/OhMySVG/issues</url>
   <url type="donation">https://github.com/sonnyp/OhMySVG</url>
+  <branding>
+    <color type="primary" scheme_preference="light">#ffd6a4</color>
+    <color type="primary" scheme_preference="dark">#c64600</color>
+  </branding>
   <screenshots>
     <screenshot type="default">
       <image>
