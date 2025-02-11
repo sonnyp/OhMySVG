@@ -67,10 +67,9 @@
   <recommends>
     <control>keyboard</control>
     <control>pointing</control>
-    <!-- <control>touch</control> -->
+    <control>touch</control>
   </recommends>
   <requires>
-    <display_length compare="ge">medium</display_length>
+    <display_length compare="ge">720</display_length>
   </requires>
-
 </component>
