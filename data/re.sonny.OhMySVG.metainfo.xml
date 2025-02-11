@@ -34,6 +34,13 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.4" date="2024-02-11">
+      <description>
+        <p>GNOME 47</p>
+        <p>Update SVGO to 3.3.2</p>
+        <p>Update metadata</p>
+      </description>
+    </release>
     <release version="1.3" date="2023-10-14">
       <description>
         <p>GNOME 45</p>
