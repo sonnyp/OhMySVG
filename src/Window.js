@@ -1,6 +1,7 @@
 import Gtk from "gi://Gtk";
 import GLib from "gi://GLib";
 import Gio from "gi://Gio";
+import Gdk from "gi://Gdk";
 
 import { relativePath, debug } from "./util.js";
 import plugins_data from "./plugin_data.js";
@@ -16,6 +17,7 @@ export default function Window({ application }) {
 
   const window = builder.get_object("window");
   window.set_application(application);
+  window.set_default_size(410, 550);
 
   const action_open = new Gio.SimpleAction({
     name: "open",
@@ -126,7 +128,37 @@ export default function Window({ application }) {
   // FIXME: ideally we would draw original first
   // svgo can take a while to compute on very large SVGs
 
+  // Setup drag and drop
+  const drop_area = builder.get_object("stack");
+  setupDragAndDrop(drop_area, openFile);
+
   return { window, openFile };
+}
+
+function setupDragAndDrop(drop_area, openFile) {
+  const dropTarget = new Gtk.DropTarget({
+    actions: Gdk.DragAction.COPY,
+    formats: Gdk.ContentFormats.new_for_gtype(Gio.File.$gtype),
+  });
+
+  dropTarget.connect("drop", (target, value, x, y) => {
+    if (value instanceof Gio.File) {
+      try {
+        const fileInfo = value.query_info("standard::content-type", 0, null);
+        const contentType = fileInfo.get_content_type();
+        
+        if (contentType === "image/svg+xml") {
+          openFile(value);
+          return true;
+        }
+      } catch (e) {
+        debug("Error checking file type:", e);
+      }
+    }
+    return false;
+  });
+
+  drop_area.add_controller(dropTarget);
 }
 
 function updateLabel({ label, size_original, data_optimized }) {
