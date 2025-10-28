@@ -2,7 +2,7 @@ import Adw from "gi://Adw";
 
 import plugin_data from "./plugin_data.js";
 
-export default function Plugins({ builder, defaultValue, onChange }) {
+export default function Plugins({ plugins_box, defaultValue, onChange }) {
   let value = defaultValue;
 
   function onToggle(self) {
@@ -18,7 +18,6 @@ export default function Plugins({ builder, defaultValue, onChange }) {
     onChange(value);
   }
 
-  const plugins_box = builder.get_object("plugins");
   plugin_data.forEach((plugin) => {
     const { id, name, enabledByDefault } = plugin;
     const row = new Adw.SwitchRow({

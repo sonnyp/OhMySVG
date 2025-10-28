@@ -6,13 +6,13 @@
   xmlns:gnome="http://api.gnome.org/doap-extensions#"
   xmlns="http://usefulinc.com/ns/doap#"
 >
-  <name>Commit</name>
-  <shortdesc> Reduce the size of SVGs</shortdesc>
+  <name>Oh My SVG</name>
+  <shortdesc>Reduce the size of SVGs</shortdesc>
   <description
   >Oh My SVG let you export unoptimized SVG files into smaller versions.</description>
 
-  <homepage rdf:resource="https://github.com/sonnyp/OhMySVG/" />
-  <bug-database rdf:resource="https://github.com/sonnyp/OhMySVG/issues" />
+  <homepage rdf:resource="https://ohmysvg.sonny.re" />
+  <bug-database rdf:resource="https://ohmysvg.sonny.re/feedback" />
   <programming-language>JavaScript</programming-language>
 
   <maintainer>

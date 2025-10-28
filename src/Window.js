@@ -3,19 +3,30 @@ import GLib from "gi://GLib";
 import Gio from "gi://Gio";
 import Gdk from "gi://Gdk";
 
-import { relativePath, debug } from "./util.js";
 import plugins_data from "./plugin_data.js";
 import Plugins from "./Plugins.js";
 import { drawCheckerboard, drawHandle, process } from "./ohmysvg.js";
 import DialogSave from "./DialogSave.js";
 import DialogOpen from "./DialogOpen.js";
 
+import { build } from "troll";
+import Interface from "./window.blp" with { type: "uri" };
+import car_lite_image_resource from "./car-lite.svg" with { type: "uri" };
+
 const ByteArray = imports.byteArray;
 
 export default function Window({ application }) {
-  const builder = Gtk.Builder.new_from_file(relativePath("./window.ui"));
+  const {
+    window,
+    label_size,
+    drawing_area,
+    scale,
+    button_demo,
+    stack,
+    plugins_box,
+    button_save,
+  } = build(Interface);
 
-  const window = builder.get_object("window");
   window.set_application(application);
   window.set_default_size(410, 550);
 
@@ -51,11 +62,8 @@ export default function Window({ application }) {
     .map((plugin) => plugin.id);
   let file;
 
-  const label_size = builder.get_object("label_size");
-
-  const drawing_area = builder.get_object("drawing_area");
   function draw(self, cr, drawing_area_width, drawing_area_height) {
-    debug("draw", drawing_area_width, drawing_area_height);
+    console.debug("draw", drawing_area_width, drawing_area_height);
 
     drawCheckerboard(cr, 0, 0, drawing_area_width, drawing_area_height);
 
@@ -73,7 +81,7 @@ export default function Window({ application }) {
       plugins,
     };
 
-    debug("proceed", JSON.stringify(config));
+    console.debug("proceed", JSON.stringify(config));
 
     ({ handle, data_optimized } = process({
       string_original,
@@ -90,21 +98,19 @@ export default function Window({ application }) {
     drawing_area.queue_draw();
   }
 
-  const scale = builder.get_object("scale");
   scale.connect("value-changed", () => {
     proceed();
   });
 
-  const button_demo = builder.get_object("button_demo");
   button_demo.connect("clicked", () => {
-    openFile(Gio.File.new_for_path(relativePath("./car-lite.svg")));
+    openFile(Gio.File.new_for_uri(car_lite_image_resource));
   });
 
   function openFile(_file) {
     window.maximize();
 
-    builder.get_object("button_save").visible = true;
-    builder.get_object("stack").set_visible_child_name("view_edit");
+    button_save.visible = true;
+    stack.set_visible_child_name("view_edit");
     window.add_action(action_save);
 
     file = _file;
@@ -116,7 +122,7 @@ export default function Window({ application }) {
   }
 
   Plugins({
-    builder,
+    plugins_box,
     defaultValue: plugins,
     onChange(value) {
       plugins = value;
@@ -128,9 +134,7 @@ export default function Window({ application }) {
   // FIXME: ideally we would draw original first
   // svgo can take a while to compute on very large SVGs
 
-  // Setup drag and drop
-  const drop_area = builder.get_object("stack");
-  setupDragAndDrop(drop_area, openFile);
+  setupDragAndDrop(stack, openFile);
 
   return { window, openFile };
 }
@@ -146,13 +150,13 @@ function setupDragAndDrop(drop_area, openFile) {
       try {
         const fileInfo = value.query_info("standard::content-type", 0, null);
         const contentType = fileInfo.get_content_type();
-        
+
         if (contentType === "image/svg+xml") {
           openFile(value);
           return true;
         }
       } catch (e) {
-        debug("Error checking file type:", e);
+        console.debug("Error checking file type:", e);
       }
     }
     return false;

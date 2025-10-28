@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "gi://Soup": "gi://Soup?version=3.0",
+    "gi://Gtk": "gi://Gtk?version=4.0",
+    "gi://Gdk": "gi://Gdk?version=4.0",
+    "troll": "../troll/src/main.js",
+    "gi://Rsvg": "gi://Rsvg?version=2.0",
+    "gi://Xdp": "gi://Xdp?version=1.0",
+    "gi://Adw": "gi://Adw?version=1"
+  }
+}

@@ -1,7 +1,6 @@
 import Rsvg from "gi://Rsvg";
 
 import { optimize } from "./svgo.js";
-import { debug } from "./util.js";
 
 const ByteArray = imports.byteArray;
 
@@ -11,9 +10,7 @@ export const CANVAS_PADDING = 32;
 export function process({ string_original, config }) {
   const result = optimize(string_original, config);
 
-  const {
-    data: string_optimized
-  } = result;
+  const { data: string_optimized } = result;
   const data_optimized = ByteArray.fromString(string_optimized);
 
   const handle = Rsvg.Handle.new_from_data(data_optimized);
@@ -21,7 +18,7 @@ export function process({ string_original, config }) {
   // isn't the default good enough?
   // handle.set_dpi()
   const dimensions = handle.get_dimensions();
-  debug("librsvg", dimensions.width, dimensions.height);
+  console.debug("librsvg", dimensions.width, dimensions.height);
 
   return {
     handle,

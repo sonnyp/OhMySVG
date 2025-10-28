@@ -1,11 +1,11 @@
-import Gtk from "gi://Gtk";
+import Adw from "gi://Adw";
 import Gio from "gi://Gio";
 
 import Window from "./Window.js";
 import About from "./About.js";
 
-export default function Application({ version, system_information }) {
-  const application = new Gtk.Application({
+export default function Application() {
+  const application = new Adw.Application({
     application_id: "re.sonny.OhMySVG",
     flags: Gio.ApplicationFlags.HANDLES_OPEN,
   });
@@ -37,7 +37,7 @@ export default function Application({ version, system_information }) {
     parameter_type: null,
   });
   action_about.connect("activate", () => {
-    About({ application, version, system_information });
+    About({ application });
   });
   application.add_action(action_about);
 
