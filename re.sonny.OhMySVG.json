@@ -15,7 +15,6 @@
     {
       "name": "OhMySVG",
       "buildsystem": "meson",
-      "builddir": true,
       "sources": [
         {
           "type": "dir",
