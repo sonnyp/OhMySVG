@@ -47,41 +47,40 @@
               <object class="GtkStackPage">
                 <property name="name">view_open</property>
                 <property name="child">
-                  <object class="GtkBox">
-                    <property name="orientation">vertical</property>
-                    <property name="valign">center</property>
-                    <property name="halign">center</property>
+                  <object class="AdwStatusPage">
+                    <property name="vexpand">1</property>
+                    <property name="icon-name">re.sonny.OhMySVG</property>
+                    <property name="title" translatable="yes">Oh My SVG</property>
+                    <property name="description" translatable="yes">Click "Open File…" or drag SVG file here</property>
+                    <style>
+                      <class name="icon-dropshadow" />
+                    </style>
                     <child>
-                      <object class="GtkImage">
-                        <property name="icon-name">re.sonny.OhMySVG</property>
-                        <property name="pixel-size">128</property>
-                      </object>
-                    </child>
-                    <child>
-                      <!-- <object class="GtkLabel">
-                        <property name="label">Drop or paste an SVG here</property>
-                        <style>
-                          <class name="title-1" />
-                        </style>
-                      </object> -->
-                    </child>
-                    <child>
-                      <object class="GtkButton">
-                        <property name="label">Open File…</property>
-                        <property name="action-name">win.open</property>
-                        <style>
-                          <class name="suggested-action" />
-                          <class name="pill" />
-                        </style>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkButton" id="button_demo">
-                        <property name="label">Open Demo</property>
-                        <property name="margin-top">10</property>
-                        <style>
-                          <class name="pill" />
-                        </style>
+                      <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <property name="halign">center</property>
+                        <property name="spacing">10</property>
+                        <child>
+                          <object class="GtkButton">
+                            <property name="halign">center</property>
+                            <property name="label" translatable="yes">Open File…</property>
+                            <property name="action-name">win.open</property>
+                            <property name="use-underline">1</property>
+                            <style>
+                              <class name="suggested-action" />
+                              <class name="pill" />
+                            </style>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="button_demo">
+                            <property name="halign">center</property>
+                            <property name="label" translatable="yes">Open Demo</property>
+                            <style>
+                              <class name="pill" />
+                            </style>
+                          </object>
+                        </child>
                       </object>
                     </child>
                   </object>
