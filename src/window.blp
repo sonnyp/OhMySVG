@@ -1,0 +1,232 @@
+using Gtk 4.0;
+using Adw 1;
+
+Adw.ApplicationWindow window {
+  title: "Oh My SVG";
+
+  Box {
+    orientation: vertical;
+
+    Adw.HeaderBar {
+      [start]
+      Button button_save {
+        label: "Save As…";
+        visible: false;
+        action-name: "win.save";
+
+        styles [
+          "suggested-action",
+        ]
+      }
+
+      title-widget: Label {
+        label: _("Oh My SVG");
+        single-line-mode: true;
+        ellipsize: end;
+
+        styles [
+          "title",
+        ]
+      };
+
+      [end]
+      MenuButton button_menu {
+        menu-model: menu_app;
+        icon-name: "open-menu-symbolic";
+        primary: true;
+      }
+    }
+
+    Stack stack {
+      StackPage {
+        name: "view_open";
+
+        child: Adw.StatusPage {
+          vexpand: true;
+          icon-name: "re.sonny.OhMySVG";
+          title: _("Oh My SVG");
+          description: _("Click \"Open File…\" or drop SVG file here");
+
+          styles [
+            "icon-dropshadow",
+          ]
+
+          Box {
+            orientation: vertical;
+            halign: center;
+            spacing: 10;
+
+            Button {
+              halign: center;
+              label: _("Open File…");
+              action-name: "win.open";
+              use-underline: true;
+
+              styles [
+                "suggested-action",
+                "pill",
+              ]
+            }
+
+            Button button_demo {
+              halign: center;
+              label: _("Open Demo");
+
+              styles [
+                "pill",
+              ]
+            }
+          }
+        };
+      }
+
+      StackPage {
+        name: "view_edit";
+
+        child: Box {
+          orientation: horizontal;
+
+          Box sidebar {
+            width-request: 300;
+            orientation: vertical;
+
+            Box {
+              orientation: vertical;
+              margin-start: 8;
+              margin-end: 8;
+              margin-top: 8;
+
+              Label label_size {
+                styles [
+                  "title-3",
+                ]
+
+                justify: center;
+              }
+
+              Label {
+                margin-top: 20;
+                margin-bottom: 10;
+                label: "Precision";
+                xalign: 0;
+
+                styles [
+                  "heading",
+                ]
+              }
+
+              Scale scale {
+                adjustment: adjustment;
+                round-digits: 0;
+                digits: 0;
+
+                marks [
+                  mark (0, bottom),
+                  mark (1, bottom),
+                  mark (2, bottom),
+                  mark (3, bottom),
+                  mark (4, bottom),
+                  mark (5, bottom),
+                  mark (6, bottom),
+                  mark (7, bottom),
+                  mark (8, bottom),
+                  mark (9, bottom),
+                ]
+              }
+
+              Label {
+                margin-top: 20;
+                margin-bottom: 10;
+                label: "Features";
+                xalign: 0;
+
+                styles [
+                  "heading",
+                ]
+              }
+            }
+
+            ScrolledWindow {
+              hscrollbar-policy: never;
+              min-content-height: 200;
+              hexpand: false;
+              vexpand: true;
+
+              Viewport {
+                scroll-to-focus: true;
+
+                Box {
+                  orientation: vertical;
+                  margin-start: 8;
+                  margin-end: 8;
+                  margin-bottom: 8;
+
+                  Frame {
+                    ListBox plugins_box {
+                      selection-mode: none;
+
+                      styles [
+                        "boxed-list",
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          Box {
+            orientation: vertical;
+
+            ScrolledWindow {
+              hexpand: true;
+              vexpand: true;
+
+              Viewport {
+                DrawingArea drawing_area {}
+              }
+            }
+          }
+        };
+      }
+    }
+  }
+}
+
+menu menu_app {
+  section {
+    item {
+      label: _("_Open File…");
+      action: "win.open";
+    }
+
+    item {
+      label: _("_Save As…");
+      action: "win.save";
+      sensitive: "false";
+      disabled: "true";
+    }
+  }
+
+  section {}
+
+  section {
+    item {
+      label: _("_New Window");
+      action: "app.new";
+    }
+
+    item {
+      label: _("_About Oh My SVG");
+      action: "app.about";
+    }
+  }
+}
+
+Adjustment adjustment {
+  lower: 0;
+  upper: 9;
+  value: 3;
+  step-increment: 1;
+  page-increment: 1;
+}

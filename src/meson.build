@@ -1,21 +1,36 @@
-pkgdatadir = join_paths(get_option('datadir'), meson.project_name())
-gnome = import('gnome')
-
-install_subdir('.', install_dir : pkgdatadir, exclude_files: ['re.sonny.OhMySVG', 'meson.build'])
-
 bin_conf = configuration_data()
-bin_conf.set('GJS', find_program('gjs').path())
-bin_conf.set('PACKAGE_VERSION', meson.project_version())
-bin_conf.set('PACKAGE_NAME', meson.project_name())
-bin_conf.set('prefix', get_option('prefix'))
+bin_conf.set('GJS', find_program('gjs').full_path())
+bin_conf.set('version', meson.project_version())
+bin_conf.set('app_id', app_id)
+bin_conf.set('prefix', prefix)
 bin_conf.set('libdir', join_paths(get_option('prefix'), get_option('libdir')))
-bin_conf.set('datadir', join_paths(get_option('prefix'), get_option('datadir')))
+bin_conf.set('datadir', datadir)
+bin_conf.set('pkgdatadir', pkgdatadir)
 
 configure_file(
-  input: 're.sonny.OhMySVG',
+  input: 'bin.js',
   output: 're.sonny.OhMySVG',
   configuration: bin_conf,
   install: true,
   install_dir: get_option('bindir')
 )
 
+gjspack = find_program('../troll/gjspack/bin/gjspack')
+custom_target('gjspack',
+  input: ['main.js'],
+  output: 're.sonny.OhMySVG.src.gresource',
+  command: [
+    gjspack,
+    '--appid=re.sonny.OhMySVG',
+    '--prefix', '/re/sonny/OhMySVG',
+    '--import-map',  meson.project_source_root() / 'src/import_map.json',
+    '--project-root', meson.source_root(),
+    '--resource-root', meson.project_source_root() / 'src',
+    '--no-executable',
+    '@INPUT0@',
+    '@OUTDIR@',
+  ],
+  install: true,
+  install_dir: pkgdatadir,
+  build_always_stale: true,
+)

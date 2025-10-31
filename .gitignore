@@ -9,3 +9,5 @@ install
 .eslintcache
 *~
 *.compiled
+
+/subprojects/blueprint-compiler

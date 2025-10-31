@@ -3,30 +3,24 @@ import Adw from "gi://Adw";
 
 import { gettext as _ } from "gettext";
 
-export default function About({ application, version, system_information }) {
-  const dialog = new Adw.AboutWindow({
-    transient_for: application.get_active_window(),
-    modal: true,
-    // system_information: system_information.join("\n"),
-
+export default function About({ application }) {
+  const dialog = new Adw.AboutDialog({
     application_name: "Oh My SVG",
     developer_name: "Sonny Piers",
     copyright: "© 2021 Sonny Piers",
     license_type: Gtk.License.GPL_3_0_ONLY,
-    version,
-    website: "https://github.com/sonnyp/OhMySVG",
+    version: pkg.version,
+    website: "https://ohmysvg.sonny.re",
     application_icon: "re.sonny.OhMySVG",
-    issue_url: "https://github.com/sonnyp/OhMySVG/issues",
+    issue_url: "https://ohmysvg.sonny.re/feedback",
     // TRANSLATORS: eg. 'Translator Name <your.email@domain.com>' or 'Translator Name https://website.example'
     translator_credits: _("translator-credits"),
-    debug_info: system_information.join("\n"),
     developers: ["Sonny Piers https://sonny.re"],
     designers: [
       "Sonny Piers https://sonny.re",
       "Tobias Bernard <tbernard@gnome.org>",
     ],
     artists: ["Sam Hewitt"],
-    hide_on_close: true,
   });
   dialog.add_credit_section("Contributors", [
     // Add yourself as
@@ -35,9 +29,9 @@ export default function About({ application, version, system_information }) {
     // "John Doe <john@example.com>",
     // or
     // "John Doe https://john.com",
-    "Seth Falco <seth@falco.fun>"
+    "Seth Falco <seth@falco.fun>",
   ]);
-  dialog.present();
+  dialog.present(application.get_active_window());
 
   return { dialog };
 }

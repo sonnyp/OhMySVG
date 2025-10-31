@@ -1,21 +1,11 @@
-import "./setup.js";
-
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
+import Adw from "gi://Adw";
 
 import Application from "./Application.js";
-import { getSystemInformation } from "./util.js";
 
-GLib.set_prgname("re.sonny.OhMySVG");
-GLib.set_application_name("Oh My SVG");
-
-export default function main(argv, { version }) {
-  const system_information = getSystemInformation({ argv, version });
-  if (__DEV__) {
-    system_information.forEach((line) => log(line));
-  }
-
-  const application = Application({ version, system_information });
+export function main(argv) {
+  const application = Application();
 
   if (__DEV__) {
     const restart = new Gio.SimpleAction({

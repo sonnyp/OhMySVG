@@ -1,7 +1,7 @@
 {
   "id": "re.sonny.OhMySVG",
   "runtime": "org.gnome.Platform",
-  "runtime-version": "47",
+  "runtime-version": "49",
   "sdk": "org.gnome.Sdk",
   "command": "re.sonny.OhMySVG",
   "finish-args": [
@@ -15,7 +15,6 @@
     {
       "name": "OhMySVG",
       "buildsystem": "meson",
-      "builddir": true,
       "sources": [
         {
           "type": "dir",

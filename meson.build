@@ -1,11 +1,17 @@
-project('re.sonny.OhMySVG',
-  version: '1.4',
+project('OhMySVG',
+  version: '1.5',
   meson_version: '>= 0.59.0',
   license: 'GPL-3.0-only'
 )
 
 gnome = import('gnome')
 i18n = import('i18n')
+
+app_id = 're.sonny.OhMySVG'
+prefix = get_option('prefix')
+bindir = join_paths(prefix, 'bin')
+datadir = join_paths(prefix, get_option('datadir'))
+pkgdatadir = join_paths(datadir, app_id)
 
 subdir('data')
 subdir('src')

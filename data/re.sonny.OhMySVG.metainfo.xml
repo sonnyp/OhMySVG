@@ -2,8 +2,10 @@
 <component type="desktop">
   <id>re.sonny.OhMySVG</id>
   <launchable type="desktop-id">re.sonny.OhMySVG.desktop</launchable>
-  <name>Oh My SVG</name>
-  <developer_name>Sonny Piers</developer_name>
+  <name translate="no">Oh My SVG</name>
+  <developer id="re.sonny">
+    <name translate="no">Sonny Piers</name>
+  </developer>
   <update_contact>sonny@fastmail.net</update_contact>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0</project_license>
@@ -11,15 +13,16 @@
   <description>
     <p>Oh My SVG let you export unoptimized SVG files into smaller versions.</p>
     <p
-    >It lets you preview and tweak the parameters to obtain a satisfactory result before saving.</p>
+        >It lets you preview and tweak the parameters to obtain a satisfactory result before saving.</p>
     <p
-    >It removes or approximate information that is not required for rendering.</p>
+        >It removes or approximate information that is not required for rendering.</p>
     <p
-    >Remember that Oh My SVG removes information and metadata that may be useful, do not overwrite your original/source SVG files.</p>
+        >Remember that Oh My SVG removes information and metadata that may be useful, do not overwrite your original/source SVG files.</p>
   </description>
-  <url type="homepage">https://github.com/sonnyp/OhMySVG</url>
-  <url type="bugtracker">https://github.com/sonnyp/OhMySVG/issues</url>
-  <url type="donation">https://github.com/sonnyp/OhMySVG</url>
+  <url type="homepage">https://ohmysvg.sonny.re</url>
+  <url type="bugtracker">https://ohmysvg.sonny.re/feedback</url>
+  <url type="donation">https://ohmysvg.sonny.re/donate</url>
+  <url type="vcs-browser">https://ohmysvg.sonny.re/source</url>
   <branding>
     <color type="primary" scheme_preference="light">#ffd6a4</color>
     <color type="primary" scheme_preference="dark">#c64600</color>
@@ -34,6 +37,12 @@
   </screenshots>
   <content_rating type="oars-1.1" />
   <releases>
+  <release version="1.5" date="2025-10-28">
+    <description>
+      <p>Add support for dropping SVG</p>
+      <p>Use GNOME platform 49</p>
+    </description>
+  </release>
     <release version="1.4" date="2024-02-11">
       <description>
         <p>GNOME 47</p>
