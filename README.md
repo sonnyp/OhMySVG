@@ -4,7 +4,7 @@
 
 Reduce the size of SVGs
 
-<a href='https://flathub.org/apps/re.sonny.OhMySVH'><img width='240' alt='Get it on Flathub' src='https://flathub.org/api/badge?locale=en'/></a>
+<a href='https://flathub.org/apps/re.sonny.OhMySVG'><img width='240' alt='Get it on Flathub' src='https://flathub.org/api/badge?locale=en'/></a>
 
 Oh My SVG let you export unoptimized SVG files into smaller versions.
 
