@@ -10,6 +10,7 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0</project_license>
   <summary>Reduce the size of SVGs</summary>
+  <summary xml:lang="hr">Smanji veličinu SVG datoteka</summary>
   <description>
     <p>Oh My SVG let you export unoptimized SVG files into smaller versions.</p>
     <p
@@ -18,6 +19,14 @@
         >It removes or approximate information that is not required for rendering.</p>
     <p
         >Remember that Oh My SVG removes information and metadata that may be useful, do not overwrite your original/source SVG files.</p>
+    <p xml:lang="hr">Oh My SVG omogućuje izvoz neoptimiranih SVG datoteka u manje verzije.</p>
+    <p
+        >Omogućuje pregled i podešavanje parametara za dobivanje zadovoljavajućeg rezultata prije spremanja.</p>
+    <p
+        >Uklanja ili približava podatke koji nisu potrebni za iscrtavanje.</p>
+    <p
+        >Zapamti da aplikacija „Oh My SVG“ uklanja informacije i metapodatke koji bi mogli biti korisni. Nemoj prepisivati svoje originalne/izvorne SVG datoteke.</p>
+    
   </description>
   <url type="homepage">https://ohmysvg.sonny.re</url>
   <url type="bugtracker">https://ohmysvg.sonny.re/feedback</url>
