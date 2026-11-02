@@ -10,7 +10,7 @@ Adw.ApplicationWindow window {
     Adw.HeaderBar {
       [start]
       Button button_save {
-        label: "Save As…";
+        label: _("Save As…");
         visible: false;
         action-name: "win.save";
 
@@ -45,7 +45,7 @@ Adw.ApplicationWindow window {
           vexpand: true;
           icon-name: "re.sonny.OhMySVG";
           title: _("Oh My SVG");
-          description: _("Click \"Open File…\" or drop SVG file here");
+          description: _("Click “Open File…” or drop SVG file here");
 
           styles [
             "icon-dropshadow",
@@ -107,7 +107,7 @@ Adw.ApplicationWindow window {
               Label {
                 margin-top: 20;
                 margin-bottom: 10;
-                label: "Precision";
+                label: _("Precision");
                 xalign: 0;
 
                 styles [
@@ -137,7 +137,7 @@ Adw.ApplicationWindow window {
               Label {
                 margin-top: 20;
                 margin-bottom: 10;
-                label: "Features";
+                label: _("Features");
                 xalign: 0;
 
                 styles [
@@ -155,8 +155,7 @@ Adw.ApplicationWindow window {
               Viewport {
                 scroll-to-focus: true;
 
-                Box {
-                  orientation: vertical;
+                Adw.Bin {
                   margin-start: 8;
                   margin-end: 8;
                   margin-bottom: 8;
@@ -175,8 +174,7 @@ Adw.ApplicationWindow window {
             }
           }
 
-          Box {
-            orientation: vertical;
+          Adw.Bin {
 
             ScrolledWindow {
               hexpand: true;
