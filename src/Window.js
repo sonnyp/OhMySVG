@@ -132,6 +132,8 @@ export default function Window({ application }) {
   });
 
   function reloadFile() {
+    if (!file)
+      return;
     const [, data_original] = file.load_contents(null);
     string_original = ByteArray.toString(data_original);
     size_original = data_original.length;
@@ -145,13 +147,33 @@ export default function Window({ application }) {
 
   action_reload.connect("activate", reloadFile);
 
-  function openFile(_file) {
+  function switchToFileView() {
     button_save.visible = true;
     stack.set_visible_child_name("view_edit");
     window.add_action(action_save);
     window.add_action(action_copy);
     window.add_action(action_reload);
+  }
 
+  const action_paste = new Gio.SimpleAction({
+    name: "paste",
+    parameter_type: null,
+  });
+
+  action_paste.connect("activate", () => {
+    Gdk.Display.get_default().get_clipboard().read_text_async(null, (clipboard, res)=> {
+      string_original = clipboard.read_text_finish(res);
+      size_original = string_original.length;
+      file = null;
+      switchToFileView();
+      proceed();
+    });
+  });
+
+  window.add_action(action_paste);
+
+  function openFile(_file) {
+    switchToFileView();
     file = _file;
     reloadFile();
   }
