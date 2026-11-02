@@ -5,6 +5,8 @@ import GtkSource from "gi://GtkSource";
 import Window from "./Window.js";
 import About from "./About.js";
 
+import _ from "./shortcuts-dialog.blp" with { type: "uri" };
+
 GtkSource.init()
 
 export default function Application() {
