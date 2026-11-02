@@ -90,6 +90,18 @@ Adw.ApplicationWindow window {
         ActionBar {
           hexpand: true;
 
+          [start]
+          Button button_copy {
+            action-name: "win.copy";
+            accessibility {
+              label: _("Copy Markup");
+            }
+            Adw.ButtonContent button_copy_contents {
+              icon-name: "edit-copy-symbolic";
+              label: _("Copy Markup");
+            }
+          }
+
           [center]
           Label label_size {
             justify: center;
@@ -97,13 +109,17 @@ Adw.ApplicationWindow window {
 
           [end]
           Button button_save {
-            label: _("Save As…");
-            visible: false;
-            action-name: "win.save";
-
             styles [
               "suggested-action",
             ]
+            action-name: "win.save";
+            accessibility {
+              label: _("Save As…");
+            }
+            Adw.ButtonContent button_save_contents {
+              icon-name: "document-save-as-symbolic";
+              label: _("Save As…");
+            }
           }
         }
 
@@ -230,6 +246,15 @@ Adw.ApplicationWindow window {
           };
         };
       };
+    }
+  }
+
+  Adw.Breakpoint mid_break {
+    condition ("max-width: 700sp")
+
+    setters {
+      button_save_contents.label: null;
+      button_copy_contents.label: null;
     }
   }
 

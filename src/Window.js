@@ -76,6 +76,15 @@ export default function Window({ application }) {
     .map((plugin) => plugin.id);
   let file;
 
+  const action_copy = new Gio.SimpleAction({
+    name: "copy",
+    parameter_type: null,
+  });
+
+  action_copy.connect("activate", () => {
+    Gdk.Display.get_default().get_clipboard().set(utf8decoder.decode(data_optimized))
+  });
+
   function draw(self, cr, drawing_area_width, drawing_area_height) {
     console.debug("draw", drawing_area_width, drawing_area_height);
 
@@ -126,6 +135,7 @@ export default function Window({ application }) {
     button_save.visible = true;
     stack.set_visible_child_name("view_edit");
     window.add_action(action_save);
+    window.add_action(action_copy);
 
     file = _file;
     const [, data_original] = file.load_contents(null);
