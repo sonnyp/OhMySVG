@@ -6,6 +6,7 @@
     "troll": "../troll/src/main.js",
     "gi://Rsvg": "gi://Rsvg?version=2.0",
     "gi://Xdp": "gi://Xdp?version=1.0",
-    "gi://Adw": "gi://Adw?version=1"
+    "gi://Adw": "gi://Adw?version=1",
+    "gi://GtkSource": "gi://GtkSource?version=5"
   }
 }

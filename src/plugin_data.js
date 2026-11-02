@@ -102,7 +102,7 @@ export default [
   {
     id: "removeViewBox",
     name: "Remove viewBox",
-    enabledByDefault: true
+    enabledByDefault: false
   },
   {
     id: "cleanupEnableBackground",
@@ -182,7 +182,7 @@ export default [
   {
     id: "removeTitle",
     name: "Remove <title>",
-    enabledByDefault: true
+    enabledByDefault: false
   },
   {
     id: "removeDesc",
@@ -200,7 +200,7 @@ export default [
     enabledByDefault: false
   },
   {
-    id: "removeScriptElement",
+    id: "removeScripts",
     name: "Remove script elements",
     enabledByDefault: false
   },

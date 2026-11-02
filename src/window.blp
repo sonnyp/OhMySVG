@@ -1,51 +1,32 @@
 using Gtk 4.0;
 using Adw 1;
+using GtkSource 5;
 
 Adw.ApplicationWindow window {
   title: "Oh My SVG";
 
-  Box {
-    orientation: vertical;
+  Stack stack {
+    StackPage {
+      name: "view_open";
 
-    Adw.HeaderBar {
-      [start]
-      Button button_save {
-        label: "Save As…";
-        visible: false;
-        action-name: "win.save";
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          show-title: false;
 
-        styles [
-          "suggested-action",
-        ]
-      }
+          [end]
+          MenuButton {
+            menu-model: menu_app;
+            icon-name: "open-menu-symbolic";
+            primary: true;
+          }
+        }
 
-      title-widget: Label {
-        label: _("Oh My SVG");
-        single-line-mode: true;
-        ellipsize: end;
-
-        styles [
-          "title",
-        ]
-      };
-
-      [end]
-      MenuButton button_menu {
-        menu-model: menu_app;
-        icon-name: "open-menu-symbolic";
-        primary: true;
-      }
-    }
-
-    Stack stack {
-      StackPage {
-        name: "view_open";
-
-        child: Adw.StatusPage {
+        content: Adw.StatusPage {
           vexpand: true;
           icon-name: "re.sonny.OhMySVG";
           title: _("Oh My SVG");
-          description: _("Click \"Open File…\" or drop SVG file here");
+          description: _("Click “Open File…” or drop SVG file here");
 
           styles [
             "icon-dropshadow",
@@ -78,15 +59,75 @@ Adw.ApplicationWindow window {
             }
           }
         };
-      }
+      };
+    }
 
-      StackPage {
-        name: "view_edit";
+    StackPage {
+      name: "view_edit";
 
-        child: Box {
-          orientation: horizontal;
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          [start]
+          ToggleButton sidebar_toggle {
+            active: bind split_view.show-sidebar;
+            icon-name: "sidebar-show-symbolic";
+          }
 
-          Box sidebar {
+          title-widget: Adw.ViewSwitcher {
+            stack: inner_stack;
+          };
+
+          [end]
+          MenuButton button_menu {
+            menu-model: menu_app;
+            icon-name: "open-menu-symbolic";
+            primary: true;
+          }
+        }
+
+        [bottom]
+        ActionBar {
+          hexpand: true;
+
+          [start]
+          Button button_copy {
+            action-name: "win.copy";
+            accessibility {
+              label: _("Copy Markup");
+            }
+            Adw.ButtonContent button_copy_contents {
+              icon-name: "edit-copy-symbolic";
+              label: _("Copy Markup");
+            }
+          }
+
+          [center]
+          Label label_size {
+            justify: center;
+          }
+
+          [end]
+          Button button_save {
+            styles [
+              "suggested-action",
+            ]
+            action-name: "win.save";
+            accessibility {
+              label: _("Save As…");
+            }
+            Adw.ButtonContent button_save_contents {
+              icon-name: "document-save-as-symbolic";
+              label: _("Save As…");
+            }
+          }
+        }
+
+        content: Adw.OverlaySplitView split_view {
+          show-sidebar: bind sidebar_toggle.active;
+          collapsed: true;
+
+          sidebar: Box sidebar {
             width-request: 300;
             orientation: vertical;
 
@@ -96,18 +137,10 @@ Adw.ApplicationWindow window {
               margin-end: 8;
               margin-top: 8;
 
-              Label label_size {
-                styles [
-                  "title-3",
-                ]
-
-                justify: center;
-              }
-
               Label {
                 margin-top: 20;
                 margin-bottom: 10;
-                label: "Precision";
+                label: _("Precision");
                 xalign: 0;
 
                 styles [
@@ -137,7 +170,7 @@ Adw.ApplicationWindow window {
               Label {
                 margin-top: 20;
                 margin-bottom: 10;
-                label: "Features";
+                label: _("Features");
                 xalign: 0;
 
                 styles [
@@ -155,8 +188,7 @@ Adw.ApplicationWindow window {
               Viewport {
                 scroll-to-focus: true;
 
-                Box {
-                  orientation: vertical;
+                Adw.Bin {
                   margin-start: 8;
                   margin-end: 8;
                   margin-bottom: 8;
@@ -173,24 +205,68 @@ Adw.ApplicationWindow window {
                 }
               }
             }
-          }
+          };
 
-          Box {
-            orientation: vertical;
+          content: Adw.ViewStack inner_stack {
 
-            ScrolledWindow {
-              hexpand: true;
-              vexpand: true;
+            Adw.ViewStackPage {
+              name: "inner_image";
+              title: _("Image");
+              icon-name: "image-x-generic-symbolic";
 
-              Viewport {
-                DrawingArea drawing_area {}
-              }
+              child: ScrolledWindow {
+                hexpand: true;
+                vexpand: true;
+
+                Viewport {
+                  DrawingArea drawing_area {}
+                }
+              };
             }
-          }
+
+            Adw.ViewStackPage {
+              name: "inner_markup";
+              title: _("Markup");
+              icon-name: "text-editor-symbolic";
+
+              child: ScrolledWindow {
+                hexpand: true;
+                vexpand: true;
+
+                GtkSource.View {
+                  show-line-numbers: true;
+                  monospace: true;
+                  editable: false;
+                  wrap-mode: char;
+
+                  buffer: GtkSource.Buffer source_buffer {};
+                }
+              };
+            }
+          };
         };
-      }
+      };
     }
   }
+
+  Adw.Breakpoint mid_break {
+    condition ("max-width: 700sp")
+
+    setters {
+      button_save_contents.label: null;
+      button_copy_contents.label: null;
+    }
+  }
+
+  Adw.Breakpoint wide_break {
+    condition ("min-width: 800sp")
+
+    setters {
+      split_view.collapsed: false;
+      sidebar_toggle.visible: false;
+    }
+  }
+
 }
 
 menu menu_app {
@@ -206,6 +282,20 @@ menu menu_app {
       sensitive: "false";
       disabled: "true";
     }
+
+    item {
+      label: _("_Reload");
+      action: "win.reload";
+      sensitive: "false";
+      disabled: "true";
+    }
+
+    item {
+      label: _("_Paste Markup");
+      action: "win.paste";
+      sensitive: "false";
+      disabled: "true";
+    }
   }
 
   section {}
@@ -214,6 +304,11 @@ menu menu_app {
     item {
       label: _("_New Window");
       action: "app.new";
+    }
+
+    item {
+      label: _("Keyboard Shortcuts");
+      action: "app.shortcuts";
     }
 
     item {

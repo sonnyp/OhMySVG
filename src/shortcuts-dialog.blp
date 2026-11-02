@@ -1,0 +1,48 @@
+using Gtk 4.0;
+using Adw 1;
+
+Adw.ShortcutsDialog shortcuts_dialog {
+  Adw.ShortcutsSection {
+    title: C_("shortcut window", "File");
+
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Open File");
+      action-name: "win.open";
+    }
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Save As");
+      action-name: "win.save";
+    }
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Reload");
+      action-name: "win.reload";
+    }
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Copy Markup");
+      action-name: "win.copy";
+    }
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Paste Markup");
+      action-name: "win.paste";
+    }
+  }
+
+  Adw.ShortcutsSection {
+    title: C_("shortcut window", "General");
+
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "New Window");
+      action-name: "app.new";
+    }
+
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Keyboard Shortcuts");
+      action-name: "app.shortcuts";
+    }
+
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Quit");
+      action-name: "app.quit";
+    }
+  }
+}

@@ -1,8 +1,13 @@
 import Adw from "gi://Adw";
 import Gio from "gi://Gio";
+import GtkSource from "gi://GtkSource";
 
 import Window from "./Window.js";
 import About from "./About.js";
+
+import _ from "./shortcuts-dialog.blp" with { type: "uri" };
+
+GtkSource.init()
 
 export default function Application() {
   const application = new Adw.Application({
@@ -55,6 +60,9 @@ export default function Application() {
   application.set_accels_for_action("app.quit", ["<Ctrl>Q"]);
   application.set_accels_for_action("win.open", ["<Ctrl>O"]);
   application.set_accels_for_action("win.save", ["<Ctrl>S"]);
+  application.set_accels_for_action("win.copy", ["<Ctrl>C"]);
+  application.set_accels_for_action("win.paste", ["<Ctrl>V"]);
+  application.set_accels_for_action("win.reload", ["<Ctrl>R"]);
   application.set_accels_for_action("app.new", ["<Ctrl>N"]);
 
   return application;
