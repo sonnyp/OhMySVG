@@ -107,8 +107,6 @@ export default function Window({ application }) {
   });
 
   function openFile(_file) {
-    window.maximize();
-
     button_save.visible = true;
     stack.set_visible_child_name("view_edit");
     window.add_action(action_save);
