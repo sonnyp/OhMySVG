@@ -30,6 +30,7 @@ export default function About({ application }) {
     // or
     // "John Doe https://john.com",
     "Seth Falco <seth@falco.fun>",
+    "Val Packett https://val.packett.cool",
   ]);
   dialog.present(application.get_active_window());
 
