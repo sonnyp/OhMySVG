@@ -1,8 +1,11 @@
 import Adw from "gi://Adw";
 import Gio from "gi://Gio";
+import GtkSource from "gi://GtkSource";
 
 import Window from "./Window.js";
 import About from "./About.js";
+
+GtkSource.init()
 
 export default function Application() {
   const application = new Adw.Application({

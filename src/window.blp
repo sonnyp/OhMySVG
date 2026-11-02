@@ -1,5 +1,6 @@
 using Gtk 4.0;
 using Adw 1;
+using GtkSource 5;
 
 Adw.ApplicationWindow window {
   title: "Oh My SVG";
@@ -73,14 +74,8 @@ Adw.ApplicationWindow window {
             icon-name: "sidebar-show-symbolic";
           }
 
-          title-widget: Label {
-            label: _("Oh My SVG");
-            single-line-mode: true;
-            ellipsize: end;
-
-            styles [
-              "title",
-            ]
+          title-widget: Adw.ViewSwitcher {
+            stack: inner_stack;
           };
 
           [end]
@@ -196,15 +191,41 @@ Adw.ApplicationWindow window {
             }
           };
 
-          content: Adw.Bin {
+          content: Adw.ViewStack inner_stack {
 
-            ScrolledWindow {
-              hexpand: true;
-              vexpand: true;
+            Adw.ViewStackPage {
+              name: "inner_image";
+              title: _("Image");
+              icon-name: "image-x-generic-symbolic";
 
-              Viewport {
-                DrawingArea drawing_area {}
-              }
+              child: ScrolledWindow {
+                hexpand: true;
+                vexpand: true;
+
+                Viewport {
+                  DrawingArea drawing_area {}
+                }
+              };
+            }
+
+            Adw.ViewStackPage {
+              name: "inner_markup";
+              title: _("Markup");
+              icon-name: "text-editor-symbolic";
+
+              child: ScrolledWindow {
+                hexpand: true;
+                vexpand: true;
+
+                GtkSource.View {
+                  show-line-numbers: true;
+                  monospace: true;
+                  editable: false;
+                  wrap-mode: char;
+
+                  buffer: GtkSource.Buffer source_buffer {};
+                }
+              };
             }
           };
         };

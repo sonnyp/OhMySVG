@@ -2,6 +2,8 @@ import Gtk from "gi://Gtk";
 import GLib from "gi://GLib";
 import Gio from "gi://Gio";
 import Gdk from "gi://Gdk";
+import Adw from "gi://Adw";
+import GtkSource from "gi://GtkSource";
 
 import plugins_data from "./plugin_data.js";
 import Plugins from "./Plugins.js";
@@ -14,6 +16,7 @@ import Interface from "./window.blp" with { type: "uri" };
 import car_lite_image_resource from "./car-lite.svg" with { type: "uri" };
 
 const ByteArray = imports.byteArray;
+const utf8decoder = new TextDecoder();
 
 export default function Window({ application }) {
   const {
@@ -25,10 +28,21 @@ export default function Window({ application }) {
     stack,
     plugins_box,
     button_save,
+    source_buffer,
   } = build(Interface);
 
   window.set_application(application);
   window.set_default_size(410, 550);
+
+  const language_manager = GtkSource.LanguageManager.get_default();
+  source_buffer.set_language(language_manager.get_language("xml"));
+  const scheme_manager = GtkSource.StyleSchemeManager.get_default();
+  const adw_sm = Adw.StyleManager.get_default();
+  const update_editor_scheme = () => 
+    source_buffer.set_style_scheme(scheme_manager.get_scheme(
+      adw_sm.get_dark() ? "Adwaita-dark" : "Adwaita"));
+  adw_sm.connect("notify::dark", update_editor_scheme);
+  update_editor_scheme();
 
   const action_open = new Gio.SimpleAction({
     name: "open",
@@ -93,6 +107,8 @@ export default function Window({ application }) {
       size_original,
       data_optimized,
     });
+
+    source_buffer.set_text(utf8decoder.decode(data_optimized), -1);
 
     // Draw
     drawing_area.queue_draw();
