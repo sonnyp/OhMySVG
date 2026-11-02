@@ -59,6 +59,7 @@ export default function Application() {
   application.set_accels_for_action("win.open", ["<Ctrl>O"]);
   application.set_accels_for_action("win.save", ["<Ctrl>S"]);
   application.set_accels_for_action("win.copy", ["<Ctrl>C"]);
+  application.set_accels_for_action("win.reload", ["<Ctrl>R"]);
   application.set_accels_for_action("app.new", ["<Ctrl>N"]);
 
   return application;

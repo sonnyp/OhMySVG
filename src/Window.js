@@ -131,18 +131,29 @@ export default function Window({ application }) {
     openFile(Gio.File.new_for_uri(car_lite_image_resource));
   });
 
+  function reloadFile() {
+    const [, data_original] = file.load_contents(null);
+    string_original = ByteArray.toString(data_original);
+    size_original = data_original.length;
+    proceed();
+  }
+
+  const action_reload = new Gio.SimpleAction({
+    name: "reload",
+    parameter_type: null,
+  });
+
+  action_reload.connect("activate", reloadFile);
+
   function openFile(_file) {
     button_save.visible = true;
     stack.set_visible_child_name("view_edit");
     window.add_action(action_save);
     window.add_action(action_copy);
+    window.add_action(action_reload);
 
     file = _file;
-    const [, data_original] = file.load_contents(null);
-    string_original = ByteArray.toString(data_original);
-    size_original = data_original.length;
-
-    proceed();
+    reloadFile();
   }
 
   Plugins({
