@@ -4,44 +4,24 @@ using Adw 1;
 Adw.ApplicationWindow window {
   title: "Oh My SVG";
 
-  Box {
-    orientation: vertical;
+  Stack stack {
+    StackPage {
+      name: "view_open";
 
-    Adw.HeaderBar {
-      [start]
-      Button button_save {
-        label: _("Save As…");
-        visible: false;
-        action-name: "win.save";
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          show-title: false;
 
-        styles [
-          "suggested-action",
-        ]
-      }
+          [end]
+          MenuButton {
+            menu-model: menu_app;
+            icon-name: "open-menu-symbolic";
+            primary: true;
+          }
+        }
 
-      title-widget: Label {
-        label: _("Oh My SVG");
-        single-line-mode: true;
-        ellipsize: end;
-
-        styles [
-          "title",
-        ]
-      };
-
-      [end]
-      MenuButton button_menu {
-        menu-model: menu_app;
-        icon-name: "open-menu-symbolic";
-        primary: true;
-      }
-    }
-
-    Stack stack {
-      StackPage {
-        name: "view_open";
-
-        child: Adw.StatusPage {
+        content: Adw.StatusPage {
           vexpand: true;
           icon-name: "re.sonny.OhMySVG";
           title: _("Oh My SVG");
@@ -78,15 +58,65 @@ Adw.ApplicationWindow window {
             }
           }
         };
-      }
+      };
+    }
 
-      StackPage {
-        name: "view_edit";
+    StackPage {
+      name: "view_edit";
 
-        child: Box {
-          orientation: horizontal;
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          [start]
+          ToggleButton sidebar_toggle {
+            active: bind split_view.show-sidebar;
+            icon-name: "sidebar-show-symbolic";
+          }
 
-          Box sidebar {
+          title-widget: Label {
+            label: _("Oh My SVG");
+            single-line-mode: true;
+            ellipsize: end;
+
+            styles [
+              "title",
+            ]
+          };
+
+          [end]
+          MenuButton button_menu {
+            menu-model: menu_app;
+            icon-name: "open-menu-symbolic";
+            primary: true;
+          }
+        }
+
+        [bottom]
+        ActionBar {
+          hexpand: true;
+
+          [center]
+          Label label_size {
+            justify: center;
+          }
+
+          [end]
+          Button button_save {
+            label: _("Save As…");
+            visible: false;
+            action-name: "win.save";
+
+            styles [
+              "suggested-action",
+            ]
+          }
+        }
+
+        content: Adw.OverlaySplitView split_view {
+          show-sidebar: bind sidebar_toggle.active;
+          collapsed: true;
+
+          sidebar: Box sidebar {
             width-request: 300;
             orientation: vertical;
 
@@ -95,14 +125,6 @@ Adw.ApplicationWindow window {
               margin-start: 8;
               margin-end: 8;
               margin-top: 8;
-
-              Label label_size {
-                styles [
-                  "title-3",
-                ]
-
-                justify: center;
-              }
 
               Label {
                 margin-top: 20;
@@ -172,9 +194,9 @@ Adw.ApplicationWindow window {
                 }
               }
             }
-          }
+          };
 
-          Adw.Bin {
+          content: Adw.Bin {
 
             ScrolledWindow {
               hexpand: true;
@@ -184,11 +206,21 @@ Adw.ApplicationWindow window {
                 DrawingArea drawing_area {}
               }
             }
-          }
+          };
         };
-      }
+      };
     }
   }
+
+  Adw.Breakpoint wide_break {
+    condition ("min-width: 800sp")
+
+    setters {
+      split_view.collapsed: false;
+      sidebar_toggle.visible: false;
+    }
+  }
+
 }
 
 menu menu_app {
